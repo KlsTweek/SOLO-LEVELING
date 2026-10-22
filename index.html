@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#030611">
+    
+    <title>Solo Leveling: The Monarch's Domain</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- OVERLAY DE DAÑO FÍSICO Y PENALIZACIÓN -->
+    <div class="damage-overlay" id="damage-overlay"></div>
+    
+    <!-- NIVEL 1: MENSAJES RÁPIDOS (TOASTS) -->
+    <div id="toast-container"></div>
+
+    <!-- CINEMÁTICA ÚNICA: GRIMORIO HOLOGRÁFICO VERDE 3D DE MIN BYUNG-GYU -->
+    <div id="min-grimoire-overlay" style="display: none;">
+        <div class="grimoire-aura"></div>
+        <div class="grimoire-3d-wrap">
+            <div class="grimoire-book">
+                <div class="grimoire-cover left-cover"></div>
+                <div class="grimoire-page page-1">✦</div>
+                <div class="grimoire-page page-2">✚</div>
+                <div class="grimoire-page page-3">✧</div>
+                <div class="grimoire-page page-4">✙</div>
+                <div class="grimoire-cover right-cover"></div>
+            </div>
+        </div>
+        <h2 class="grimoire-title">LUZ DIVINA DE RESURRECCIÓN</h2>
+        <p class="grimoire-sub">Min Byung-Gyu canaliza su último milagro antes de partir hacia la paz eterna...</p>
+    </div>
+
+    <!-- CINEMÁTICA HOLOGRÁFICA DE HABILIDAD ACTIVA DE COMANDANTES -->
+    <div id="commander-ult-overlay" style="display: none;">
+        <div class="ult-bg-flash" id="ult-bg-flash"></div>
+        <div class="ult-stage-box" id="ult-stage-box"></div>
+        <div class="ult-text-banner">
+            <div class="ult-cmd-name" id="ult-cmd-name">COMANDANTE IGRIS</div>
+            <h1 class="ult-skill-title" id="ult-skill-title">TAJO CARMESÍ DEL MONARCA</h1>
+            <p class="ult-skill-sub" id="ult-skill-sub">Sincronizando núcleo de maná con la legión sombría...</p>
+        </div>
+    </div>
+
+    <!-- CINEMÁTICA DE ENTRADA A PORTAL -->
+    <div id="gate-anim-overlay">
+        <div class="gate-anim-box">
+            <div class="gate-rank-badge" id="gate-anim-rank">RANGO E</div>
+            <h1 class="gate-title-text" id="gate-anim-title">ENTRANDO AL PORTAL...</h1>
+            <div class="gate-loading-bar"><div class="gate-loading-fill"></div></div>
+        </div>
+    </div>
+
+    <!-- INTERFAZ DE MAZMORRA INSTANCIADA (POMODORO INMERSIVO + MINI-ARENA + CRÓNICA) -->
+    <div id="dungeon-overlay" style="display: none;">
+        <canvas id="biome-canvas"></canvas>
+        <div class="raid-ui-wrapper" id="raid-ui-wrapper">
+            <div class="raid-header">
+                <div>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <span class="card-tag S" id="dungeon-rank">RANGO E</span>
+                        <button class="btn btn-blue" style="padding:3px 8px; font-size:0.65em;" onclick="toggleRaidFocusMode()">👁️ Modo Enfoque</button>
+                    </div>
+                    <h2 id="dungeon-title" style="color:#fff; margin-top:5px; font-size:1.35em;">Mazmorra</h2>
+                </div>
+                <div id="raid-phase-counter" class="raid-phase-badge">FASE 1 / 2</div>
+            </div>
+
+            <div id="biome-effect-banner" class="biome-banner">SISTEMA DEL MONARCA // FLUJO ESTABLE</div>
+
+            <!-- CAJA CENTRAL DE INCURSIÓN VIVA -->
+            <div class="raid-center-box" id="raid-timer-box">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                    <h3 id="raid-phase-name" style="color:var(--neon-main); font-size:1.2em;">Fase Activa</h3>
+                    <span id="raid-depth-text" style="font-family:'Share Tech Mono', monospace; font-size:0.75em; color:var(--text-gold);">PROFUNDIDAD: 0%</span>
+                </div>
+                <div class="bar-wrap" style="height:5px; margin-bottom:8px;">
+                    <div class="bar-fill xp-bar" id="raid-depth-bar" style="width:0%;"></div>
+                </div>
+                <p id="raid-phase-desc" style="color:#cbd5e1; font-size:0.86em; margin-bottom:10px;">Descripción de la fase actual.</p>
+
+                <!-- MINI-ARENA EN TIEMPO REAL (SOMBRAS VS MONSTRUOS DEL BIOMA) -->
+                <div class="raid-mini-arena" id="raid-mini-arena">
+                    <div class="arena-floor-grid"></div>
+                    <div class="arena-team-left" id="arena-allies"></div>
+                    <div class="arena-fx-layer" id="arena-fx-layer"></div>
+                    <div class="arena-team-right" id="arena-enemies"></div>
+                    <div class="arena-action-tag" id="arena-action-tag">SINCRONIZANDO VANGUARDIA...</div>
+                </div>
+
+                <!-- RELOJ POMODORO CENTRAL -->
+                <div id="raid-timer" class="timer-display" style="margin:8px 0; font-size:3.1em;">00:00</div>
+                <div id="raid-shield-indicator" style="display:none; color:#00f2fe; font-weight:700; font-size:0.85em; margin-bottom:6px;">❄️ ESCUDO ÁRTICO DE TANK: +<span id="raid-shield-val">0</span> HP</div>
+
+                <!-- CRÓNICA NARRATIVA DE INCURSIÓN EN VIVO (BATTLE LOG) -->
+                <div class="raid-log-console" id="raid-battle-log">
+                    <div class="battle-log-line"><span class="log-time">[00:00]</span> Iniciando descenso dimensional...</div>
+                </div>
+            </div>
+
+            <!-- PANEL DE CHOQUE DE JEFE (SE ACTIVA AL TERMINAR EL RELOJ DE FASE) -->
+            <div class="raid-boss-clash" id="raid-boss-clash" style="display: none;">
+                <div class="boss-clash-header">
+                    <span style="color:var(--danger); font-weight:700;">💀 CHOQUE DE ANOMALÍA</span>
+                    <span id="clash-boss-hp-text" style="font-family:'Share Tech Mono', monospace; color:#fff;">100/100 HP</span>
+                </div>
+                <div class="bar-wrap" style="height:12px; margin-bottom:10px; border-color:var(--danger);">
+                    <div class="bar-fill hp-bar" id="clash-boss-bar" style="width:100%;"></div>
+                </div>
+                <p id="clash-hazard-text" style="color:#fca5a5; font-size:0.88em; margin-bottom:12px;">¡El Jefe prepara un ataque letal! Ejecuta un comando antes de que se agote el tiempo:</p>
+                
+                <div class="clash-skills-grid">
+                    <button class="btn btn-main" style="width:100%; margin-bottom:8px;" onclick="executePlayerClashStrike()">🗡️ ATAQUE DIRECTO DEL CAZADOR</button>
+                    <div id="clash-shadow-buttons" style="display:grid; grid-template-columns:1fr 1fr; gap:8px;"></div>
+                </div>
+            </div>
+
+            <!-- PANEL DE INTERVENCIÓN DE EMERGENCIA DE MIN BYUNG-GYU EN MAZMORRA -->
+            <div id="raid-min-rescue" class="min-rescue-box" style="display: none;">
+                <h3 style="color:var(--success); margin-bottom:6px;">📗 ¡COLAPSO VITAL DETECTADO!</h3>
+                <p style="font-size:0.88em; color:#e2e8f0; margin-bottom:12px;">Estás a punto de perder tu progreso, tu llave y el 50% de tu oro. ¿Deseas invocar el único milagro de <b>Min Byung-Gyu</b>?</p>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn btn-green" style="flex:1;" onclick="triggerMinByungGyuMiracle(true)">✨ INVOCAR MILAGRO (1 USO)</button>
+                    <button class="btn btn-red" style="flex:1;" onclick="confirmAcceptDeath()">Aceptar Muerte</button>
+                </div>
+            </div>
+
+            <div class="raid-vitals-box raid-dimmable">
+                <div class="raid-vital-row">
+                    <span>HP</span>
+                    <div class="bar-wrap"><div class="bar-fill hp-bar" id="raid-hp-bar"></div></div>
+                    <span id="raid-hp-text">100.0/100</span>
+                </div>
+                <div class="raid-vital-row">
+                    <span style="color:var(--stamina);">SP</span>
+                    <div class="bar-wrap"><div class="bar-fill sp-bar" id="raid-sp-bar"></div></div>
+                    <span id="raid-sp-text">100/100</span>
+                </div>
+                <div class="raid-vital-row">
+                    <span style="color:var(--neon-blue);">MP</span>
+                    <div class="bar-wrap"><div class="bar-fill mp-bar" id="raid-mp-bar"></div></div>
+                    <span id="raid-mp-text">1000.0</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px; font-size:0.78em;">
+                    <span id="raid-mp-rate" style="color:var(--text-lore); font-family:'Share Tech Mono', monospace;">FLUJO MP: ESTABLE</span>
+                    <button class="btn btn-purple" style="padding:4px 10px; font-size:0.85em;" onclick="recallAllShadows()">🌑 Guardar Sombras (0 MP/m)</button>
+                </div>
+            </div>            
+            
+            <div class="raid-actions raid-dimmable">
+                <button class="btn btn-gold" id="btn-raid-validate" style="display:none; width:100%; margin-bottom:12px; padding:16px;" onclick="manualPhaseValidation()">⚔️ ASESTAR GOLPE FINAL (30s)</button>
+                <div style="display:flex; gap:10px; margin-bottom:10px;">
+                    <button class="btn btn-blue" style="flex:1;" onclick="abrirBolsaMazmorra()">🎒 Bolsa</button>
+                    <button class="btn btn-purple" style="flex:1;" onclick="abrirTiendaMazmorra()">🛒 Tienda</button>
+                </div>
+                <button class="btn btn-red" id="btn-raid-action" style="width:100%;" onclick="attemptRaidEscape()">Huir de la Mazmorra (-20 HP)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- NIVEL 2: ALERTA CRÍTICA DE FISURAS -->
+    <div class="modal" id="fissure-modal" style="display: none;">
+        <div class="modal-content fissure-content">
+            <h2 class="modal-title danger-title">⚠️ FISURA DETECTADA</h2>
+            <p id="fissure-desc" class="modal-desc" style="color: #fff; font-size: 1.05em;">Se ha detectado energía mágica en tu zona actual.</p>
+            <div class="modal-btn-row" style="flex-direction: column; gap: 10px;">
+                <button class="btn btn-main" onclick="acceptFissure()">ENTRAR AL PORTAL</button>
+                <button class="btn btn-gold" onclick="postponeFissure()">Sellar (Posponer para después)</button>
+                <button class="btn btn-red" onclick="fleeFissure()">Huir cobardemente (-10 SP)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CABECERA PERMANENTE (HUD DEL MONARCA) -->
+    <div class="header">
+        <div class="sys-log">
+            <span class="log-blink">●</span>
+            <span id="sys-message">SISTEMA DEL MONARCA ACTIVO</span>
+        </div>
+
+        <div class="hud-row">
+            <div class="lvl-container">CAZADOR <span class="lvl-val">NIV. <span id="lvl-display">1</span></span></div>
+            <div class="xp-counter">EXP: <span id="xp-text">0/150</span></div>
+        </div>
+        
+        <div class="bar-wrap" style="height: 5px; margin-bottom: 12px;">
+            <div class="bar-fill xp-bar" id="xp-bar"></div>
+        </div>
+        
+        <div class="vitals-grid">
+            <div class="vital-tile">
+                <div class="vital-meta"><span>HP</span><span id="hp-text">100/100</span></div>
+                <div class="bar-wrap" id="hp-wrap">
+                    <div class="bar-fill hp-bar" id="hp-bar"></div>
+                </div>
+            </div>
+            <div class="vital-tile">
+                <div class="vital-meta"><span style="color:var(--stamina);">SP</span><span id="sp-text">100/100</span></div>
+                <div class="bar-wrap">
+                    <div class="bar-fill sp-bar" id="sp-bar"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="vital-tile" style="margin-top: 10px; padding: 8px 12px;">
+            <div class="vital-meta" style="font-size: 0.95em;">
+                <span style="color:var(--neon-blue); text-shadow:0 0 10px rgba(0,210,255,0.4 );">MANÁ (MP) <small id="mp-drain-rate" style="color:var(--text-muted); font-size:0.8em;"></small></span>             
+                <span id="mp-text">1000.00/1000</span>
+            </div>
+            <div class="bar-wrap" style="height: 6px;">
+                <div class="bar-fill mp-bar" id="mp-bar"></div>
+            </div>
+        </div>
+        
+        <div class="economy-bar">
+            <div class="gold-txt" style="display:flex; align-items:center; gap:6px;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="12" cy="12" r="9" fill="rgba(243,208,120,0.18)" stroke="#f3d078" stroke-width="2"/>
+                    <polygon points="12,6 16,12 12,18 8,12" fill="#f3d078" stroke="#ffffff" stroke-width="1.2"/>
+                </svg>
+                <span id="gold-display">0</span> G
+            </div>
+            <div class="crystal-txt" style="display:flex; align-items:center; gap:6px;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><polygon points="12,2 20,9 17,21 7,21 4,9" fill="rgba(168,85,247,0.22)" stroke="#c084fc" stroke-width="2"/><circle cx="12" cy="12" r="2.5" fill="#ffffff"/></svg>
+                <span id="crystal-display">0</span> CM
+            </div>
+        </div>
+    </div>
+
+    <!-- PESTAÑA 0: MISIONES Y RUTINA -->
+    <div class="container" id="tab-routine">
+        <div id="penalty-container"></div>
+        
+        <div class="section-header routine-normal-section"><span>Eventos Inesperados</span></div>
+        <div id="event-container" class="routine-normal-section"></div>
+        
+        <div class="section-header routine-normal-section"><span>Tablón de Rutina Diaria</span></div>
+        <div id="routine-container" class="routine-normal-section"></div>
+    </div>
+
+    <!-- PESTAÑA 1: JEFES Y RADAR SONAR DE LA ASOCIACIÓN -->
+    <div class="container hidden" id="tab-bosses">
+        <div class="section-header">
+            <span>Amenazas Personales</span> 
+            <button class="btn btn-red" style="padding: 8px 12px; font-size: 0.8em;" onclick="openModal('boss-modal')">+ Escanear Jefe</button>
+        </div>
+        <div id="boss-container"></div>
+
+        <div class="section-header" style="margin-top: 28px;">
+            <span>Sonar Dimensional de Grietas</span>
+            <button class="btn btn-main" style="padding: 6px 12px; font-size: 0.72em;" onclick="rescanRadarNodes()">📡 Reescanear</button>
+        </div>
+        <div class="filter-tabs">
+            <button class="btn filter-tab active" onclick="filterDungeons('Todos', this)">Todos</button>
+            <button class="btn filter-tab" onclick="filterDungeons('E', this)">E</button>
+            <button class="btn filter-tab" onclick="filterDungeons('D', this)">D</button>
+            <button class="btn filter-tab" onclick="filterDungeons('C', this)">C</button>
+            <button class="btn filter-tab" onclick="filterDungeons('B', this)">B</button>
+            <button class="btn filter-tab" onclick="filterDungeons('A', this)">A</button>
+            <button class="btn filter-tab" onclick="filterDungeons('S', this)">S</button>
+            <button class="btn filter-tab" onclick="filterDungeons('SSS', this)">SSS</button>
+        </div>
+        <!-- CONTENEDOR DEL SONAR CIRCULAR + TERMINAL DE EXPEDIENTE ÚNICO -->
+        <div id="dungeon-list-container"></div>
+    </div>
+
+    <!-- PESTAÑA 2: BOLSA Y EQUIPAMIENTO -->
+    <div class="container hidden" id="tab-inventory">
+        <div class="section-header"><span>Reliquias Equipadas</span></div>
+        <div class="equipment-grid">
+            <div class="equip-slot" id="slot-weapon" onclick="unequipItem('weapon')">
+                <span class="equip-label">ARMA</span>
+                <div class="equip-icon" id="icon-weapon">[VACÍO]</div>
+            </div>
+            <div class="equip-slot" id="slot-armor" onclick="unequipItem('armor')">
+                <span class="equip-label">ARMADURA</span>
+                <div class="equip-icon" id="icon-armor">[VACÍO]</div>
+            </div>
+            <div class="equip-slot" id="slot-accessory" onclick="unequipItem('accessory')">
+                <span class="equip-label">ACCESORIO</span>
+                <div class="equip-icon" id="icon-accessory">[VACÍO]</div>
+            </div>
+        </div>
+
+        <div class="section-header"><span>Bolsa Dimensional</span></div>
+        <div id="inventory-container"></div>
+    </div>
+
+    <!-- PESTAÑA 3: TIENDA (MERCADO DEL MONARCA) -->
+    <div class="container hidden" id="tab-shop">
+        <div class="section-header"><span>Mercado del Monarca</span></div>
+        
+        <div class="shop-tabs">
+            <button class="btn btn-main" onclick="filterShop('Consumibles')">Consumibles</button>
+            <button class="btn btn-main" onclick="filterShop('Pergaminos')">Pergaminos</button>
+            <button class="btn btn-main" onclick="filterShop('Armería')">Armería</button>
+            <button class="btn btn-main" onclick="filterShop('Privilegios Reales')">Privilegios</button>
+        </div>
+        
+        <div id="shop-container" class="minecraft-grid"></div>
+    </div>
+
+    <!-- PESTAÑA 4: SANTUARIO DE SOMBRAS (TRONO HOLOGRÁFICO DEL MONARCA) -->
+    <div class="container hidden" id="tab-gacha">
+        <div class="section-header">
+            <span>Trono de las Sombras</span>
+            <button class="btn btn-purple" style="padding:6px 12px; font-size:0.75em;" onclick="recallAllShadows()">🌑 Guardar Todas</button>
+        </div>
+        
+        <!-- VITRINA VISUAL DEL COMANDANTE ACTIVO -->
+        <div class="shadow-altar-showcase" id="shadow-altar-showcase"></div>
+
+        <!-- LAS 3 RANURAS DE COMANDANTE EN CAMPO -->
+        <div class="section-header"><span>Comandantes Desplegados (Máx. 3)</span></div>
+        <div class="army-slots-grid-3">
+            <div class="shadow-slot active-slot" id="slot-shadow-1">
+                <span class="slot-1-meta">[VACÍO]</span>
+            </div>
+            <div class="shadow-slot locked-slot" id="slot-shadow-2">
+                <span class="lock-icon">🔒</span>
+                <span class="slot-lock-text">RANURA 2</span>
+                <span class="slot-2-condition" id="slot-2-condition">Niv.10 o STR+INT: 300</span>
+            </div>
+            <div class="shadow-slot locked-slot" id="slot-shadow-3">
+                <span class="lock-icon">🔒</span>
+                <span class="slot-lock-text">RANURA 3</span>
+                <span class="slot-2-condition" id="slot-3-condition">Niv.20 + INT 3.00</span>
+            </div>
+        </div>
+
+        <!-- MILAGRO ÚNICO: MIN BYUNG-GYU -->
+        <div id="min-sanctuary-container" style="margin-top: 25px;"></div>
+
+        <!-- CUARTEL DE LOS 5 COMANDANTES DE ÉLITE -->
+        <div class="section-header" style="margin-top: 25px;"><span>Panteón de Comandantes (Pasivas y Activas)</span></div>
+        <div id="commanders-list-container"></div>
+
+        <!-- LEGIÓN DE INFANTERÍA SECUNDARIA -->
+        <div class="section-header" style="margin-top: 25px;"><span>Legión de Infantería (Apoyo Pasivo)</span></div>
+        <div id="infantry-list-container"></div>
+    </div>
+
+    <!-- PESTAÑA 5: EXPEDIENTE DEL CAZADOR (PERFIL) -->
+    <div class="container hidden" id="tab-profile">
+        <div class="section-header"><span>Expediente del Cazador</span></div>
+        <div class="card profile-card">
+            <div class="stat-row"><span>INTELIGENCIA (INT)</span><span class="stat-val-int" id="stat-int">1.00</span></div>
+            <div class="stat-row"><span>FUERZA (STR)</span><span class="stat-val-str" id="stat-str">1.00</span></div>
+            <div class="stat-row-last"><span>AGILIDAD (AGI)</span><span class="stat-val-agi" id="stat-agi">1.00</span></div>
+        </div>
+
+        <div class="card profile-card">
+            <div class="stat-row"><span>Racha Perfecta:</span><span class="stat-val-stamina" id="prof-streak">0 Días</span></div>
+            <div class="stat-row-last"><span>Misiones Completadas:</span><span class="stat-val-main" id="prof-missions">0</span></div>
+        </div>
+
+        <div class="section-header"><span>Cronómetros del Sistema</span></div>
+        <div class="card profile-card">
+            <div class="stat-row"><span>Jornada / Labores:</span><span class="stat-val-str" id="time-work">0h 0m</span></div>
+            <div class="stat-row"><span>Academia / Repaso:</span><span class="stat-val-int" id="time-study">0h 0m</span></div>
+            <div class="stat-row-last"><span>Ruta Los Chorros:</span><span class="stat-val-stamina" id="time-traffic">0h 0m</span></div>
+        </div>        
+        <div class="section-header"><span>Muro de la Vergüenza (Historial)</span></div>
+        <div class="card profile-card">
+            <div class="stat-row"><span>Colapsos (Muertes):</span><span class="stat-val-str" id="history-deaths">0</span></div>
+            <div class="stat-row"><span>Oro Quemado:</span><span class="stat-val-gold" id="history-gold-lost">0 G</span></div>
+            <div class="stat-row-last"><span>Artefactos Rotos:</span><span class="stat-val-purple" id="history-items-broken">0</span></div>
+        </div>
+
+        <div class="section-header"><span>Gestión de Alma (Respaldos)</span></div>
+        <div class="card profile-card" style="gap: 15px;">
+            <button class="btn btn-blue" style="width: 100%;" onclick="exportData()">💾 Extraer Alma (Descargar Backup)</button>
+            <button class="btn btn-gold" style="width: 100%;" onclick="document.getElementById('import-file').click()">📥 Inyectar Alma (Subir Backup)</button>
+            <input type="file" id="import-file" style="display: none;" accept=".json" onchange="importData(event)">
+        </div>
+
+        <div class="section-header"><span>Títulos y Reliquias de Alma</span></div>
+        <div id="titles-container"></div>
+    </div>
+
+<!-- BARRA DE NAVEGACIÓN INFERIOR HOLOGRÁFICA -->
+    <div class="nav">
+        <div class="nav-item active" id="nav-btn-0" onclick="switchTab('routine', 0)">
+            <div class="nav-icon">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#38bdf8" stroke-width="2"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M16 16l4 4"/><path d="M9.5 6.5L21 18v3h-3L6.5 9.5"/><path d="M11 5L5 11"/><path d="M8 8L4 4"/></svg>
+            </div>Misiones
+        </div>
+        <div class="nav-item" id="nav-btn-1" onclick="switchTab('bosses', 1)">
+            <div class="nav-icon">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#38bdf8" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg>
+            </div>Jefes
+        </div>
+        <div class="nav-item" id="nav-btn-2" onclick="switchTab('inventory', 2)">
+            <div class="nav-icon">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#38bdf8" stroke-width="2"><polygon points="12,2 21,7 21,17 12,22 3,17 3,7"/><polyline points="3,7 12,12 21,7"/><line x1="12" y1="12" x2="12" y2="22"/></svg>
+            </div>Bolsa
+        </div>
+        <div class="nav-item" id="nav-btn-3" onclick="switchTab('shop', 3)">
+            <div class="nav-icon">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#38bdf8" stroke-width="2"><polygon points="12,3 20,7 20,17 12,21 4,17 4,7"/><circle cx="12" cy="12" r="3"/></svg>
+            </div>Tienda
+        </div>
+        <div class="nav-item" id="nav-btn-4" onclick="switchTab('gacha', 4)">
+            <div class="nav-icon">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#38bdf8" stroke-width="2"><polygon points="12,2 15,8 22,9 17,14 18,21 12,18 6,21 7,14 2,9 9,8"/></svg>
+            </div>Santuario
+        </div>
+        <div class="nav-item" id="nav-btn-5" onclick="switchTab('profile', 5)">
+            <div class="nav-icon">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#38bdf8" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polygon points="12,8 15,12 12,16 9,12"/></svg>
+            </div>Perfil
+        </div>
+    </div>
+
+    <!-- MODAL 1: CORTE DIMENSIONAL DE PRECISIÓN (NUEVO ANTI-TRAMPAS) -->
+    <div class="modal" id="confirm-modal">
+        <div class="modal-content slash-modal-box">
+            <div id="igris-slash-fx" class="igris-slash-fx"></div>
+            <h2 class="modal-title" id="slash-modal-title">EJECUCIÓN DE SELLO</h2>
+            
+            <!-- FASE 1: CANALIZACIÓN DE PULSO -->
+            <div id="seal-phase-1">
+                <p class="modal-desc" style="color:#cbd5e1;">Mantén presionado el núcleo rúnico para sincronizar tu maná y jurar que completaste la inmersión:</p>
+                <div class="channel-bar-wrap">
+                    <div class="channel-bar-fill" id="channel-bar-fill"></div>
+                    <span class="channel-bar-label" id="channel-bar-label">SINCRONIZACIÓN: 0%</span>
+                </div>
+                <button class="btn btn-purple" id="btn-hold-channel" style="width:100%; padding:18px; font-size:1.05em; margin-top:12px;"
+                    onmousedown="startSealChannel()" onmouseup="stopSealChannel()" onmouseleave="stopSealChannel()"
+                    ontouchstart="startSealChannel(event)" ontouchend="stopSealChannel(event)">
+                    ⚡ MANTENER PARA CANALIZAR
+                </button>
+            </div>
+
+            <!-- FASE 2: EL CORTE CRÍTICO DE PRECISIÓN -->
+            <div id="seal-phase-2" style="display: none;">
+                <p class="modal-desc" style="color:#fff; margin-bottom:10px;">¡Núcleo expuesto! Ejecuta el corte justo cuando el filo cruce la <b>Zona Vital Carmesí</b>:</p>
+                
+                <div class="slash-track" id="slash-track">
+                    <div class="slash-target-zone" id="slash-target-zone">
+                        <div class="slash-crit-core" id="slash-crit-core"></div>
+                    </div>
+                    <div class="slash-cursor" id="slash-cursor"></div>
+                </div>
+
+                <button class="btn btn-main" style="width:100%; padding:18px; font-size:1.15em; margin-top:15px;" onclick="validateAndSeal()">
+                    🗡️ ¡CORTAR NÚCLEO!
+                </button>
+            </div>
+
+            <!-- HABILIDAD ACTIVA DE IGRIS: TAJO CARMESÍ AUTOMÁTICO -->
+            <button class="btn btn-red" id="btn-igris-slash" style="width:100%; margin-top:12px; display:none; background:linear-gradient(180deg, #dc2626, #7f1d1d);" onclick="triggerIgrisInstantSeal()">
+                ⚔️ ORDENAR A IGRIS: TAJO CARMESÍ (-450 MP)
+            </button>
+
+            <div style="display:none;"><span id="math-problem"></span><input id="confirm-input"></div>
+
+            <div class="modal-btn-row" style="margin-top:14px;">
+                <button class="btn btn-red" style="flex: 1;" onclick="abortSeal()">Abortar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: INSPECCIÓN DE ARTEFACTOS (TIENDA Y BOLSA) -->
+    <div class="modal" id="inspect-modal">
+        <div class="modal-content">
+            <h2 class="modal-title" id="inspect-name">Nombre del Artefacto</h2>
+            <p class="modal-desc" id="inspect-desc" style="color: #cbd5e1; font-size: 1em; line-height: 1.5; white-space: pre-line;">Descripción detallada del objeto.</p>
+            <div id="inspect-price" style="text-align: center; color: var(--text-gold); font-size: 1.4em; font-weight: 700; margin: 15px 0;">🪙 0 G</div>
+            <div class="modal-btn-row" id="inspect-btn-row">
+                <button class="btn btn-red" id="inspect-cancel-btn" style="flex: 1;" onclick="closeModal('inspect-modal')">Cerrar</button>
+                <button class="btn btn-gold" id="inspect-buy-btn" style="flex: 1;">Acción</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 3: CONFIGURADOR DE ACADEMIAS -->
+    <div class="modal" id="schedule-modal">
+        <div class="modal-content">
+            <h2 class="modal-title">Configurar Ciclo</h2>
+            <input type="text" class="input-dark" id="sched-name" placeholder="Materia (Ej: Publicidad)">
+            <select class="input-dark" id="sched-type">
+                <option value="class">Clase Universitaria</option>
+                <option value="tutor">Tutoría Matemática</option>
+            </select>
+            <select class="input-dark" id="sched-day">
+                <option value="1">Lunes</option><option value="2">Martes</option><option value="3">Miércoles</option>
+                <option value="4">Jueves</option><option value="5">Viernes</option><option value="6">Sábado</option>
+            </select>
+            <select class="input-dark" id="sched-shift">
+                <option value="Mañana">Mañana (Ocultar a las 3 PM)</option>
+                <option value="Tarde">Tarde/Noche (Mostrar desde 12 PM)</option>
+            </select>
+            <button class="btn btn-blue" style="width: 100%; margin-top: 15px;" onclick="addScheduleItem()">Vincular Horario</button>
+            <div id="sched-list" style="margin-top: 20px; text-align:left;"></div>
+            <button class="btn btn-red" style="width: 100%; margin-top: 20px;" onclick="closeModal('schedule-modal')">Cerrar</button>
+        </div>
+    </div>
+
+    <!-- MODAL 4: ESCÁNER DE CALABOZO PERSONAL -->
+    <div class="modal" id="boss-modal">
+        <div class="modal-content">
+            <h2 class="modal-title danger-title">Escanear Amenaza</h2>
+            <input type="text" class="input-dark" id="boss-name" placeholder="Objetivo (Ej: Parcial, Proyecto, Limpiar...)">
+            <div class="modal-btn-row">
+                <button class="btn btn-blue" style="flex: 1;" onclick="closeModal('boss-modal')">Cerrar</button>
+                <button class="btn btn-red" style="flex: 1;" onclick="addSmartBoss()">Escanear</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 5: CÁMARA DE FOCUS -->
+    <div class="modal" id="study-modal">
+        <div class="modal-content" style="text-align: center;">
+            <h2 class="modal-title">Cámara de Focus</h2>
+            <div class="timer-display" id="study-timer-text">00:00</div>
+            <div id="study-options">
+                <button class="btn btn-blue" style="width:100%; margin-bottom:15px; padding: 15px;" onclick="startStudy(5)">Repaso Rápido (5 Min)</button>
+                <button class="btn btn-purple" style="width:100%; padding: 15px;" onclick="startStudy(25)">Inmersión Profunda (25 Min)</button>
+            </div>
+            <button class="btn btn-gold" style="width: 100%; display: none; margin-top:15px; padding: 15px;" id="btn-study-stop" onclick="stopStudy()">Validar o Interrumpir Sesión</button>
+            <button class="btn btn-red" style="width: 100%; margin-top: 20px;" id="btn-study-close" onclick="closeModal('study-modal')">Salir de la Cámara</button>
+        </div>
+    </div>
+
+    <!-- MÓDULOS DEL SISTEMA (ORDEN DE CARGA ESTRICTO) -->
+    <script src="js/database.js"></script>
+    <script src="js/dialogues.js"></script>
+    <script src="js/core.js"></script>
+    <script src="js/combat.js"></script>
+    <script src="js/events.js"></script>
+    <script src="js/inventory.js"></script>
+    <script src="js/missions.js"></script>
+    <script src="js/ui.js"></script>
+    
+    <!-- REGISTRO DEL SERVICE WORKER (APP NATIVA) -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js')
+          .then(() => console.log("SINCRO-LOG:: Service Worker Registrado."))
+          .catch(err => console.log("Error de Sistema:", err));
+      }
+    </script>
+</body>
+</html>
