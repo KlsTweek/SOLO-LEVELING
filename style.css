@@ -1274,7 +1274,7 @@ body.penalty-active .nav {
     background: linear-gradient(90deg, #020617, #7e22ce, #00ffff) !important;
     box-shadow: 0 0 20px rgba(0, 255, 255, 0.8) !important;
 }
-.header.arc- sovereign-mode {
+.header.arc-sovereign-mode {
     border-bottom: 2px solid #ffcc00 !important;
     box-shadow: 0 10px 35px rgba(255, 204, 0, 0.28) !important;
 }
@@ -1969,21 +1969,6 @@ body.penalty-active .nav {
 #dungeon-overlay.biome-paranormal .raid-ui-wrapper,
 #dungeon-overlay.biome-tower .raid-ui-wrapper {
     background: radial-gradient(circle at 50% 25%, rgba(168, 85, 247, 0.24) 0%, rgba(8, 2, 18, 0.82) 85%);
-}
-.svg-bow-draw {
-    transform-origin: 90px 60px;
-    animation: bowDrawPulse 1.6s ease-in-out infinite alternate;
-}
-@keyframes bowDrawPulse {
-    0% { transform: scaleX(1) translateX(0); }
-    100% { transform: scaleX(0.92) translateX(-3px); filter: drop-shadow(0 0 10px #00ffff); }
-}
-.anim-ranged-steady {
-    animation: rangedRecoilInPlace 0.55s ease-out;
-}
-@keyframes rangedRecoilInPlace {
-    0%, 100% { transform: translateX(0) scale(1); }
-    25% { transform: translateX(-6px) scale(1.06); filter: drop-shadow(0 0 16px #00ffcc); }
 }
 .commander-svg-stage svg,
 .arena-unit svg { overflow: visible; }
