@@ -454,7 +454,7 @@ const shopDB = [
         icon: "🧘",
         title: "Protocolo: Reajuste Vertebral",
         desc: "[ACCIÓN REAL: Endereza tu espalda, rota hombros y estira el cuello por 60s]. Elimina bloqueos de INT y otorga +18 SP.",
-        cost: 25,
+        cost: 0,
         rank: "C",
         type: "item"
     },
@@ -463,8 +463,8 @@ const shopDB = [
         cat: "Consumibles",
         icon: "🫁",
         title: "Respiración de Concentración Total",
-        desc: "[ACCIÓN REAL: Haz 1 minuto de respiración profunda 4-4-4 cerrando los ojos]. Recarga +160 MP y ensancha +15% la Zona Vital de tu próximo Corte.",
-        cost: 30,
+        desc: "[ACCIÓN REAL: haz 1 minuto de respiraciones profundas]. Recarga +160 MP y ensancha +15% la Zona Vital de tu próximo Corte.",
+        cost: 0,
         rank: "C",
         type: "item"
     },
@@ -474,7 +474,7 @@ const shopDB = [
         icon: "👁️‍🗨️",
         title: "Gotas Oculares del Vigía",
         desc: "[ACCIÓN REAL: Mira a un punto lejano por la ventana durante 30 segundos]. Garantiza golpe crítico (x2 daño) en tu próximo ataque directo a un Jefe.",
-        cost: 35,
+        cost: 0,
         rank: "C",
         type: "item"
     },
@@ -484,7 +484,7 @@ const shopDB = [
         icon: "🌊",
         title: "Choque Térmico Facial",
         desc: "[ACCIÓN REAL: Levántate a lavarte la cara y la nuca con agua fría]. Ralentiza la aguja de tu próximo Corte Dimensional un 35% y da +20 SP.",
-        cost: 40,
+        cost: 0,
         rank: "B",
         type: "item"
     },
@@ -494,7 +494,7 @@ const shopDB = [
         icon: "💉",
         title: "Descarga de Adrenalina Cinética",
         desc: "[ACCIÓN REAL: Haz 15 saltos de tijera de pie]. Otorga +15% de Evasión (Dodge) en mazmorras durante 1 Hora (acelera la aguja del Corte un 15%).",
-        cost: 45,
+        cost: 7,
         rank: "B",
         type: "item"
     },
@@ -504,7 +504,7 @@ const shopDB = [
         icon: "🍵",
         title: "Infusión del Sabio",
         desc: "[ACCIÓN REAL: Sírvete un vaso de agua, té o café antes de estudiar]. Tu próxima sesión en la Cámara de Focus otorgará +180 MP extra al sellarla.",
-        cost: 50,
+        cost: 5,
         rank: "B",
         type: "item"
     },
@@ -514,7 +514,7 @@ const shopDB = [
         icon: "🕯️",
         title: "Vela del Templo de Cartenon",
         desc: "[ACCIÓN REAL: Pon tu celular en No Molestar y boca abajo al trabajar]. Durante 90 min, los eventos narrativos de tus sombras en mazmorra ocurren al DOBLE de velocidad.",
-        cost: 65,
+        cost: 10,
         rank: "A",
         type: "item"
     },
@@ -524,7 +524,7 @@ const shopDB = [
         icon: "🏋️",
         title: "Suero del Rey de los Gigantes",
         desc: "[ACCIÓN REAL: Ejecuta 12 flexiones de pecho explosivas ahora mismo]. Otorga +45 de Escudo Físico para mazmorras y +20 HP de curación.",
-        cost: 75,
+        cost: 5,
         rank: "A",
         type: "item"
     },
@@ -534,7 +534,7 @@ const shopDB = [
         icon: "🌩️",
         title: "Destilado de Relámpago de Baran",
         desc: "[COMPROMISO DE VELOCIDAD: Termina tu tarea actual sin distraerte]. Adelanta 12 minutos los relojes de tus misiones activas actuales.",
-        cost: 95,
+        cost: 10,
         rank: "A",
         type: "item"
     },
@@ -826,7 +826,7 @@ const shopDB = [
         icon: "🏋️‍♂️",
         title: "Pergamino: Misión de Castigo Físico",
         desc: "[RETO DEL ANIME: Haz 25 sentadillas y 20 flexiones ahora mismo]. Al cumplirlo conviertes tu sudor en +90 XP y +40 SP de adrenalina.",
-        cost: 55,
+        cost: 15,
         rank: "B",
         type: "item"
     },
@@ -836,7 +836,7 @@ const shopDB = [
         icon: "🧹",
         title: "Pergamino: Purificación de Territorio",
         desc: "[RETO REAL INMEDIATO: Recoge o acomoda 5 objetos fuera de lugar en tu cuarto]. Recarga +220 MP y limpia bloqueos mentales.",
-        cost: 45,
+        cost: 0,
         rank: "C",
         type: "item"
     },

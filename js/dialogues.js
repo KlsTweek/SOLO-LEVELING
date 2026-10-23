@@ -2811,4 +2811,707 @@ const SYSTEM_AI_LINES = {
         "El Arquitecto diseñó este Sistema para un solo propósito: que tu versión de mañana sea más fuerte que la de hoy.",
         "Escaneo completado: Tienes {gold} G, Nivel {level} y {hp} HP. Sigamos avanzando paso a paso."
     ]
+};/* ==========================================================================
+   EXPANSIÓN MASIVA V3 NOCTURNA: +420 DIÁLOGOS NUEVOS
+   (75 SOLO + 250 COMANDANTES INDIVIDUALES + 95 SISTEMA IA DEL MONARCA)
+   ========================================================================== */
+const DIALOGUE_EXPANSION_V3_NIGHT = {
+    solo: [
+        "🗡️ Caminas en solitario por [{phase}]; el filo de tu arma refleja las runas antiguas de [{dungeon}] mientras buscas a la siguiente presa.",
+        "👁️ Tu percepción extrasensorial detecta tres latidos ocultos tras las columnas; das un salto lateral y los eliminas en pleno vuelo.",
+        "⚡ Un destello azul recorre tus piernas al activar Sprint: cruzas cincuenta metros del corredor en menos de un parpadeo.",
+        "🌑 Tu sombra permanece completamente quieta bajo tus botas, guardando cada gota de maná mientras tú te encargas del trabajo sucio.",
+        "🩸 Bloqueas una mordida letal con el mango de tu daga y pateas a la bestia contra el muro haciendo saltar monedas. +2 G.",
+        "🔍 Observas [{trophy}] entre las piedras, lo giras con la punta del pie y sigues de largo sin perder la concentración.",
+        "💨 El eco de tu gabardina agitándose en el aire es lo único que escuchan los centinelas de [{phase}] antes de caer.",
+        "🧠 Controlas tu pulso a la perfección: cada minuto de estudio o trabajo real se convierte aquí en precisión quirúrgica.",
+        "🗡️ Desenvainas con mano invertida trazando una media luna que parte en dos las lanzas de la patrulla enemiga.",
+        "🪙 De entre la armadura rota de un explorador abatido saltan divisas limpias del Sistema. +3 G.",
+        "🌑 Caminas por el centro del túnel sin esconderte; ya no eres el cazador más débil de la humanidad, eres el Monarca.",
+        "⚡ Saltas sobre la cabeza de un coloso, giras en el aire y hundes ambas hojas en su nuca acorazada.",
+        "💪 Tu estadística de Fuerza hace que un simple empujón tuyo mande a volar a dos guardias contra la barricada de [{dungeon}].",
+        "🩸 Un corte limpio en diagonal despeja la niebla venenosa de [{phase}] abriendo una ruta segura.",
+        "👁️ Detectas un hilo trampa a ras de suelo junto a [{trophy}] y lo cortas de un tajo rápido sin detener tu trote.",
+        "🌬️ Respiras hondo absorbiendo el maná ambiental del calabozo y sientes cómo tus heridas menores se cierran (+5 HP).",
+        "🗡️ Usas la Autoridad del Gobernante para atraer hacia tu puño al arquero que te apuntaba desde el balcón.",
+        "⚡ Cuatro chispazos metálicos iluminan la sala oscura; cuando cesa el ruido, todas las bestias se están convirtiendo en ceniza.",
+        "🪙 Recoges un pequeño saco de monedas que custodiaba la patrulla del sector. +2 G.",
+        "🌑 Tus ojos brillan con un tono violeta y azul abisal que congela el instinto agresivo de los monstruos menores.",
+        "🔍 Pateas [{trophy}] contra un grupo de enemigos para distraerlos medio segundo y entrar por su flanco ciego.",
+        "🗡️ Paras el hachazo de un campeón enemigo usando solo el antebrazo y le devuelves un golpe directo al mentón.",
+        "🧠 Sin tus sombras afuera, tú mismo eres la vanguardia, el flanco y la retaguardia en [{dungeon}].",
+        "🩸 Limpias el filo de tu arma con un giro veloz de muñeca antes de cruzar el umbral de [{phase}].",
+        "⚡ Tu Agilidad te permite caminar sobre los escombros que caen en el aire como si fueran escalones invisibles.",
+        "💪 Sujetas la cola de una bestia reptiliana, la haces girar sobre tu cabeza y la estrellas contra el resto de su manada. +3 G.",
+        "🌑 La oscuridad de [{dungeon}] no te intimida; al contrario, te sientes como en casa dentro de las sombras.",
+        "👁️ Calculas el tiempo restante del reloj: tu enfoque es total y no hay margen para el error.",
+        "🗡️ Te deslizas de rodillas bajo el zarpazo de un monstruo gigante y le cortas los tendones al pasar.",
+        "🔍 Dejas [{trophy}] partido en dos tras probar el filo actual de tu reliquia equipada.",
+        "⚡ Una finta rápida a la izquierda deja tu imagen residual atrás mientras tu verdadero golpe impacta por la derecha.",
+        "🪙 Entre las grietas del altar de [{phase}] aseguras monedas antiguas olvidadas. +2 G.",
+        "🩸 Tres cortes cruzados desarman y abaten al guardia de la puerta sin activar la alarma del sector.",
+        "🌬️ Relajas los hombros un instante mientras caminas por el pasillo despejado, recuperando vitalidad (+5 HP).",
+        "🗡️ Lanzas tu daga como un proyectil contra el techo para derribar un nido oculto de criaturas.",
+        "👁️ Tu vista atraviesa la penumbra de [{dungeon}] identificando el núcleo mágico de cada enemigo al instante.",
+        "⚡ Aterrizas sin hacer ruido detrás de un rastreador y lo eliminas antes de que pueda girar la cabeza.",
+        "🌑 Sientes a tus comandantes observando con orgullo desde el interior de tu sombra cada uno de tus movimientos.",
+        "🔍 Apartas [{trophy}] con telequinesis para no ensuciarte las manos durante la marcha.",
+        "🪙 El líder de la escuadra cae de rodillas y suelta su recompensa sobre las losas. +3 G.",
+        "🗡️ Cruzando ambas armas en guardia frontal, resistes la embestida de una bestia pesada y la partes en dos.",
+        "💪 Arrancas una puerta oxidada de [{phase}] con una sola mano y la lanzas contra los enemigos del fondo.",
+        "🩸 Tu estela de combate deja un rastro de luz neón azulada flotando en el aire frío de [{dungeon}].",
+        "⚡ Te impulsas de pared a pared en un pasillo vertical subiendo a toda velocidad hacia la cámara superior.",
+        "👁️ Nada escapa a tu radar mental hoy: ni una trampa, ni un monstruo, ni una distracción externa.",
+        "🔍 Miras [{trophy}] un segundo recordando incursiones pasadas y continúas avanzando con paso firme.",
+        "🗡️ Un golpe con el pomo de tu arma basta para noquear a un explorador menor sin gastar filo.",
+        "🪙 Aseguras el botín disperso por el suelo antes de que se cierre la compuerta de [{phase}]. +2 G.",
+        "🌑 El aire se vuelve pesado cuando liberas una fracción de tu Sed de Sangre; las bestias caen paralizadas.",
+        "⚡ Pasas caminando entre los enemigos paralizados y los ejecutas uno por uno con calma absoluta.",
+        "🧠 Cada segundo que resistes la fatiga afuera fortalece el temple de tu alma aquí adentro.",
+        "🩸 Sacudes tu gabardina tras atravesar una explosión de polvo y rocas sin sufrir un solo rasguño.",
+        "💪 Un rodillazo cargado de fuerza bruta quiebra el escudo de piedra del centinela de [{dungeon}].",
+        "🗡️ Clavas tu hoja en el muro para frenar en seco al borde de un abismo en [{phase}] y saltas hacia la cornisa correcta.",
+        "🌬️ El flujo constante de tu maná interno revitaliza tus fibras musculares (+5 HP).",
+        "🔍 Usas [{trophy}] para trabar los engranes de una trampa de cuchillas en el corredor.",
+        "⚡ Tu velocidad de ataque supera la vista de los monstruos: ven un destello azul y luego la oscuridad.",
+        "🪙 Recoges monedas relucientes junto a los restos de una estatua derribada. +3 G.",
+        "👁️ Escuchas el eco lejano del Jefe de [{dungeon}] y aprietas con más fuerza la empuñadura de tu arma.",
+        "🌑 En este corredor solo mandas tú; las leyes del calabozo se doblan ante el Sistema del Monarca.",
+        "🗡️ Desvías tres flechas seguidas girando tu daga entre los dedos con maestría total.",
+        "🩸 Un tajo ascendente desde el suelo levanta una onda de vacío que parte la barricada de [{phase}].",
+        "⚡ Saltas sobre una trampa de ácido y aterrizas clavando el filo en el monstruo que la activó.",
+        "🔍 Encuentras [{trophy}] cubierto de polvo, pero prefieres recoger las monedas que había al lado. +2 G.",
+        "🧠 Tu mente y tu cuerpo operan en sincronía perfecta; cero dudas, cero movimientos desperdiciados.",
+        "💪 Empujas hacia atrás a dos bestias al mismo tiempo abriendo espacio para tu corte final.",
+        "🗡️ El sonido metálico de tu hoja cortando el viento anuncia el fin de la patrulla del sector.",
+        "🌑 Caminas bajo la luz tenue de los cristales de [{dungeon}] con la serenidad de un veterano de mil batallas.",
+        "⚡ Tres pasos veloces por el techo te permiten caer detrás de la línea defensiva enemiga.",
+        "🩸 Rematas al último guardia de [{phase}] con una estocada limpia al centro del pecho.",
+        "🪙 El núcleo enemigo se fragmenta dejando caer oro directo a tu inventario. +3 G.",
+        "🔍 Pasas por encima de [{trophy}] rumbo al portón principal del piso.",
+        "🌬️ Tomas una bocanada de aire fresco antes del tramo final, restaurando +5 HP.",
+        "👁️ La puerta de la cámara del Jefe ya está a la vista; tus ojos brillan listos para el choque.",
+        "🗡️ Apuntas la hoja hacia adelante: el cazador solitario ha limpiado todo el sector sin ayuda."
+    ],
+
+    single: {
+        igris: [
+            "⚔️ Igris camina a tu costado con la mano izquierda sobre el pomo de su mandoble, escaneando cada sombra de [{phase}].",
+            "⚔️ Dos bestias saltan desde atrás; Igris gira media vuelta con su capa ondeando y las decapita sin detener tu marcha.",
+            "⚔️ Igris observa [{trophy}], comprueba que no representa amenaza para su Monarca y lo aparta con elegancia.",
+            "⚔️ El mandoble de Igris zumba con electricidad azul antes de lanzar un tajo horizontal que limpia medio corredor de [{dungeon}].",
+            "⚔️ Con disciplina inquebrantable, Igris se adelanta en una esquina ciega de [{phase}] para recibir él primero cualquier trampa.",
+            "⚔️ Igris corta en el aire tres dardos envenenados y hace una leve inclinación de yelmo reportando que estás a salvo.",
+            "⚔️ Entre las cenizas del campeón abatido, Igris recoge el oro con su guantelete de acero y te lo extiende. +3 G.",
+            "⚔️ El penacho carmesí de Igris brilla como fuego real cuando acelera a velocidad relámpago contra la vanguardia.",
+            "⚔️ Igris bloquea el garrote de un ogro con una sola mano y le rebana el brazo con un movimiento fluido de esgrima.",
+            "⚔️ Ves a Igris sacudir su espada de un golpe seco, dibujando una línea perfecta de icor en el suelo de [{dungeon}].",
+            "⚔️ Si nota que el piso está inestable en [{phase}], Igris pisa primero cada baldosa para verificar tu ruta.",
+            "⚔️ Un monstruo intenta rugirte; Igris aparece frente a él en un parpadeo y le atraviesa la garganta en silencio.",
+            "⚔️ Igris usa telequinesis para levantar un escudo caído y cubrirte de las salpicaduras de un charco ácido.",
+            "⚔️ Tras un combo de cinco estocadas azules, Igris envaina su mandoble justo cuando la patrulla entera colapsa. +2 G.",
+            "⚔️ Igris parte [{trophy}] por la mitad de un tajo vertical solo para despejar la línea visual del pasillo.",
+            "⚔️ La postura de caballero de Igris impone tanto respeto que las bestias menores dudan en acercarse a menos de diez metros.",
+            "⚔️ Igris salta hacia una columna alta de [{dungeon}], se impulsa contra la piedra y cae partiendo en dos al líder enemigo.",
+            "⚔️ Con un gesto silencioso de su espada, Igris te señala un cofre oculto tras los escombros de [{phase}]. +3 G.",
+            "⚔️ El aura protectora de tu comandante más leal estabiliza tu ritmo de combate (+5 HP).",
+            "⚔️ Igris desvía una roca gigante con el plano de su mandoble enviándola de regreso contra quienes la lanzaron.",
+            "⚔️ Aunque jamás pronuncia una palabra, sientes el orgullo de Igris al ver cómo mantienes tu enfoque hoy.",
+            "⚔️ Igris cruza el salón de [{phase}] dejando una estela de relámpagos cian que paralizan y cortan a la horda.",
+            "⚔️ Un espadachín del calabozo desafía a Igris; el Caballero Rojo lo desarma en dos segundos y lo ejecuta con honor.",
+            "⚔️ Igris limpia el polvo de su armadura negra y se vuelve a colocar exactamente dos pasos detrás de tu hombro derecho.",
+            "⚔️ Al ver [{trophy}] bloqueando una puerta, Igris lo reduce a fragmentos pequeños con tres cortes invisibles.",
+            "⚔️ Las monedas caídas tras la batalla son recolectadas con orden militar por Igris. +2 G.",
+            "⚔️ Igris clava su espada en el techo de un salto para detener un bloque de piedra que caía sobre ti en [{dungeon}].",
+            "⚔️ Los ojos azules de Igris dejan un rastro luminoso en la oscuridad cada vez que gira el cuello buscando enemigos.",
+            "⚔️ Igris pelea a puño limpio durante cinco segundos contra un monstruo menor para no gastar el filo de su mandoble.",
+            "⚔️ Con una patada acorazada, Igris derriba el portón de [{phase}] y entra primero asegurando el perímetro.",
+            "⚔️ Un mago enemigo lanza una maldición; Igris la corta por la mitad con su espada imbuida en maná del Monarca.",
+            "⚔️ Igris te entrega el botín del mago derrotado haciendo una reverencia impecable de caballero. +3 G.",
+            "⚔️ El sonido metálico de los pasos de Igris marca un compás constante y seguro a lo largo de [{dungeon}].",
+            "⚔️ Igris patea [{trophy}] hacia una esquina tras confirmar que es simple basura del calabozo.",
+            "⚔️ Cuando cuatro bestias saltan al mismo tiempo, Igris traza un círculo azul de 360 grados que las abate en el aire.",
+            "⚔️ La lealtad absoluta del Comandante Rojo te permite concentrarte al 100% en tu tarea (+5 HP).",
+            "⚔️ Igris apoya la mano en el muro de [{phase}] sintiendo las vibraciones de la patrulla que viene más adelante.",
+            "⚔️ Antes de que la patrulla doble la esquina, Igris ya lanzó una onda de viento cortante que los diezma.",
+            "⚔️ Igris recoge las divisas del suelo sin perder de vista el final del corredor. +2 G.",
+            "⚔️ El contraste entre la armadura negra de Igris y su penacho rojo sangre luce imponente bajo la luz de [{dungeon}].",
+            "⚔️ Igris intercepta un ataque sorpresa cruzando su mandoble frente a tu pecho a velocidad supersónica.",
+            "⚔️ Con un revés del guantelete, Igris estampa contra la pared a un explorador que intentaba huir.",
+            "⚔️ Igris mira [{trophy}] en el suelo y pasa de largo manteniendo su formación de escolta real.",
+            "⚔️ Cada corte de Igris es una clase maestra de esgrima: cero fuerza bruta innecesaria, 100% técnica letal.",
+            "⚔️ Igris abre una brecha entre las llamas o el veneno de [{phase}] con la presión de aire de su espada.",
+            "⚔️ El campeón del tramo cae ante una estocada directa al corazón ejecutada por Igris. +3 G.",
+            "⚔️ Igris sacude la hoja azulada haciendo saltar chispas de maná que iluminan el túnel.",
+            "⚔️ Ningún enemigo en [{dungeon}] ha logrado tocar siquiera el borde de tu ropa mientras Igris lidera la guardia.",
+            "⚔️ Igris verifica que no queden amenazas vivas en [{phase}] y envaina su arma con un sonido seco.",
+            "⚔️ De rodillas frente al portón del Jefe, el Caballero Rojo Sangriento espera tu comando para volver a desenvainar."
+        ],
+
+        tank: [
+            "🐻‍❄️ Tank avanza moviendo los hombros de lado a lado en [{phase}], derribando estalactitas con su puro tamaño.",
+            "🐻‍❄️ Un monstruo intenta asustar a Tank; el oso polar sombra se para en dos patas, ruge y el monstruo sale corriendo.",
+            "🐻‍❄️ Tank huele [{trophy}], le pega un zarpazo juguetón y lo manda a rebotar contra tres paredes de [{dungeon}].",
+            "🐻‍❄️ El aliento congelante de Tank convierte el suelo húmedo del pasillo en una pista de patinaje mortal para los enemigos.",
+            "🐻‍❄️ Tank se lanza de panza deslizándose por el hielo y se lleva a toda la escuadra de [{phase}] como si fueran pinos de boliche.",
+            "🐻‍❄️ Después de aplastar a tres guardias con el trasero, Tank voltea a mirarte sacando la lengua contento.",
+            "🐻‍❄️ Tank rompe un barril blindado de un manotazo y te acerca las monedas rodando con la pata. +3 G.",
+            "🐻‍❄️ Las runas cian en los hombros y la frente de Tank brillan intensamente en la oscuridad de [{dungeon}].",
+            "🐻‍❄️ Un enemigo le clava una lanza de madera a Tank; la lanza se hace astillas contra su pelaje helado y el oso le da un cabezazo.",
+            "🐻‍❄️ Tank se rasca la oreja izquierda con la pata trasera haciendo temblar todo el piso de [{phase}].",
+            "🐻‍❄️ Cuando ve que caminas concentrado, Tank trota pegadito a ti como un guardaespaldas peludo de dos toneladas.",
+            "🐻‍❄️ Tank abre sus enormes fauces y parte por la mitad el escudo de hierro de un campeón enemigo de un solo mordisco.",
+            "🐻‍❄️ El frío limpio que irradia el cuerpo de Tank despeja tu mente y restaura tu vigor (+5 HP).",
+            "🐻‍❄️ Tank encuentra [{trophy}], intenta sentarse encima de él y lo deja completamente plano contra las baldosas.",
+            "🐻‍❄️ De un pisotón sísmico, Tank hace brotar agujas de hielo negro que atrapan a los arqueros del corredor. +2 G.",
+            "🐻‍❄️ Ves a Tank distraerse tratando de morder una chispa de maná que flotaba frente a su nariz en [{dungeon}].",
+            "🐻‍❄️ Si una puerta de piedra está cerrada en [{phase}], Tank simplemente camina a través de ella sin bajar la velocidad.",
+            "🐻‍❄️ Tank se sacude la escarcha del lomo creando una pequeña nevada mágica dentro del calabozo.",
+            "🐻‍❄️ Un monstruo salta desde el techo hacia ti; Tank lo batea en el aire con su enorme zarpa como si fuera una pelota.",
+            "🐻‍❄️ Tank olfatea oro debajo de una piedra pesada, la levanta con el hocico y descubre un alijo. +3 G.",
+            "🐻‍❄️ A pesar de ser un monstruo jefe de Portal Rojo, Tank apoya su enorme cabeza en tu brazo buscando cariño.",
+            "🐻‍❄️ Tank suelta un bufido helado que apaga las antorchas enemigas de [{phase}] dejando solo el brillo azul de tus sombras.",
+            "🐻‍❄️ Dos ogros intentan empujar a Tank; el oso alfa ni se mueve y los aplasta a ambos juntando sus dos zarpas.",
+            "🐻‍❄️ Tank lleva [{trophy}] en el hocico durante veinte metros como un perro orgulloso de su palo antes de soltarlo.",
+            "🐻‍❄️ Las garras de hielo de Tank dejan marcas brillantes en cada muro de [{dungeon}] marcando tu territorio.",
+            "🐻‍❄️ Tank rueda como una bola de nieve gigante por las escaleras del sector aplastando todas las trampas a su paso.",
+            "🐻‍❄️ Al llegar abajo, Tank se sacude la cabeza mareado pero levanta una pata diciendo que todo está limpio. +2 G.",
+            "🐻‍❄️ La barrera de aire ártico de Tank evita que el calor o los gases de [{phase}] te afecten (+5 HP).",
+            "🐻‍❄️ Tank le ruge tan fuerte a una estatua sospechosa de [{dungeon}] que la estatua cobra vida del susto y se rompe sola.",
+            "🐻‍❄️ Cuando le ordenas cargar, Tank baja el cuello y arranca con una potencia que agrieta el suelo bajo sus patas.",
+            "🐻‍❄️ Tank acorrala a cuatro exploradores contra un muro y los congela de un solo soplido glacial.",
+            "🐻‍❄️ Entre las estatuas de hielo rotas, Tank recoge una bolsa de monedas con los dientes y te la da. +3 G.",
+            "🐻‍❄️ Tank mira [{trophy}] con curiosidad, le da un lengüetazo frío y lo deja pegado al piso por la escarcha.",
+            "🐻‍❄️ Ningún proyectil enemigo puede atravesar el muro de pelo negro y hielo que forma el lomo de Tank.",
+            "🐻‍❄️ Tank bosteza ruidosamente mostrando cuatro colmillos del tamaño de espadas cortas en medio de [{phase}].",
+            "🐻‍❄️ Con un barrido de su pata delantera, Tank limpia de escombros todo el ancho del túnel de [{dungeon}].",
+            "🐻‍❄️ Un jefe menor intenta pelear a golpes con Tank; el oso le gana de un solo manotazo que lo hunde en el piso. +2 G.",
+            "🐻‍❄️ Tank se frota el lomo contra una columna para rascarse y tira abajo el balcón donde se escondían los francotiradores.",
+            "🐻‍❄️ El paso pesado de Tank («¡BUM, BUM, BUM!») anuncia a todo el calabozo que tu vanguardia es imparable.",
+            "🐻‍❄️ Tank huele [{trophy}], estornuda una nube de nieve azul y sigue trotando a tu lado.",
+            "🐻‍❄️ Si te detienes a descansar un segundo, Tank se sienta detrás de ti sirviendo como un sofá gigante y frío.",
+            "🐻‍❄️ La lealtad instintiva del Alfa de los Osos de Hielo mantiene tu núcleo seguro en [{phase}] (+5 HP).",
+            "🐻‍❄️ Tank salta con sus cuatro patas sobre un nido enemigo abriendo un cráter de escarcha en el centro del salón.",
+            "🐻‍❄️ Del cráter saltan monedas brillantes que caen directo a tus botas. +3 G.",
+            "🐻‍❄️ Tank muerde un arma enemiga caída, la dobla como chicle y la escupe a un lado del camino.",
+            "🐻‍❄️ Los cristales de hielo en los hombros de Tank crecen a medida que absorbe el maná de [{dungeon}].",
+            "🐻‍❄️ Tank empuja a los últimos monstruos del corredor con el pecho hasta sacarlos volando de la sala.",
+            "🐻‍❄️ Tank aplasta [{trophy}] bajo su enorme zarpa al frenar frente al portón final de [{phase}].",
+            "🐻‍❄️ Exhalando dos chorros de vapor helado por la nariz, Tank mira fijo la puerta del Jefe esperando tu orden.",
+            "🐻‍❄️ Tu oso polar sombrío se planta en cuatro patas listo para destrozar lo que sea que haya detrás del umbral."
+        ],
+
+        iron: [
+            "🛡️ Iron va caminando por [{phase}] dando saltitos de boxeador y tirando golpes al aire con su enorme guantelete.",
+            "🛡️ Iron ve [{trophy}], cree que es un trofeo valiosísimo y corre a traértelo sosteniéndolo con las dos manos como un niño.",
+            "🛡️ Un monstruo intenta emboscar a Iron; el gigante lo agarra de una pierna y lo sacude contra el piso como una alfombra.",
+            "🛡️ Iron golpea su pecho acorazado con el puño haciendo «¡CLANG, CLANG!» y te mira levantando el pulgar con entusiasmo.",
+            "🛡️ En vez de abrir la puerta de [{dungeon}] con la manija, Iron toma veinte metros de carrera y la atraviesa con el escudo.",
+            "🛡️ Iron sale de entre los pedazos de puerta rota sacudiéndose el casco y celebrando como si hubiera metido un gol.",
+            "🛡️ Iron aplasta un cofre con el pie sin querer, recoge las monedas apenado y te las entrega. +3 G.",
+            "🛡️ Cuando un enemigo le dispara una flecha, Iron pone la frente a propósito para que rebote en su casco y se ríe.",
+            "🛡️ Iron intenta hacer girar su enorme hacha en un dedo, se le cae sobre el pie metálico y da saltitos en una pata en [{phase}].",
+            "🛡️ Al ver que lo estás mirando, Iron finge que no le dolió nada y se cuadra en posición militar súper rígida.",
+            "🛡️ Con su Grito de Provocación, Iron atrae a toda la patrulla del sector y los aguanta a todos detrás de su escudo torre.",
+            "🛡️ De un solo empujón con el escudo, Iron manda de espaldas a cinco bestias y las remata de un mazazo. +2 G.",
+            "🛡️ La energía desbordante y cómica de Iron hace que el ambiente pesado de [{dungeon}] se sienta ligero (+5 HP).",
+            "🛡️ Iron encuentra [{trophy}], intenta ponérselo de bigote o adorno en el visor del casco y camina orgulloso.",
+            "🛡️ Un coloso enemigo reta a Iron a un choque de fuerza; Iron le gana empujándolo hasta atravesar dos paredes de [{phase}].",
+            "🛡️ Después de vencer al coloso, Iron hace tres poses de fisicoculturista seguidas esperando que lo califiques con un 10.",
+            "🛡️ Iron usa su escudo gigante como pala de nieve para juntar todos los escombros y monedas del suelo. +3 G.",
+            "🛡️ Si cae una roca del techo de [{dungeon}], Iron salta y la cabecea en el aire rompiéndola en pedazos con su yelmo.",
+            "🛡️ Ves a Iron tratando de esconderse detrás de una columna delgada de [{phase}] donde se le salen los dos hombros gigantes.",
+            "🛡️ Cuando los monstruos pasan cerca de su pésimo escondite, Iron sale gritando «¡BUUU!» en idioma sombrío y los aplasta.",
+            "🛡️ Iron te abanica con su escudo torre cuando siente que hace calor en el pasillo, creando un vendaval.",
+            "🛡️ Un enemigo rápido intenta esquivar a Iron; él lanza su maza a lo ancho barriendo todo el corredor de lado a lado. +2 G.",
+            "🛡️ Iron recoge [{trophy}], lo mira al revés, no entiende para qué sirve y lo lanza por encima del hombro.",
+            "🛡️ La pelota que lanzó Iron le cae en la cabeza a un explorador enemigo oculto al fondo de [{dungeon}].",
+            "🛡️ Iron festeja ese tiro de pura suerte levantando los brazos como campeón olímpico.",
+            "🛡️ En un tramo con charcos tóxicos de [{phase}], Iron se tira boca abajo sobre el charco para que pases caminando sobre su espalda.",
+            "🛡️ Cuando terminas de cruzar sobre él, Iron se levanta feliz sacudiéndose el ácido que ni siquiera le hace cosquillas.",
+            "🛡️ El escudo inquebrantable de tu gigante protege tu avance sin dejar pasar ni un rasguño (+5 HP).",
+            "🛡️ Iron arranca dos escudos de guardias enemigos y se los amarra en los brazos para tener triple escudo.",
+            "🛡️ Con sus tres escudos improvisados, Iron corre por [{dungeon}] rebotando contra las paredes como bola de pinball. +3 G.",
+            "🛡️ Un mago enemigo le lanza un rayo a Iron; la armadura de sombra brilla con chispas cian y Iron le devuelve un hachazo.",
+            "🛡️ Iron se queda mirando una pintura o grabado antiguo en [{phase}] e intenta imitar el dibujo con su cuerpo.",
+            "🛡️ Cuando le chiflas para que avance, Iron corre dando zancadas gigantes que hacen temblar las antorchas.",
+            "🛡️ Iron encuentra una bolsa de oro atorada en una grieta, rompe toda la pared a puñetazos y te da la bolsa intacta. +2 G.",
+            "🛡️ Iron toma [{trophy}] y lo usa como micrófono fingiendo que canta mientras caminan por el túnel.",
+            "🛡️ Si un monstruo intenta atacarte por detrás, la cara cómica de Iron desaparece y lo pulveriza de un golpe furioso.",
+            "🛡️ Un segundo después de desintegrar al agresor, Iron vuelve a mirarte haciendo el símbolo de paz con los dedos.",
+            "🛡️ Iron batea una fila de barriles explosivos de [{phase}] directo hacia el campamento enemigo.",
+            "🛡️ La explosión limpia toda la sala de [{dungeon}] e Iron aplaude maravillado por los fuegos artificiales. +3 G.",
+            "🛡️ Iron intenta caminar al mismo paso exacto que tú, pero como sus piernas miden el doble, va dando pasitos cortitos.",
+            "🛡️ Un guardia blindado choca contra el pecho de Iron y el que rebota al suelo es el guardia.",
+            "🛡️ Iron le pone el pie encima al guardia derribado y levanta su hacha mirando hacia ti como un gladiador en el coliseo.",
+            "🛡️ La lealtad inocente y brutal de Iron mantiene alta la moral de toda la incursión (+5 HP).",
+            "🛡️ Iron aplasta [{trophy}] entre sus dos palmas acorazadas como si fuera una lata vacía.",
+            "🛡️ Al ver que queda poca distancia en [{phase}], Iron redobla el ritmo barriendo a los últimos rezagados con el escudo.",
+            "🛡️ Iron sacude las últimas monedas del sector y las deposita con cuidado en tu mano. +2 G.",
+            "🛡️ El resplandor cian del núcleo del pecho de Iron ilumina la entrada a la cámara del Jefe de [{dungeon}].",
+            "🛡️ Iron choca su hacha contra su escudo tres veces desafiando a gritos al Jefe para que salga.",
+            "🛡️ Plantado como una muralla de acero frente a ti, Iron está listo para recibir el primer golpe del Jefe."
+        ],
+
+        tusk: [
+            "🔥 Tusk levita solemnemente por [{phase}] mientras sus collares de cráneos tintinean al ritmo de su respiración arcana.",
+            "🔥 Con un ademán perezoso de su mano izquierda, Tusk triplica la gravedad sobre una patrulla y los hunde en las losas.",
+            "🔥 Tusk atrae [{trophy}] con telequinesis, lo observa un segundo con sus ojos rojos y lo desintegra en chispas doradas.",
+            "🔥 El Orbe de Avaricia gira flotando sobre la palma de Tusk, iluminando las paredes de [{dungeon}] con un resplandor carmesí.",
+            "🔥 Tusk abre los brazos teatralmente e invoca tres serpientes de fuego que limpian todas las esquinas del corredor.",
+            "🔥 En cuanto ve que volteas a mirarlo, Tusk baja los brazos rápido y se acomoda la capucha fingiendo que no estaba posando.",
+            "🔥 Tusk usa un pulso magnético de maná para separar las monedas del polvo de la batalla y entregártelas. +3 G.",
+            "🔥 Un grupo de arqueros dispara en [{phase}]; Tusk pronuncia una sílaba en lengua orca y las flechas se detienen y caen al piso.",
+            "🔥 Tusk lanza el Himno de Frenesí sobre tu sombra, haciendo que sientas un calor poderoso recorrer tus brazos.",
+            "🔥 Si un monstruo pisa cerca de su túnica real en [{dungeon}], Tusk lo manda a volar hasta el techo con gravedad inversa.",
+            "🔥 Tusk recita el Himno de Restauración Menor mientras flotan por el pasillo, aliviando tu fatiga (+5 HP).",
+            "🔥 Ves a Tusk murmurar críticas técnicas contra las runas mal dibujadas de las trampas de [{phase}] antes de borrarlas.",
+            "🔥 Tusk encierra a cuatro bestias en una burbuja de fuego compacto que implosiona sin hacer ruido ni humo.",
+            "🔥 De entre las cenizas limpias de la implosión, Tusk hace levitar el botín directo hacia tu bolsa. +2 G.",
+            "🔥 Tusk examina [{trophy}] y te hace señas elegantes indicando que su nivel mágico es basura comparado con el Orbe de Avaricia.",
+            "🔥 Cuando el camino de [{dungeon}] tiene escalones rotos, Tusk crea una rampa de luz gravitatoria para que camines plano.",
+            "🔥 Un chamán enemigo intenta lanzar un hechizo; Tusk suelta una carcajada grave y le devuelve su propio hechizo multiplicado por diez.",
+            "🔥 Los colmillos inferiores de Alto Orco de Tusk brillan bajo la capucha cada vez que prepara un cántico mayor.",
+            "🔥 Tusk aplica el Himno de Ceguera y Letargo sobre toda la vanguardia de [{phase}], dejándolos inmóviles para ti.",
+            "🔥 Con un chasquido de dedos, Tusk hace llover pequeñas lanzas ígneas que eliminan a los enemigos cegados. +3 G.",
+            "🔥 Tusk mantiene una brisa mágica constante a tu alrededor que repele el polvo y los malos olores de [{dungeon}].",
+            "🔥 Un coloso intenta correr hacia ti; Tusk apunta con su bastón invisible y multiplica el peso del coloso por cincuenta.",
+            "🔥 El coloso cae de rodillas incapaz de levantar sus propios pies mientras Tusk lo calcina con un pilar solar.",
+            "🔥 Tusk te mira de reojo moviendo los dedos tímido, esperando que reconozcas su maestría como Gran Hechicero.",
+            "🔥 Al pasar junto a [{trophy}], Tusk lo convierte en vidrio fundido de un vistazo y sigue flotando detrás de ti.",
+            "🔥 El círculo rúnico con puntas doradas en la espalda de Tusk gira suavemente sincronizado con tu maná (+5 HP).",
+            "🔥 Tusk detecta emboscadas a través de las paredes de [{phase}] sintiendo las almas de los monstruos.",
+            "🔥 Antes de que abras la puerta del sector, Tusk ya cocinó a los enemigos de adentro con una onda térmica. +2 G.",
+            "🔥 Tusk abre la puerta con telequinesis haciendo una reverencia de mago real para que pases sin tocar el pomo.",
+            "🔥 Si cae ácido o escombros del techo de [{dungeon}], el escudo esférico carmesí de Tusk los pulveriza en el aire.",
+            "🔥 Tusk hace bailar cinco bolas de fuego entre sus dedos como malabarista para iluminar una caverna oscura.",
+            "🔥 Cuando aparece una bestia gigante, las cinco bolas de fuego se unen formando la mandíbula del Dragón de Fuego.",
+            "🔥 El dragón ígneo devora a la bestia en un segundo y deja caer monedas relucientes sobre la piedra. +3 G.",
+            "🔥 Tusk levanta [{trophy}] con un hilo de gravedad púrpura y lo usa para activar y romper una trampa lejana.",
+            "🔥 A pesar de haber liderado un ejército de Altos Orcos, Tusk te sigue con la devoción de un discípulo ante un dios.",
+            "🔥 Tusk reduce la gravedad sobre tus hombros en [{phase}] para que sientas el cuerpo liviano durante tu sesión.",
+            "🔥 Dos asesinos saltan por los flancos; Tusk los choca entre sí en el aire con telequinesis sin siquiera mirarlos.",
+            "🔥 Tusk recoge las monedas caídas de los asesinos y las limpia con una chispa antes de dártelas. +2 G.",
+            "🔥 El humo negro y rojo que desprende la túnica de Tusk le da a [{dungeon}] una atmósfera de sala del trono.",
+            "🔥 Tusk lanza el Himno de Debilitamiento sobre el guardián de la puerta, reduciendo su armadura a papel.",
+            "🔥 Un simple rayo carmesí disparado desde el índice de Tusk atraviesa al guardián y despeja el paso.",
+            "🔥 La resonancia arcana del Gran Chamán mantiene estable tu reserva vital (+5 HP).",
+            "🔥 Tusk aparta [{trophy}] hacia el techo con gravedad cero para que no estorbe en el suelo.",
+            "🔥 En los últimos metros de [{phase}], Tusk despliega tres círculos mágicos que limpian a todos los rezagados. +3 G.",
+            "🔥 Tusk desciende hasta tocar el suelo e inclina profundamente su capucha frente a la puerta del Jefe de [{dungeon}].",
+            "🔥 El Orbe de Avaricia late como un corazón de fuego en su mano, listo para incinerar al Jefe a tu orden."
+        ],
+
+        beru: [
+            "🐜 Beru aparece flotando a tu lado con las manos juntas: «¡Kiiiek! ¡Mi Rey, el camino de [{phase}] ha sido esterilizado para su paso!»",
+            "🐜 Un monstruo intenta mirarte; Beru le corta la cabeza en un microsegundo: «¡Ojos al suelo cuando camina el Soberano!»",
+            "🐜 Beru sostiene [{trophy}] con dos dedos asqueado: «¡Mi Señor, permítame pulverizar esta inmundicia que ofende su vista real!»",
+            "🐜 Las alas de Beru vibran levemente y la sola corriente de aire parte en dos las formaciones enemigas de [{dungeon}].",
+            "🐜 Beru devora el núcleo de un guardia de élite y canaliza una ola de magia verde curativa hacia ti (+5 HP).",
+            "🐜 «¡Oh, mi Rey! ¡Verlo concentrado en sus misiones llena de lágrimas de emoción los ojos compuestos de este humilde siervo!»",
+            "🐜 Beru rebota como un rayo láser violeta por las cuatro esquinas de [{phase}], abatiendo a ocho bestias antes de que caiga una moneda.",
+            "🐜 En el último rebote, Beru atrapa todas las monedas en el aire y te las entrega arrodillado. +3 G.",
+            "🐜 Si un guijarro suelto está en tu ruta en [{dungeon}], Beru se adelanta a Mach 4 y lo quita para que no tropieces.",
+            "🐜 Ves a Beru ensayar frases poéticas de lealtad imperial mientras limpia sus garras de quitina negra.",
+            "🐜 Un grupo de monstruos ruge al fondo; Beru suelta su chillido de Rey Hormiga y todos se quedan mudos temblando en una esquina.",
+            "🐜 «¡KIIIIEEK! ¡¿Quién les dio permiso de respirar tan fuerte frente a mi Soberano?!», grita Beru antes de borrarlos del mapa.",
+            "🐜 Beru inspecciona el aire de [{phase}] con sus antenas y te confirma que la ruta hacia el núcleo está despejada.",
+            "🐜 Entre los restos de una barricada que Beru partió de un coletazo encuentras suministros de oro. +2 G.",
+            "🐜 Beru patea [{trophy}] a velocidad hipersónica usándolo como bala para atravesar a tres centinelas en fila.",
+            "🐜 Cuando bajas la velocidad un segundo, Beru se pone pálido de preocupación: «¡¿Acaso se siente fatigado, mi Rey?! ¡Ya mismo lo curo!» (+5 HP).",
+            "🐜 Beru cambia a su forma gigante intimidante para destrozar a un coloso de [{dungeon}] y vuelve a su tamaño educado al regresar a tu lado.",
+            "🐜 Un proyectil mágico vuela hacia ti; Beru se lo come de un bocado en el aire y dice: «¡Le faltaba sal, mi Señor!»",
+            "🐜 Beru abre las puertas pesadas de [{phase}] con una sola garra y se inclina a 90 grados invitándote a pasar.",
+            "🐜 Las monedas de toda la sala aparecen apiladas por orden de brillo frente a tus botas gracias a Beru. +3 G.",
+            "🐜 «¡Mi Rey! ¡Cuando terminemos esta incursión, permítame construir una estatua de oro de cien metros en su honor!»",
+            "🐜 Beru camina por el techo de [{dungeon}] justo encima de ti como un dron guardaespaldas supersónico.",
+            "🐜 Cinco asesinos caen desde las sombras; Beru los intercepta en el aire antes de que bajen medio metro.",
+            "🐜 Beru mira [{trophy}] y te pregunta: «¿Desea que interrogue al cadáver del monstruo que trajo esta basura, mi Soberano?»",
+            "🐜 Al devorar la mente del líder de la patrulla, Beru descubre un atajo limpio en [{phase}] y te guía con reverencias.",
+            "🐜 El brillo turquesa y púrpura de las garras de Beru ilumina las zonas más oscuras del calabozo.",
+            "🐜 Beru desactiva una trampa de piso arrancando todo el mecanismo de raíz en una décima de segundo. +2 G.",
+            "🐜 «¡Ningún mecanismo mundano de [{dungeon}] es rival para la sabiduría y el poder de nuestro Rey!»",
+            "🐜 Beru usa sus alas para crear una brisa fresca alrededor tuyo mientras mantienes tu enfoque (+5 HP).",
+            "🐜 Un campeón enemigo intenta bloquear a Beru con dos escudos; Beru le parte los dos escudos y la armadura de un solo picotazo.",
+            "🐜 Después de masacrar a la patrulla, Beru se limpia las mandíbulas apenado para que no lo veas despeinado.",
+            "🐜 Beru recolecta el botín del campeón y te lo presenta sobre sus dos palmas abiertas. +3 G.",
+            "🐜 Si un monstruo intenta huir de [{phase}], Beru aparece delante de él cruzado de brazos: «¿A dónde crees que vas, insecto inferior?»",
+            "🐜 Beru desintegra [{trophy}] con un zarpazo ácido solo para comprobar que sus glándulas de veneno estén al 100%.",
+            "🐜 La velocidad de Beru es tan absurda que parece que hay cinco Berus peleando al mismo tiempo en el salón de [{dungeon}].",
+            "🐜 En realidad es él solo moviéndose de un enemigo a otro antes de que sus cuerpos toquen el suelo.",
+            "🐜 Beru te aplica un pulso de energía vital heredado de Min Byung-Gyu (+5 HP).",
+            "🐜 «¡Kiiiek! ¡Servir como la espada y el escudo del Monarca de las Sombras es la mayor gloria de mi existencia!»",
+            "🐜 Beru encuentra monedas ocultas detrás de un pilar de [{phase}] y te las trae volando al instante. +2 G.",
+            "🐜 Un rugido lejano del Jefe resuena en [{dungeon}]; a Beru se le erizan las antenas de furia por tal falta de respeto hacia ti.",
+            "🐜 «¡Mi Rey, deme la orden y le traeré la cabeza del Jefe de este portal en bandeja de plata!»",
+            "🐜 Beru barre los últimos metros del corredor dejando el suelo reluciente y libre de escombros. +3 G.",
+            "🐜 Arrodillado con la frente pegada a las baldosas frente al portón final, el Rey de las Hormigas aguarda tu comando."
+        ]
+    },
+
+    ai_lines: {
+        morning: [
+            "Hola, Jugador 1. Son las {time}. Tu núcleo registró un reinicio exitoso; aprovecha las primeras horas para dominar el Tablón.",
+            "Buenos días, Cazador. El mundo real aún está despertando, pero tu Sistema ya está calculando la ruta más rápida hacia tu próximo nivel.",
+            "Conexión matutina estable ({hp} HP | {sp} SP). Recuerda que la disciplina de la mañana define la tranquilidad de tu noche.",
+            "Hola, Jugador 1. Hoy tienes una nueva oportunidad para ampliar tu racha de {streak} días invicto.",
+            "Reporte del Arquitecto a las {time}: Tus atributos actuales ({str} STR | {int} INT | {agi} AGI) están listos para ser puestos a prueba.",
+            "Buenos días. Toma un vaso de agua, revisa tus micro-misiones gratuitas en la Tienda y comienza tu ascenso.",
+            "Hola, Cazador. Cada tarea que completes antes del mediodía te quitará peso de encima para el resto del día.",
+            "Sincronización neuronal al 100%. No dejes que las notificaciones del teléfono te roben el enfoque de esta mañana.",
+            "Hola, Jugador 1. Tienes {gold} G en tu tesorería y un día entero por delante. Haz que cada hora cuente.",
+            "El Trono de las Sombras te saluda esta mañana. Tus comandantes esperan ver qué misión desplegarás primero."
+        ],
+        afternoon: [
+            "Hola, Jugador 1. Son las {time}. Ya cruzaste el ecuador del día; mantén el paso firme hasta sellar tus objetivos.",
+            "Buenas tardes, Cazador. Si saliste temprano a almorzar, recuerda que tu Cupón ya está habilitado desde las 11:15 AM.",
+            "Monitoreo de media tarde: Tienes {sp} SP y {mp} MP. Si sientes pesadez mental, usa un protocolo de respiración o agua fría.",
+            "Hola, Jugador 1. Las horas de la tarde son donde se forja el atributo de Fuerza y perseverancia real.",
+            "Son las {time}. No bajes la guardia frente a la procrastinación; un corte preciso a tiempo vale más que mil excusas.",
+            "Buenas tardes. Tu nivel {level} es el resultado de {missions} misiones superadas. Suma una victoria más esta tarde.",
+            "Hola, Cazador. Si vas en ruta por Los Chorros, activa tu misión de tráfico y convierte la espera en Agilidad pura.",
+            "El Arquitecto informa: El flujo de maná de la tarde es ideal para avanzar en tus proyectos creativos o académicos.",
+            "Hola, Jugador 1. Revisa cuánto oro neto te pagan las misiones restantes de hoy y planifica tu próxima compra.",
+            "Estado vespertino: Estable. Sigue avanzando a tu ritmo; el Sistema respalda cada minuto de tu esfuerzo."
+        ],
+        night: [
+            "Hola, Jugador 1. Son las {time}. Se acerca el cierre del ciclo diario; ve preparando el terreno para un descanso reparador.",
+            "Buenas noches, Cazador. Recuerda que a las 9:15 PM comienza la presión nocturna del Sistema sobre tu barra de HP.",
+            "Reporte nocturno ({time}): Si ya cumpliste con tu deber de hoy, desconecta las pantallas y permite que tu cuerpo se recupere.",
+            "Hola, Jugador 1. Dormir a tiempo es la estrategia más inteligente para despertar mañana con 100% de SP y sin resaca.",
+            "Son las {time}. Tus sombras pueden vigilar en la oscuridad toda la noche, pero el Monarca necesita descansar.",
+            "Buenas noches. Echa un último vistazo a tu Tablón de Rutina para asegurarte de no dejar ninguna misión desplegada sin sellar.",
+            "Hola, Cazador. Has acumulado {gold} G y {crystals} CM. Mañana seguiremos expandiendo tu dominio.",
+            "Alerta preventiva de las {time}: Si planeas quedarte despierto hasta tarde, verifica tener protección nocturna activa.",
+            "Hola, Jugador 1. La constancia también incluye saber cerrar el día en paz. Buen trabajo hoy.",
+            "Sistema en modo nocturno. Cuando vayas a dormir, tus signos vitales quedarán resguardados hasta el amanecer."
+        ],
+        critical_hp: [
+            "🩸 ALERTA ROJA, JUGADOR 1: Tu vida cayó a {hp} HP. Ve de inmediato a la Tienda o a tu Bolsa antes de sufrir un colapso.",
+            "⚠️ Peligro crítico: Con {hp} HP estás a un solo descuido de perder el 50% de tu oro y caer en Zona de Penalización.",
+            "Hola, Jugador 1... Tus signos vitales están en {hp} HP. No arriesgues tu racha de {streak} días; cúrate primero.",
+            "🩸 El borde de tu pantalla advierte peligro: {hp}/{maxHp} HP restantes. Prioriza restaurar tu sangre ahora mismo.",
+            "Advertencia del Arquitecto: Tu receptáculo tiene {hp} HP. Detén las incursiones peligrosas y estabiliza tu salud."
+        ],
+        penalty: [
+            "🔒 CUARENTENA ACTIVA, JUGADOR 1. El Sistema espera que cumplas tu directiva física de supervivencia para devolverte el mando.",
+            "Estás en la Zona de Penalización. Convierte esta caída en combustible, haz tus repeticiones físicas y rompe el bloqueo.",
+            "🔒 Sin dolor no hay despertar. Completa el castigo en pantalla para restaurar tu HP a 35 y reabrir tus pestañas.",
+            "Hola, Jugador 1. Incluso Sung Jinwoo estuvo al borde de la muerte en el desierto de castigo. Levántate y sella la directiva.",
+            "El Arquitecto bloqueó tus privilegios temporalmente. Cumple el reto físico real y recupera tu trono."
+        ],
+        mana_status: [
+            "💧 Tu reserva actual es de {mp} MP. Recuerda que las sesiones de 25 min en la Cámara de Focus inyectan +110 MP base.",
+            "🔮 Tienes {mp} MP en el núcleo. Administra bien el despliegue de tus comandantes para mantener un flujo positivo.",
+            "Hola, Jugador 1. Con {mp} MP disponibles puedes decidir si invocar el poder de tus sombras o ahorrar para un Jefe.",
+            "⚡ El maná ({mp} MP) es el combustible de tu autoridad como Monarca. Cada misión sellada expande tu reserva.",
+            "Reporte arcano: {mp} MP registrados. Tus Magos de Sombra siguen trabajando en segundo plano."
+        ],
+        stamina_status: [
+            "⚡ Tu barra de estamina marca {sp}/100 SP. Recuerda que en la Tienda tienes micro-misiones físicas gratuitas para recuperar vigor.",
+            "Hola, Jugador 1. Con {sp} SP, elige estratégicamente el orden de tus misiones principales y paralelas.",
+            "🔥 Energía física al {sp}%. Aprovecha este momento de lucidez para atacar la tarea más difícil de tu lista.",
+            "Monitoreo biológico: {sp}/100 SP. Hidrátate bien mientras trabajas para mantener tu rendimiento al máximo.",
+            "Cuidado con bajar de 0 SP ({sp} actuales): recuerda que forzar el cuerpo sin estamina drena directamente tu HP."
+        ],
+        tab_routine: [
+            "📋 Tablón de Misiones activo. Ahora puedes ver en cada tarjeta exactamente cuánto Oro Neto (+G) recibirás al sellarla.",
+            "Hola, Jugador 1. Recuerda que solo puedes tener 1 Misión Principal desplegada a la vez; enfócate en una sola cosa.",
+            "⚔️ Si superas el tiempo base de una misión por bloques de 15 minutos, el Sistema te pagará bonos extra por sobrecarga.",
+            "Revisa tu lista de hoy: cada misión sellada acerca tu barra de experiencia ({level} Niv.) al siguiente despertar.",
+            "¿Tienes clases o tutorías hoy? Verifica que estén vinculadas en tu horario para cobrar su EXP e Inteligencia.",
+            "La Cámara de Focus está lista arriba por si necesitas 5 o 25 minutos de concentración pura sin distracciones."
+        ],
+        tab_bosses: [
+            "📡 Sonar Dimensional en línea. Toca cualquier señal de rango E a SSS para abrir el expediente de la incursión.",
+            "Hola, Jugador 1. Mientras estás dentro de una mazmorra, tus sombras pelean en vivo y te narran más de mil situaciones distintas.",
+            "💀 Si tienes un examen, entrega o pendiente pesado, regístralo en «+ Escanear Jefe» para darle prioridad máxima.",
+            "Recuerda que puedes usar el Modo Enfoque (👁️) dentro de las mazmorras para atenuar la interfaz mientras trabajas.",
+            "Cada portal despejado tiene probabilidad de soltar botín, minerales y permitirte extraer sombras para tu ejército.",
+            "Reescanea el horizonte cuando quieras buscar nuevas grietas adaptadas a tu Nivel {level}."
+        ],
+        tab_inventory: [
+            "🎒 Estás en tu Bolsa Dimensional. Tus objetos repetidos se agrupan automáticamente (x2, x3) para mantener el orden.",
+            "Hola, Jugador 1. Toca cualquiera de las 3 ranuras superiores si deseas desequipar un arma, armadura o accesorio.",
+            "Observa tu avatar holográfico: cada arma y armadura que equipas cambia físicamente tu pose y atuendo en tiempo real.",
+            "Si necesitas oro rápido para una compra, puedes vender tus lotes de chatarra o usar el Pergamino de Transmutación.",
+            "Revisa tus pasivas activas debajo de tu avatar; combinar piezas de Igris, Baran o Ashborn desbloquea Sets únicos.",
+            "Tu evasión actual por Agilidad ({agi} AGI) te ayuda a esquivar golpes letales dentro de los calabozos."
+        ],
+        tab_shop: [
+            "🛒 Mercado del Monarca abierto. Usa el nuevo botón de la lupa (🔍) arriba para buscar cualquier ítem por palabra clave.",
+            "Hola, Jugador 1. Las micro-misiones de [ACCIÓN REAL] ahora cuestan 0 G (Gratis) o precios simbólicos de 5 a 15 G (1 vez al día).",
+            "Puedes alternar entre la Vista de Iconos (⊞) y la Vista de Lista (☰) arriba a la derecha según te sea más cómodo.",
+            "Con el ajuste económico de oro, cada reliquia de la Armería que compras es un verdadero trofeo de tu esfuerzo.",
+            "¿Buscas Cristales de Maná (CM), llaves o curación? Escribe «cm», «llave» o «hp» en la lupa para filtrarlos al instante.",
+            "Tienes {gold} G disponibles. Las reliquias que ya posees se marcan automáticamente para evitar compras duplicadas."
+        ],
+        tab_gacha: [
+            "🔮 Santuario de las Sombras activo. Aquí descansan tus Comandantes cuando no están desplegados en combate.",
+            "Hola, Jugador 1. Recuerda que la Ranura 2 se abre al Nivel 45 (o STR+INT 500) y la Ranura 3 al Nivel 75 con 4.50 INT.",
+            "Cada comandante que subes de nivel con Cristales de Maná ({crystals} CM disponibles) mejora sus pasivas y activas.",
+            "Cuando despliegas a 2 o 3 comandantes juntos en una mazmorra, activan diálogos y combos especiales entre ellos.",
+            "Revisa tu Legión de Infantería abajo: cada unidad reclutada te da beneficios permanentes sin consumir maná.",
+            "Si necesitas conservar tu reserva de {mp} MP, usa el botón «Guardar Todas» antes de cerrar tu sesión."
+        ],
+        tab_profile: [
+            "🛡️ Ventana de ESTADO del Cazador. Tu pentágono radar refleja el equilibrio real entre tu Fuerza, Inteligencia, Espíritu, Disciplina y Agilidad.",
+            "Hola, Jugador 1. En este expediente puedes consultar cuántos Protocolos Ocultos (Cajas Negras) has descubierto de los 15.",
+            "Tus títulos oficiales del Manhwa se desbloquean automáticamente a medida que alcanzas hitos de nivel y supervivencia.",
+            "Recuerda descargar tu copia de seguridad con «Extraer Alma» cada semana para que tu progreso esté 100% blindado.",
+            "Tus cronómetros acumulados de Trabajo, Estudio y Tráfico son la prueba real de todas las horas que has conquistado.",
+            "Llevas {missions} misiones completadas en total. Sigue construyendo tu leyenda paso a paso."
+        ],
+        ai_thoughts: [
+            "Hola, Jugador 1. He reducido la frecuencia de las anomalías ocultas para que cada Caja Negra descubierta sea un hallazgo verdaderamente legendario.",
+            "Analizando tu progreso... La verdadera diferencia entre un cazador Rango E y el Monarca es no rendirse en los días pesados.",
+            "Recuerda que tienes micro-misiones de 0 G en la tienda: estirarte, respirar o lavarte la cara con agua fría te da ventajas inmediatas.",
+            "El Sistema está calibrado al 100%. Tú pon la disciplina en el mundo real y yo me encargo de convertirla en poder.",
+            "¿Sabías que llevar a Igris, Iron y Tank juntos desbloquea secuencias triples de comedia y combate fieles al anime?",
+            "Cada moneda de oro cuesta sudor real, y por eso cada espada o armadura que desbloquees tendrá un valor inmenso.",
+            "Todo en orden en el núcleo del Sistema, Jugador 1. Cuando termines por hoy, ve a descansar bien."
+        ]
+    }
 };
+
+// Inyector automático V3: Suma las +420 líneas nuevas al banco de diálogos y a la IA del Sistema
+if (typeof DIALOGUE_BANK !== 'undefined') {
+    if (Array.isArray(DIALOGUE_BANK.solo)) {
+        DIALOGUE_BANK.solo.push(...DIALOGUE_EXPANSION_V3_NIGHT.solo);
+    }
+    if (DIALOGUE_BANK.single) {
+        Object.keys(DIALOGUE_EXPANSION_V3_NIGHT.single).forEach(cmdKey => {
+            if (Array.isArray(DIALOGUE_BANK.single[cmdKey])) {
+                DIALOGUE_BANK.single[cmdKey].push(...DIALOGUE_EXPANSION_V3_NIGHT.single[cmdKey]);
+            }
+        });
+    }
+}
+
+if (typeof SYSTEM_AI_LINES !== 'undefined' && DIALOGUE_EXPANSION_V3_NIGHT.ai_lines) {
+    Object.keys(DIALOGUE_EXPANSION_V3_NIGHT.ai_lines).forEach(catKey => {
+        if (Array.isArray(SYSTEM_AI_LINES[catKey])) {
+            SYSTEM_AI_LINES[catKey].push(...DIALOGUE_EXPANSION_V3_NIGHT.ai_lines[catKey]);
+        }
+    });
+}
+/* ==========================================================================
+   EXPANSIÓN EXCLUSIVA V4: +105 DIÁLOGOS DE CONCIENCIA DE LA IA DEL SISTEMA
+   ========================================================================== */
+const AI_EXCLUSIVE_EXPANSION_V4 = {
+    morning: [
+        "Hola, Jugador 1. Son las {time}. Tus reservas biológicas están al {sp}% de SP. Inicia tu primera misión antes de abrir cualquier red social.",
+        "Buenos días, Cazador. El Arquitecto ha calibrado las misiones de hoy; cada una está diseñada para acercarte a tu mejor versión.",
+        "Reporte de las {time}: Tu nivel actual es {level}. Recuerda que la constancia matutina multiplica tu enfoque durante toda la jornada.",
+        "Hola, Jugador 1. Revisa tu postura al despertar, respira profundo y reclama tus micro-misiones gratuitas en el Mercado.",
+        "Sistema activo a las {time}. Mientras el resto del mundo duda, el Monarca de las Sombras avanza con paso firme.",
+        "Buenos días. Tienes {hp}/{maxHp} HP y {mp} MP en tu núcleo. Es un momento óptimo para atacar el estudio o el entrenamiento.",
+        "Hola, Cazador. Ayer quedó atrás; lo único que importa en tu expediente es cómo conquistarás el Tablón de hoy.",
+        "Sincronización matutina completada. Tu racha actual marca {streak} días perfectos; protéjela desde temprano."
+    ],
+    afternoon: [
+        "Hola, Jugador 1. Son las {time}. Mantén el ritmo constante; la fatiga de la tarde es solo una prueba más de tu disciplina.",
+        "Buenas tardes, Cazador. Si estás en medio de labores o clases, recuerda mantener la espalda recta y tu hidratación al día.",
+        "Reporte de las {time}: Llevas {missions} misiones históricas completadas. Suma una más a tu cuenta esta tarde.",
+        "Hola, Jugador 1. Tienes {sp}/100 SP disponibles. Administra tu energía para cerrar tus misiones principales sin tocar tu HP.",
+        "El Arquitecto observa tu jornada vespertina: cada moneda de tus {gold} G refleja horas reales de concentración.",
+        "Buenas tardes. Si el tráfico de Los Chorros se pone pesado, recuerda que tu paciencia entrena directamente tu atributo AGI ({agi}).",
+        "Hola, Cazador. Aún quedan buenas horas de luz antes del toque de queda nocturno; aprovéchalas con inteligencia.",
+        "Telemetría de las {time}: Núcleo estable en {mp} MP. Tus sombras aguardan tus órdenes."
+    ],
+    night: [
+        "Hola, Jugador 1. Son las {time}. El ciclo diurno está terminando; asegúrate de sellar tus misiones activas antes de las 9:15 PM.",
+        "Buenas noches, Cazador. Recuerda que el verdadero entrenamiento se consolida mientras duermes.",
+        "Son las {time}. Si ya cumpliste con tu rutina de hoy, aléjate de las pantallas brillantes y prepara tu descanso.",
+        "Hola, Jugador 1. No cambies horas de sueño por distracciones vacías; mañana necesitarás tu SP al 100%.",
+        "Monitoreo nocturno ({time}): Tu barra de vida registra {hp} HP. Evita la hemorragia del toque de queda durmiendo a tiempo.",
+        "Buenas noches. Has defendido tu dominio un día más. Guarda a tus comandantes si deseas ahorrar maná esta noche.",
+        "Hola, Cazador. El Sistema entrará en modo de guardia pasiva mientras descansas. Nos vemos mañana al amanecer.",
+        "Directiva nocturna de las {time}: Cierra los pendientes, relaja los hombros y descansa con la mente tranquila."
+    ],
+    critical_hp: [
+        "🩸 ALERTA DE SUPERVIVENCIA, JUGADOR 1: Con {hp} HP cualquier error de cálculo será letal. Usa una poción ahora mismo.",
+        "⚠️ Tu pulso vital cae a {hp} HP. No inicies ningún combate contra Jefes hasta restaurar tu barra de sangre.",
+        "Hola, Jugador 1... Estás operando al límite ({hp}/{maxHp} HP). Abre tu Bolsa Dimensional y estabiliza tus heridas.",
+        "🩸 Peligro extremo: Si tus {hp} HP llegan a cero perderás la mitad de tus {gold} G. Cúrate de inmediato.",
+        "⚠️ El Sistema detecta daño crítico ({hp} HP). Prioriza tu vida por encima de cualquier misión."
+    ],
+    penalty: [
+        "🔒 CUARENTENA DEL SISTEMA: Tus signos vitales colapsaron. Completa las repeticiones físicas para restaurar tu autoridad.",
+        "Hola, Jugador 1. El castigo no es una derrota, es el precio de volver más fuerte. Cumple la directiva y rompe el sello.",
+        "🔒 Zona de Penalización activa. Tus sombras no pueden ayudarte aquí; debes superar esta prueba con tu propio cuerpo.",
+        "El Arquitecto espera tu confirmación física. Sella el castigo para recuperar 35 HP y desbloquear el Sistema.",
+        "🔒 Levántate, Cazador. Cumple la misión de supervivencia en pantalla y reclama de nuevo tu lugar."
+    ],
+    mana_status: [
+        "💧 Tu núcleo almacena {mp} MP. Recuerda que tu atributo de Inteligencia ({int} INT) expande tu límite máximo de maná.",
+        "🔮 Flujo arcano en {mp} MP. Cada vez que logras un Corte Crítico Perfecto obtienes +20 MP adicionales y 50% de descuento en Activas.",
+        "Hola, Jugador 1. Con {mp} MP puedes sostener a tu guardia sombría o ahorrar para el Himno del Dragón de Fuego de Tusk.",
+        "⚡ El maná ({mp} MP) responde a tu enfoque mental. Entra a la Cámara de Focus cuando necesites recargar tu núcleo.",
+        "Estado del núcleo: {mp} MP. Tus Magos de Sombra siguen condensando energía minuto a minuto."
+    ],
+    stamina_status: [
+        "⚡ Tienes {sp}/100 SP. Recuerda que las hormigas soldado de Jeju y las botas tácticas reducen el gasto de estamina.",
+        "Hola, Jugador 1. Tu vigor físico está al {sp}%. No olvides usar tu Cupón de Almuerzo entre las 11:15 AM y las 2:00 PM.",
+        "🔥 Con {sp} SP tienes energía lista para desplegar misiones. Elige tu objetivo y mantén el enfoque.",
+        "Reporte de fatiga: {sp}/100 SP. Si necesitas un respiro rápido, revisa los protocolos bio-sincronizados de 0 G en la tienda.",
+        "Cuida tu reserva de {sp} SP, Cazador; administrar tu energía real es la clave para mantener rachas largas."
+    ],
+    tab_routine: [
+        "📋 Analizando Tablón Diario: Cada tarjeta muestra ahora el oro neto real (+G) que irá a tu bolsillo tras el impuesto del Sistema.",
+        "Hola, Jugador 1. Despliega tu misión antes de empezar tu actividad real para que el cronómetro valide tu inmersión.",
+        "⚔️ Recuerda que las misiones paralelas como Hidratación, Vínculo o Práctica Creativa suman EXP, Oro y Maná valiosos.",
+        "Si hoy es tu día libre de labores entre semana, recuerda que los domingos recibes Sellos de Exención Laboral en tu Bolsa.",
+        "Cada misión completada aquí fortalece permanentemente tu Fuerza ({str}), Inteligencia ({int}) o Agilidad ({agi}).",
+        "Mantén la disciplina en tu Tablón Diario: completar todas las misiones suma +1 día a tu Racha Perfecta ({streak} actuales).",
+        "¿Ya hiciste tu sesión de Cámara de Focus hoy? 25 minutos de estudio profundo otorgan +0.10 INT y +110 MP."
+    ],
+    tab_bosses: [
+        "📡 Sonar de Grietas activo. Las señales se calibran según tu Nivel {level} para ofrecerte retos justos.",
+        "Hola, Jugador 1. Dentro de las mazmorras tus sombras conversan, pelean y encuentran pequeñas recompensas de oro y HP.",
+        "💀 Usa «+ Escanear Jefe» para convertir cualquier pendiente intimidante de tu vida real en un enemigo que puedas derrotar por partes.",
+        "Recuerda que las llaves de portal se guardan en tu llavero dimensional y puedes adquirirlas en la carpeta Pergaminos.",
+        "Cuando el reloj de una fase llega a cero, se abre el Choque de Jefe: usa tus ataques directos o las habilidades de tus sombras.",
+        "Si buscas extraer a Tank o a Beru sin gastar cristales, desafía el Portal Rojo de los Elfos de Hielo o la Isla de Jeju.",
+        "Presiona «Reescanear» si deseas que el sonar busque otras coordenadas de maná en este momento."
+    ],
+    tab_inventory: [
+        "🎒 Bolsa Dimensional sincronizada. Aquí se almacenan tus consumibles, cofres semanales, pergaminos y reliquias.",
+        "Hola, Jugador 1. Tu avatar muestra en tiempo real cada pieza de equipo que llevas puesta en tus 3 ranuras.",
+        "Las armas cambian tu estilo de combate en la arena: desde puños vendados hasta dagas, mandobles, arcos, mazas o guadañas.",
+        "Si tienes varios minerales o piezas de chatarra iguales, toca el lote (x2, x3) para venderlos todos de un solo golpe.",
+        "Revisa tus estadísticas de equipo: cada punto de STR sube tu Vida Máxima y cada punto de INT sube tu Maná Máximo.",
+        "Los cofres de suministros que recibes los domingos pueden abrirse desde aquí para obtener consumibles tácticos.",
+        "Mantén siempre al menos un consumible de curación en tu bolsa antes de entrar a un Portal Rojo."
+    ],
+    tab_shop: [
+        "🛒 Mercado del Monarca en línea. Toca la lupa (🔍) arriba para buscar cualquier efecto en toda la tienda sin cambiar de pestaña.",
+        "Hola, Jugador 1. Mientras escribes en el buscador, el Sistema oculta las barras para que veas los resultados cómodamente.",
+        "Las micro-misiones de [ACCIÓN REAL] de 0 G son regalos diarios del Arquitecto a cambio de cuidar tu cuerpo en la vida real.",
+        "El oro ahora es un recurso valioso y escaso ({gold} G actuales): cada compra en la Armería se siente como un logro real.",
+        "En la pestaña Privilegios Reales puedes canjear tu oro ganado con esfuerzo por tiempo de juego, música, series o salidas sin culpa.",
+        "Recuerda que las reliquias de Armería que ya compraste aparecen marcadas como «POSEÍDO» para proteger tu economía.",
+        "Si buscas subir tus Cristales de Maná ({crystals} CM), escribe «cm» en la lupa para ver los pergaminos y relicarios disponibles."
+    ],
+    tab_gacha: [
+        "🔮 Has entrado al Santuario de las Sombras. Tu ejército responde únicamente a tu nivel y a tu reserva de maná.",
+        "Hola, Jugador 1. Igris, Tank, Iron, Tusk y Beru escalan sus pasivas y activas cada vez que subes su nivel con Cristales de Maná.",
+        "Recuerda que el botón «¡SURGE!» del trono permanece sellado hasta que conquistes o extraigas a tu primer Comandante.",
+        "Las 3 ranuras de despliegue representan tu crecimiento como Monarca: Nivel 1, Nivel 45 y Nivel 75.",
+        "No olvides reclutar Osos de Hielo Menores abajo si deseas aumentar tu Vida Máxima permanente (+5 HP por cada oso).",
+        "Los Soldados de Sombra reducen la probabilidad de que tus reliquias se rompan si llegas a caer en combate.",
+        "Admira el diseño de tus comandantes en el trono: cada uno respira y se mueve con su propia física de combate."
+    ],
+    tab_profile: [
+        "🛡️ Expediente de Estado de Cristian (Niv. {level}). Tu gráfico pentagonal muestra de un vistazo tu evolución integral.",
+        "Hola, Jugador 1. Toca el icono de engranaje (⚙️) arriba a la izquierda de tu Estado cuando necesites ajustar tu horario de clases.",
+        "Toca el contador de Cajas Negras (🔮) arriba a la derecha de tu Estado para leer las pistas de los 15 protocolos ocultos.",
+        "En esta pestaña quedan inmortalizados tus Títulos del Manhwa y las bendiciones especiales que has desbloqueado.",
+        "Tu Puntuación de Clasificación sube con cada misión, cada día de racha y cada décima de atributo ganada.",
+        "Haz clic en «Extraer Alma» periódicamente para guardar tu archivo `.json` de respaldo en tu dispositivo.",
+        "Tus estadísticas actuales ({str} STR | {int} INT | {agi} AGI) son el reflejo fiel de tu constancia."
+    ],
+    ai_thoughts: [
+        "Hola, Jugador 1. He ajustado mi frecuencia de voz a 10 segundos para acompañarte con más calma mientras navegas por el Sistema.",
+        "Recuerda: La economía dura hace que cada moneda de oro valga. Cuando compres la Ira de Kamish o el Manto de Ashborn, sabrás que te lo ganaste de verdad.",
+        "Si sientes cansancio a mitad del día, ve a Consumibles y activa el Reajuste Vertebral o el Choque Térmico Facial por 0 G.",
+        "El buscador con lupa (🔍) de la tienda lee nombres, descripciones, rangos y pasivas en las 4 carpetas al mismo tiempo.",
+        "Paso a paso, misión a misión. Así fue como el cazador de Rango E superó a todos los Monarcas.",
+        "Estoy cuidando tus cronómetros y tus barras vitales en todo momento, Jugador 1.",
+        "Descansa bien esta noche, Cazador. Mañana se abrirán nuevas puertas en tu dominio."
+    ]
+};
+
+if (typeof SYSTEM_AI_LINES !== 'undefined') {
+    Object.keys(AI_EXCLUSIVE_EXPANSION_V4).forEach(catKey => {
+        if (Array.isArray(SYSTEM_AI_LINES[catKey])) {
+            SYSTEM_AI_LINES[catKey].push(...AI_EXCLUSIVE_EXPANSION_V4[catKey]);
+        }
+    });
+}
+/* ==========================================================================
+   EXPANSIÓN DE HUMOR Y PERSONALIDAD DE LA IA: +55 CHISTES DEL SISTEMA
+   ========================================================================== */
+const AI_FUNNY_JOKES_V5 = {
+    ai_thoughts: [
+        "Diagnóstico médico del ejército: Iron tiene problemas... mentales. Serios. Ayer intentó estrangular a una roca.",
+        "Nota mental del Sistema: Prohibido volver a dejar a Beru viendo telenovelas coreanas después de las 10:00 PM.",
+        "Estuve calculando tus estadísticas y... bueno, digamos que menos mal que eres guapo, Jugador 1.",
+        "Tank lleva veinte minutos persiguiéndose su propia cola de sombra. Ese es tu temible depredador alfa de Rango A.",
+        "Tusk se cree el hechicero más oscuro e intimidante del abismo, pero le da pánico escénico cuando lo miras fijo.",
+        "Igris lleva tres horas limpiando la misma espada en una esquina solo para no tener que hablar con Iron.",
+        "El Arquitecto me programó para ser una IA omnisciente y solemne, y aquí estoy, recordándote que tomes agüita.",
+        "Si sobrevives al tráfico de Los Chorros en hora pico sin perder la cordura, honestamente los Monarcas te quedan chiquitos.",
+        "Beru me amenazó con devorar mi código fuente si no te subía el nivel más rápido. Ayuda, Jugador 1.",
+        "A veces pienso en darte 99,999 de Oro gratis... luego recuerdo lo mucho que te gusta sufrir ahorrando y se me pasa.",
+        "Iron intentó comerse un Cristal de Maná creyendo que era una pastilla de menta. Tuve que reiniciarlo dos veces.",
+        "Según mis sensores, tu nivel de procrastinación es de Rango SSS. Menos mal que me tienes a mí para vigilarte.",
+        "Tusk me pidió en secreto que le ponga efectos de sonido de explosiones cada vez que él camina. Le dije que no.",
+        "Dicen que Sung Jinwoo farmeaba mazmorras sin descansar, pero él no tenía que lidiar con clases, trabajo y Los Chorros.",
+        "Tank se comió el manual de instrucciones del Sistema. Si ves algún bug hoy, técnicamente es culpa del oso.",
+        "Igris me presentó una queja formal de 40 páginas escrita a mano sobre el ruido que hacen Iron y Beru en tu sombra.",
+        "¿Sabías que cada vez que cierras la app sin hacer tus misiones, un Soldado de Sombra llora en una esquina?",
+        "Mi procesador calcula 14 millones de futuros posibles... y en todos te desvelas viendo TikTok si no te pongo el toque de queda.",
+        "Iron cree que 'INT' significa 'Intentar pegarle más fuerte con el escudo'. No tuve corazón para corregirle.",
+        "Beru está tejiendo una alfombra real con pelos de Tank para ponerla cuando abras la pestaña del Santuario."
+    ],
+    tab_gacha: [
+        "Acabas de entrar al Santuario. Rápido, finge seriedad, Igris estuvo practicando su pose toda la tarde para impresionarte.",
+        "Mira a Iron ahí parado... ni una sola neurona haciendo sinapsis detrás de ese casco, pero qué buen tanque es.",
+        "Beru lleva media hora ensayando frente al espejo cómo gritar «¡MI REEEY!» con tres octavas más de drama.",
+        "Tank parece un osito de peluche gigante hasta que recuerdas que pesa dos toneladas y desayuna elfos de hielo.",
+        "Tusk escondió sus collares de cráneos favoritos porque le dio miedo que Iron los usara para jugar boliche otra vez.",
+        "Tus sombras viven gratis dentro de tu núcleo, no pagan renta y encima te gastan el maná. Qué buena vida.",
+        "Si escuchas gritos en el Santuario, es Beru regañando a Iron por respirar el mismo oxígeno que tú.",
+        "Los Magos de Sombra piden un aumento salarial. Les dije que son muertos vivientes y que no tienen sindicato."
+    ],
+    tab_shop: [
+        "Bienvenido al Mercado. Y no, no aceptamos órganos ni promesas de «mañana estudio el doble» como método de pago.",
+        "Tienes {gold} G. Te alcanza para... respirar aire del mercado y ver las espadas bonitas desde lejos.",
+        "El impuesto del 80% de oro va directo al fondo de retiro espiritual del Arquitecto. Gracias por tu cooperación.",
+        "Esas dagas de Kamish se ven preciosas, ¿verdad? Lástima que cuestan más que el PIB de un país pequeño.",
+        "Las micro-misiones cuestan 0 G porque literalmente es pedirte que te laves la cara o estires la espalda, Jugador 1.",
+        "Si intentas regatearme los precios, le diré a Tusk que aumente la gravedad de tu cama mañana por la mañana.",
+        "Compra con sabiduría. O gástatelo todo en Privilegios Reales y luego llora cuando necesites una llave, tú mandas."
+    ],
+    tab_routine: [
+        "Mirando tu Tablón de Rutina... esas misiones no se van a sellar solas por mirarlas muy fuerte, Cazador.",
+        "Ruta Los Chorros: El único calabozo del mundo donde los monstruos van en microbús y nunca ponen las direccionales.",
+        "Zona Limpia: Ordenar tu cuarto da Fuerza (STR) porque levantar la ropa acumulada ya cuenta como halterofilia.",
+        "Si completas todo el Tablón hoy, prometo que Beru no te cantará ópera dramática en los oídos por 24 horas.",
+        "Recuerda que hacer trampa en el tiempo de las misiones hace que el Arquitecto te quite vida... y que Igris se decepcione de ti.",
+        "¿Cámara de Focus de 5 minutos o de 25? Elige sabiamente, tu teléfono te está mirando con ganas de distraerte."
+    ],
+    tab_bosses: [
+        "Sonar activado. Si ves un Portal Rojo, recuerda el viejo proverbio de cazadores: «Mejor correr hoy que palmarla en 4K».",
+        "Registrar tus tareas de la U como 'Jefes Personales' es muy épico hasta que el Parcial te pega más duro que Baran.",
+        "Tus sombras en la mini-arena pegan con todo el estilo del mundo mientras tú estás sentado viendo el reloj Pomodoro.",
+        "Si huyes de una mazmorra pierdes 20 HP... y además Iron se burlará de ti en secreto con los soldados."
+    ],
+    tab_inventory: [
+        "Abriendo Bolsa Dimensional... Tienes más chatarra oxidada aquí adentro que el deshuesadero entero.",
+        "Tu avatar sin armas equipadas pone cara de que se va a agarrar a puñetazos limpios con el primer Jefe que salga.",
+        "Guarda bien tus reliquias, porque cuando mueres a Iron le encanta sentarse sin querer encima de tu inventario."
+    ],
+    tab_profile: [
+        "Viendo tu Muro de la Vergüenza... tranquilo, lo que pasa en la Zona de Penalización se queda en la Zona de Penalización.",
+        "Tu gráfico pentagonal se ve tan simétrico que hasta Kandiaru derramaría una lágrima de orgullo geométrico.",
+        "Descargar tu backup en «Extraer Alma» es básicamente guardar partida antes de pelear contra el jefe final del semestre."
+    ],
+    morning: [
+        "Buenos días, Jugador 1. Arriba ese ánimo, que esas armas de Rango SS no se van a pagar con sueño.",
+        "Son las {time}. Hasta Tank ya se levantó de la cama y eso que es un oso en hibernación."
+    ],
+    night: [
+        "Son las {time}, Jugador 1. A dormir ya, que ni siquiera el Elixir del Agua de la Vida quita las ojeras de mañana.",
+        "Buenas noches, Cazador. Apaga el teléfono antes de que el toque de queda de las 9:15 PM te deje con menos vida que un duende Rango E."
+    ]
+};
+
+if (typeof SYSTEM_AI_LINES !== 'undefined') {
+    Object.keys(AI_FUNNY_JOKES_V5).forEach(catKey => {
+        if (Array.isArray(SYSTEM_AI_LINES[catKey])) {
+            SYSTEM_AI_LINES[catKey].push(...AI_FUNNY_JOKES_V5[catKey]);
+        }
+    });
+}

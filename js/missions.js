@@ -58,6 +58,35 @@ function getEffectiveMissionSpCost(m) { let spCost = m.spCost || 10; if (!p) ret
 /* ==========================================================================
    2. RENDERIZAR TABLÓN DE RUTINA (CON CUARENTENA ABSOLUTA AL MORIR)
    ========================================================================== */
+function getEffectiveMissionGoldReward(m) {
+    if (!p || !m) return 0;
+    let now = Date.now();
+    let aId = (p.equipment && p.equipment.armor) ? p.equipment.armor.id : "";
+    let accId = (p.equipment && p.equipment.accessory) ? p.equipment.accessory.id : "";
+
+    let igrisActive = p.equippedShadows && p.equippedShadows.includes('igris');
+    let igrisBuff = igrisActive ? 1 + (((p.shadowArmy && p.shadowArmy.igris ? p.shadowArmy.igris.level : 1) || 1) * 0.03) : 1;
+
+    let netGold = 0;
+    if (p.starStreamNext && (m.gold || 0) > 0) {
+        netGold = Math.floor((m.gold || 0) * 3 * igrisBuff);
+    } else {
+        let beruLvl = (p.shadowArmy && p.shadowArmy.beru) ? (p.shadowArmy.beru.level || 1) : 1;
+        let beruGoldMult = (p.beruSpeedUntil && now < p.beruSpeedUntil) ? (1 + ((35 + ((beruLvl - 1) * 3)) / 100)) : 1.0;
+        let wolfGoldMult = (accId === "eq_acc_wolf") ? 1.10 : 1.0;
+        let taxRate = (p._arcGildedUntil && now < p._arcGildedUntil) ? 1.0 : (typeof GOLD_NERF !== 'undefined' ? GOLD_NERF : 0.20);
+        netGold = Math.floor((m.gold || 0) * igrisBuff * beruGoldMult * wolfGoldMult * taxRate);
+    }
+
+    if (m.stat === 'str' && p.infantry && p.infantry.orcs > 0) {
+        let orcMult = (accId === "eq_acc_metus") ? 4.5 : 3;
+        netGold += Math.floor(p.infantry.orcs * orcMult);
+    }
+    if (m.id && m.id.includes('traffic') && aId === "eq_a_serpento") netGold += 15;
+    if (accId === "eq_acc_silver") netGold += 10;
+
+    return netGold;
+}
 function renderRoutine() {
     if (!p) return;
 
@@ -182,12 +211,12 @@ function renderRoutine() {
                     ${elapsedText}
                 </div>
                 <div class="card-desc">${m.desc}</div>
-                <div class="card-rewards">
+<div class="card-rewards">
                     <span class="r-xp">+${m.xp} XP</span>
-<span class="r-sp">-${getEffectiveMissionSpCost(m)} SP</span>
+                    <span class="r-gold">+${getEffectiveMissionGoldReward(m)} G</span>
+                    <span class="r-sp">-${getEffectiveMissionSpCost(m)} SP</span>
                     <span class="r-stat">+${(m.mins && m.mins >= 40) ? 65 : 45} MP</span>
                 </div>
-                ${btnHtml}
             </div>
         </div>`;
     });

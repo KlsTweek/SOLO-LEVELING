@@ -334,6 +334,15 @@ function isRelicAlreadyOwned(itemId) {
     return !!(inBag || inEq);
 }
 
+const REAL_ACTION_IDS = ["c_posture", "c_breathing", "c_eye_drops", "c_cold_splash", "c_adrenaline", "c_sage_tea", "c_cartenon_candle", "c_giant_serum", "c_baran_drop", "p_iron_trial", "p_zone_purge"];
+
+function isRealActionDoneToday(itemId) {
+    if (!p || !REAL_ACTION_IDS.includes(itemId)) return false;
+    let todayKey = new Date().toDateString();
+    if (p.realActionsDay !== todayKey) return false;
+    return Array.isArray(p.realActionsClaimed) && p.realActionsClaimed.includes(itemId);
+}
+
 function isCoffeeOnWeeklyCooldown() {
     if (!p || !p.lastCoffeeBoughtAt) return false;
     return (Date.now() - p.lastCoffeeBoughtAt) < (7 * 24 * 3600000);
@@ -361,20 +370,92 @@ function getShortItemSummary(item) {
     return clean.length > 78 ? clean.slice(0, 75) + '...' : clean;
 }
 
+let shopSearchQuery = '';
+let isShopSearchOpen = false;
+
+function ensureShopSearchStyles() {
+    if (document.getElementById('sl-shop-search-css')) return;
+    let st = document.createElement('style');
+    st.id = 'sl-shop-search-css';
+    st.innerHTML = `
+        body.keyboard-search-mode .header { display: none !important; }
+        body.keyboard-search-mode .nav { display: none !important; }
+        body.keyboard-search-mode #tab-shop { padding-top: 10px !important; padding-bottom: 30px !important; }
+        body.keyboard-search-mode #tab-shop .shop-tabs { display: none !important; }
+        #shop-search-wrap {
+            position: sticky; top: 6px; z-index: 940;
+            background: rgba(3, 10, 24, 0.98);
+            border: 1.5px solid #00d2ff;
+            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.9), 0 0 15px rgba(0, 210, 255, 0.3);
+            padding: 8px; border-radius: 2px; margin-bottom: 14px;
+        }
+    `;
+    document.head.appendChild(st);
+}
+
+window.toggleShopSearchBar = function() {
+    ensureShopSearchStyles();
+    isShopSearchOpen = !isShopSearchOpen;
+    let wrap = document.getElementById('shop-search-wrap');
+    let inp = document.getElementById('shop-search-input');
+    if (wrap) wrap.style.display = isShopSearchOpen ? 'block' : 'none';
+    if (isShopSearchOpen && inp) {
+        inp.focus();
+    } else if (!isShopSearchOpen) {
+        document.body.classList.remove('keyboard-search-mode');
+        shopSearchQuery = '';
+        if (inp) inp.value = '';
+        renderShop();
+    }
+};
+
+window.onShopSearchInput = function(val) {
+    shopSearchQuery = (val || '').trim().toLowerCase();
+    renderShop();
+};
+
 function renderShop() {
+    ensureShopSearchStyles();
     const shopContainer = document.getElementById('shop-container');
     if (!shopContainer || typeof shopDB === 'undefined') return;
 
-    // Inyectar botón de alternar Cuadrícula / Lista en el encabezado de la Tienda si no existe
     let shopHeader = document.querySelector('#tab-shop .section-header');
     if (shopHeader && !document.getElementById('btn-shop-view-mode')) {
+        let btnGroup = document.createElement('div');
+        btnGroup.style.cssText = 'display:flex; gap:6px; align-items:center;';
+
+        let searchBtn = document.createElement('button');
+        searchBtn.id = 'btn-shop-search';
+        searchBtn.className = 'btn btn-blue';
+        searchBtn.style.cssText = 'padding:5px 9px; font-size:0.75em;';
+        searchBtn.innerHTML = '🔍';
+        searchBtn.onclick = toggleShopSearchBar;
+
         let toggleBtn = document.createElement('button');
         toggleBtn.id = 'btn-shop-view-mode';
         toggleBtn.className = 'btn btn-blue';
         toggleBtn.style.cssText = 'padding:5px 10px; font-size:0.72em;';
         toggleBtn.onclick = toggleShopViewMode;
-        shopHeader.appendChild(toggleBtn);
+
+        btnGroup.appendChild(searchBtn);
+        btnGroup.appendChild(toggleBtn);
+        shopHeader.appendChild(btnGroup);
+
+        let searchWrap = document.createElement('div');
+        searchWrap.id = 'shop-search-wrap';
+        searchWrap.style.display = 'none';
+        searchWrap.innerHTML = `
+            <div style="display:flex; gap:6px; align-items:center;">
+                <input type="text" id="shop-search-input" class="input-dark" style="margin:0; padding:10px 12px; font-size:0.95em; border-color:#38bdf8;" placeholder="🔍 Escribe clave (cm, sp, llave, gratis)..."
+                    onfocus="document.body.classList.add('keyboard-search-mode')"
+                    onblur="setTimeout(()=>document.body.classList.remove('keyboard-search-mode'), 180)"
+                    oninput="onShopSearchInput(this.value)">
+                <button class="btn btn-red" style="padding:10px 12px; font-size:0.8em;" onclick="toggleShopSearchBar()">✕</button>
+            </div>
+        `;
+        shopHeader.parentNode.insertBefore(searchWrap, shopHeader.nextSibling);
     }
+
     let btnMode = document.getElementById('btn-shop-view-mode');
     if (btnMode) {
         btnMode.innerText = isShopListView ? '⊞ Vista Iconos' : '☰ Vista Lista';
@@ -383,23 +464,43 @@ function renderShop() {
     shopContainer.innerHTML = '';
     shopContainer.className = isShopListView ? 'shop-list-view' : 'minecraft-grid';
 
-    let items = shopDB.filter(i => i.cat === currentShopCat);
+    // Si hay texto en el buscador, busca en TODAS las categorías de la tienda por palabra clave
+    let items = [];
+    if (shopSearchQuery.length > 0) {
+        items = shopDB.filter(i => {
+            let fullText = `${i.title} ${i.desc} ${i.cat} ${i.rank} ${i.cost === 0 ? 'gratis 0g' : i.cost + 'g'}`.toLowerCase();
+            let relic = getRelicInfo(i.id);
+            if (relic) fullText += ` ${relic.pose || ''} ${relic.silhouette || ''} ${relic.aura || ''} ${relic.passive || ''}`.toLowerCase();
+            return fullText.includes(shopSearchQuery);
+        });
+        if (items.length === 0) {
+            shopContainer.className = '';
+            shopContainer.innerHTML = `<p style="color:var(--text-muted); text-align:center; padding:22px 10px; font-size:0.9em;">No se encontraron artefactos con la clave «<b>${shopSearchQuery}</b>».</p>`;
+            return;
+        }
+    } else {
+        items = shopDB.filter(i => i.cat === currentShopCat);
+    }
 
-    items.forEach(item => {
+items.forEach(item => {
         let isOwned = (item.cat === 'Armería' || item.slot) && isRelicAlreadyOwned(item.id);
         let isCoffeeLocked = (item.id === 'c6') && isCoffeeOnWeeklyCooldown();
-        let canBuy = p.gold >= item.cost && !isOwned && !isCoffeeLocked;
+        let isActionDone = isRealActionDoneToday(item.id);
+        let canBuy = p.gold >= item.cost && !isOwned && !isCoffeeLocked && !isActionDone;
         let icon = getIconFor(item);
+        let costTxt = item.cost === 0 ? 'GRATIS' : `${item.cost}G`;
 
         if (isShopListView) {
             let rightTag = isOwned
                 ? `<span style="color:#94a3b8; font-size:0.72em; font-weight:700; font-family:'Share Tech Mono', monospace;">✓ EN POSESIÓN</span>`
-                : (isCoffeeLocked
-                    ? `<span style="color:var(--danger); font-size:0.7em; font-family:'Share Tech Mono', monospace;">⏳ 1/SEMANA</span>`
-                    : `<span style="color:var(--text-gold); font-weight:700; font-family:'Share Tech Mono', monospace;">🪙 ${item.cost}G</span>`);
+                : (isActionDone
+                    ? `<span style="color:var(--success); font-size:0.72em; font-family:'Share Tech Mono', monospace;">✓ HECHO HOY</span>`
+                    : (isCoffeeLocked
+                        ? `<span style="color:var(--danger); font-size:0.7em; font-family:'Share Tech Mono', monospace;">⏳ 1/SEMANA</span>`
+                        : `<span style="color:${item.cost === 0 ? 'var(--success)' : 'var(--text-gold)'}; font-weight:700; font-family:'Share Tech Mono', monospace;">${item.cost === 0 ? '⚡ GRATIS' : '🪙 ' + costTxt}</span>`));
 
             shopContainer.innerHTML += `
-            <div class="card rank-${item.rank}" style="padding:12px 14px; margin-bottom:8px; opacity:${(isOwned || isCoffeeLocked) ? '0.45' : (canBuy ? '1' : '0.65')}; filter:${isOwned ? 'grayscale(90%)' : 'none'}; cursor:pointer;" onclick="inspectShopItem('${item.id}')">
+            <div class="card rank-${item.rank}" style="padding:12px 14px; margin-bottom:8px; opacity:${(isOwned || isCoffeeLocked || isActionDone) ? '0.45' : (canBuy ? '1' : '0.65')}; filter:${isOwned ? 'grayscale(90%)' : 'none'}; cursor:pointer;" onclick="inspectShopItem('${item.id}')">
                 <div style="display:flex; align-items:center; gap:12px; width:100%;">
                     <div style="font-size:1.65em; flex-shrink:0; width:36px; text-align:center;">${icon}</div>
                     <div style="flex:1; min-width:0;">
@@ -412,14 +513,15 @@ function renderShop() {
                 </div>
             </div>`;
         } else {
-            let opacity = (isOwned || isCoffeeLocked) ? '0.35' : (canBuy ? '1' : '0.45');
+            let opacity = (isOwned || isCoffeeLocked || isActionDone) ? '0.35' : (canBuy ? '1' : '0.45');
             let grayFilter = isOwned ? 'filter:grayscale(100%);' : '';
-            let priceLabel = isOwned ? 'POSEÍDO' : (isCoffeeLocked ? '7 DÍAS' : `${item.cost}G`);
+            let priceLabel = isOwned ? 'POSEÍDO' : (isActionDone ? 'HECHO' : (isCoffeeLocked ? '7 DÍAS' : costTxt));
+            let priceColor = isOwned ? 'color:#94a3b8;' : (item.cost === 0 && !isActionDone ? 'color:var(--success);' : '');
 
             shopContainer.innerHTML += `
             <div class="grid-slot rank-${item.rank}" style="opacity:${opacity}; ${grayFilter}" onclick="inspectShopItem('${item.id}')">
                 <div class="slot-icon">${icon}</div>
-                <div class="slot-price" style="${isOwned ? 'color:#94a3b8;' : ''}">${priceLabel}</div>
+                <div class="slot-price" style="${priceColor}">${priceLabel}</div>
             </div>`;
         }
     });
@@ -647,14 +749,25 @@ function inspectShopItem(id) {
         btnSoltar.onclick = () => closeModal('inspect-modal');
     }
 
-    let isOwned = (item.cat === 'Armería' || item.slot) && isRelicAlreadyOwned(item.id);
+let isOwned = (item.cat === 'Armería' || item.slot) && isRelicAlreadyOwned(item.id);
     let isCoffeeLocked = (item.id === 'c6') && isCoffeeOnWeeklyCooldown();
+    let isActionDone = isRealActionDoneToday(item.id);
+
+    if (item.cost === 0) {
+        priceEl.innerText = `MICRO-MISIÓN FÍSICA // COSTO: 0 G (1 POR DÍA)`;
+        priceEl.style.color = '#00ffcc';
+    }
 
     if (isOwned) {
         btnUsar.innerText = "Ya tienes este objeto";
         btnUsar.className = "btn btn-blue";
         btnUsar.style.opacity = "0.55";
         btnUsar.onclick = () => { systemNotify("Ya posees esta reliquia en tu Bolsa o Ranura Equipada.", "info"); };
+    } else if (isActionDone) {
+        btnUsar.innerText = "Completado Hoy (1/Día)";
+        btnUsar.className = "btn btn-blue";
+        btnUsar.style.opacity = "0.55";
+        btnUsar.onclick = () => { systemNotify("✅ Ya reclamaste esta micro-misión de acción real hoy. Vuelve mañana.", "info"); };
     } else if (isCoffeeLocked) {
         let daysLeft = Math.ceil(((7 * 24 * 3600000) - (Date.now() - p.lastCoffeeBoughtAt)) / (24 * 3600000));
         btnUsar.innerText = `Enfriamiento (${daysLeft}d)`;
@@ -662,7 +775,7 @@ function inspectShopItem(id) {
         btnUsar.style.opacity = "0.6";
         btnUsar.onclick = () => { systemNotify(`☕ Límite semanal: Solo puedes comprar 1 Café de Medianoche por semana (Faltan ${daysLeft} días).`, "danger"); };
     } else if (p.gold >= item.cost) {
-        btnUsar.innerText = "Sellar Compra";
+        btnUsar.innerText = item.cost === 0 ? "⚡ Reclamar Micro-Misión" : "Sellar Compra";
         btnUsar.className = "btn btn-main";
         btnUsar.style.opacity = "1";
         btnUsar.onclick = () => { 
@@ -687,6 +800,9 @@ function buyItem(itemId) {
     if ((item.cat === 'Armería' || item.slot) && isRelicAlreadyOwned(item.id)) {
         return systemNotify("Ya tienes este objeto en tu poder.", "info");
     }
+    if (isRealActionDoneToday(item.id)) {
+        return systemNotify("✅ Ya reclamaste esta micro-misión física hoy.", "info");
+    }
     if (item.id === 'c6' && isCoffeeOnWeeklyCooldown()) {
         return systemNotify("☕ Solo puedes adquirir 1 Café Expreso de Medianoche por semana.", "danger");
     }
@@ -694,6 +810,14 @@ function buyItem(itemId) {
     if (p.gold >= item.cost) {
         p.gold -= item.cost;
         if (item.id === 'c6') p.lastCoffeeBoughtAt = Date.now();
+        if (REAL_ACTION_IDS.includes(item.id)) {
+            let todayKey = new Date().toDateString();
+            if (p.realActionsDay !== todayKey) {
+                p.realActionsDay = todayKey;
+                p.realActionsClaimed = [];
+            }
+            p.realActionsClaimed.push(item.id);
+        }
         
         if (item.keyRank) {
             if (!p.dungeonKeys) p.dungeonKeys = { rankE: 0, rankD: 0, rankC: 0, rankB: 0, rankA: 0, rankS: 0, rankSSS: 0 };
@@ -711,7 +835,6 @@ function buyItem(itemId) {
         renderInventory();
     }
 }
-
 /* ==========================================================================
    4. RENDERIZADO DE LA BOLSA DIMENSIONAL (CON AGRUPACIÓN AUTOMÁTICA x2, x3)
    ========================================================================== */
@@ -794,6 +917,7 @@ function renderInventory() {
     let btnSoltar = document.getElementById('inspect-cancel-btn') || btnUsar.previousElementSibling;
 
     btnUsar.className = "btn btn-main";
+    btnUsar.style.opacity = "1";
     if (item.cat === 'Armería' || item.slot) {
         btnUsar.innerText = "⚔️ Equipar Reliquia";
     } else if (item.type === 'box') {

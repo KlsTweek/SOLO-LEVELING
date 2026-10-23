@@ -413,8 +413,10 @@ function checkDaily(forcedDayStr = null) {
                 type: "box" 
             });
 
-            // Entregar 2 Sellos de Exención Laboral cada Domingo para tus semanas de 3 o 4 días de trabajo
-            for (let k = 0; k < 2; k++) {
+// Entregar hasta 2 Sellos de Exención Laboral cada Domingo (Tope máximo acumulable en bolsa: 3)
+            let currentPasses = p.inventory.filter(i => i.id === "work_pass").length;
+            let passesToGive = Math.max(0, Math.min(2, 3 - currentPasses));
+            for (let k = 0; k < passesToGive; k++) {
                 p.inventory.push({
                     id: "work_pass",
                     icon: "🎫",
@@ -981,7 +983,11 @@ function initializeSystem() {
         p.isInit = true; 
         saveData();
     }
-    
+    if (p.inventory) {
+        p.inventory.forEach(it => {
+            if (it.id === "lunch_ticket") it.desc = "Regenera 40 SP de forma pausada. Válido únicamente de 11:15 AM a 2:00 PM.";
+        });
+    }
         migrateToManhwaXpCurve();
     checkDaily();
 
@@ -1860,7 +1866,7 @@ function triggerArenaChoreography(forcedActor = null) {
     let unitEl = document.getElementById(`arena-unit-${pick}`);
 
     let wMeta = (typeof getRelicInfo === "function" && wId) ? getRelicInfo(wId) : null;
-    let hunterLabel = wMeta && wMeta.pose ? `🗡️ ${wMeta.pose.toUpperCase()}` : '🗡️ DANZA DE DAGAS DEL MONARCA';
+    let hunterLabel = wMeta && wMeta.pose ? `🗡️ ${wMeta.pose.toUpperCase()}` : '🗡️ Golpe seco';
 
     const choreographies = {
         'hunter': { anim: (wId === 'eq_w_bow' || wId === 'eq_w_kargalgan') ? 'anim-ranged-steady' : 'anim-lunge-slash', label: hunterLabel },
@@ -2228,12 +2234,12 @@ function unlockArcProtocol(arcId) {
 }
 
 function _evalArcTabHook(tab, idx) {
-    if (tab === 'gacha' && Math.random() < 0.08) {
+    if (tab === 'gacha' && Math.random() < 0.015) {
         let maxMP = p.stats ? Math.floor(1000 + ((p.stats.int - 1) * 1000)) : 1000;
         p.mp = Math.min(maxMP, (p.mp || 0) + 25);
         unlockArcProtocol("arc_01");
         systemNotify("🔮 Eco del Santuario (Protocolo 01): El Trono de Sombras resonó otorgándote +25 MP.", "purple");
-    } else if (tab === 'shop' && Math.random() < 0.06) {
+    } else if (tab === 'shop' && Math.random() < 0.01) {
         p._arcGildedUntil = Date.now() + 1800000;
         unlockArcProtocol("arc_02");
         systemNotify("🌟 El Arquitecto ilumina el mercado: Las comisiones de oro se anulan por 30 min.", "gold");
@@ -2242,7 +2248,7 @@ function _evalArcTabHook(tab, idx) {
 
 function _evalArcMpZeroHook() {
     if (!p._arcFlags) p._arcFlags = {};
-    if (!p._arcFlags.mpZeroTriggered && Math.random() < 0.45) {
+    if (!p._arcFlags.mpZeroTriggered && Math.random() < 0.10) {
         p._arcFlags.mpZeroTriggered = true;
         p.mp = 150;
         unlockArcProtocol("arc_03");
@@ -2262,7 +2268,7 @@ function _evalArcTickHook(now, h, m) {
 }
 
 function _evalArcDeployHook(m) {
-    if (m.id.includes('traffic') && Math.random() < 0.15) {
+    if (m.id.includes('traffic') && Math.random() < 0.02) {
         p._arcFreeGateUntil = Date.now() + 3600000;
         unlockArcProtocol("arc_05");
         systemNotify("📡 Sintonizador Anómalo: Una grieta secreta ha revelado coordenadas libres por 1 Hora.", "gold");
@@ -2272,7 +2278,7 @@ function _evalArcDeployHook(m) {
 function _evalArcRadarScan() {
     let todayKey = new Date().toDateString();
     if (p._arcRadarDay === todayKey) return;
-    if (Math.random() < 0.10) {
+    if (Math.random() < 0.02) {
         p._arcRadarDay = todayKey;
         p.gold += 75;
         unlockArcProtocol("arc_06");
@@ -2293,12 +2299,12 @@ function _evalArcAriseFail() {
 }
 
 function _evalArcSealHook(isCrit, reward) {
-    if (isCrit && Math.random() < 0.12) {
+    if (isCrit && Math.random() < 0.02) {
         p._arcPrismUntil = Date.now() + 3600000;
         unlockArcProtocol("arc_08");
         systemNotify("💎 Sincronización Prismática (Caja Negra): Refracción de alma activa. EXP x1.5 por 1 Hora.", "gold");
     }
-    if (reward && reward.type === 'study' && Math.random() < 0.20) {
+    if (reward && reward.type === 'study' && Math.random() < 0.03) {
         p._arcOverdriveUntil = Date.now() + 3600000;
         unlockArcProtocol("arc_09");
         systemNotify("🧠 Sinapsis Acelerada (Caja Negra): Enfoque absoluto. SP gratuito para misiones por 1 Hora.", "purple");
@@ -2307,7 +2313,7 @@ function _evalArcSealHook(isCrit, reward) {
 
 function _evalArcDeathIntercept(reason, source) {
     let now = Date.now();
-    if (!p._arcFlags.eclipseUsed && Math.random() < 0.25 && source === 'dungeon') {
+    if (!p._arcFlags.eclipseUsed && Math.random() < 0.08 && source === 'dungeon') {
         p._arcFlags.eclipseUsed = true;
         p._arcEclipseActive = now + 900000;
         p.hp = 50;
@@ -2320,13 +2326,27 @@ function _evalArcDeathIntercept(reason, source) {
 
 function _evalArcPulseClick() {
     let now = Date.now();
+    let todayKey = new Date().toDateString();
+    if (!p._arcFlags) p._arcFlags = {};
     if (!p._arcFlags.pulseClicks) p._arcFlags.pulseClicks = 0;
     p._arcFlags.pulseClicks++;
-    if (p._arcFlags.pulseClicks >= 7) {
+
+    let alreadyUsedToday = (p._arcPulseDay === todayKey);
+    let requiredClicks = alreadyUsedToday ? 75 : 7;
+
+    if (p._arcFlags.pulseClicks >= requiredClicks) {
         p._arcFlags.pulseClicks = 0;
+        if (alreadyUsedToday) {
+            systemNotify("🔒 Pulso del Arquitecto en enfriamiento (75 toques): La Tesorería solo puede abrirse 1 vez al día. Vuelve mañana.", "info");
+            return;
+        }
+        p._arcPulseDay = todayKey;
         p._arcGildedUntil = now + 3600000;
         unlockArcProtocol("arc_11");
-        systemNotify("💠 Pulso del Arquitecto desbloqueado: Tesorería abierta por 1 Hora.", "purple");
+        saveData();
+        if (typeof updateHUD === "function") updateHUD();
+        if (typeof renderRoutine === "function") renderRoutine();
+        systemNotify("💠 Pulso del Arquitecto desbloqueado (1/Día): Tesorería abierta por 1 Hora.", "purple");
     }
 }
 
@@ -2348,13 +2368,12 @@ function _evalArcInfantryFull() {
 
 function _evalArcCalendarHook() {
     let nowMs = Date.now();
-    if (Math.random() < 0.03) {
+    if (Math.random() < 0.015) {
         p._arcPrismUntil = nowMs + 1800000;
         unlockArcProtocol("arc_13");
         systemNotify("🌟 Anomalía Temporal del Calendario: El Sistema te otorga 30 min de bendición prismática.", "gold");
     }
 }
-
 const PASSIVE_TITLES_DB = [
     {
         id: "t_adversity",
