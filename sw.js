@@ -1,7 +1,7 @@
 /* ==========================================================================
    SW.JS - SERVICE WORKER 100% OFFLINE (MODO NATIVO)
    ========================================================================== */
-const CACHE_NAME = 'monarch-domain-v4.9';
+const CACHE_NAME = 'monarch-domain-v5.0';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
