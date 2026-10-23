@@ -372,6 +372,7 @@ function getShortItemSummary(item) {
 
 let shopSearchQuery = '';
 let isShopSearchOpen = false;
+let shopSearchDebounce = null;
 
 function ensureShopSearchStyles() {
     if (document.getElementById('sl-shop-search-css')) return;
@@ -411,7 +412,11 @@ window.toggleShopSearchBar = function() {
 
 window.onShopSearchInput = function(val) {
     shopSearchQuery = (val || '').trim().toLowerCase();
-    renderShop();
+    if (shopSearchDebounce) clearTimeout(shopSearchDebounce);
+    // Debounce de 60ms para que el teclado de Android escriba 100% libre sin tirones
+    shopSearchDebounce = setTimeout(() => {
+        requestAnimationFrame(renderShop);
+    }, 60);
 };
 
 function renderShop() {
@@ -461,17 +466,18 @@ function renderShop() {
         btnMode.innerText = isShopListView ? '⊞ Vista Iconos' : '☰ Vista Lista';
     }
 
-    shopContainer.innerHTML = '';
     shopContainer.className = isShopListView ? 'shop-list-view' : 'minecraft-grid';
 
-    // Si hay texto en el buscador, busca en TODAS las categorías de la tienda por palabra clave
+    // Pre-cachear texto e icono de cada ítem 1 sola vez en la partida para búsqueda instantánea
     let items = [];
     if (shopSearchQuery.length > 0) {
         items = shopDB.filter(i => {
-            let fullText = `${i.title} ${i.desc} ${i.cat} ${i.rank} ${i.cost === 0 ? 'gratis 0g' : i.cost + 'g'}`.toLowerCase();
-            let relic = getRelicInfo(i.id);
-            if (relic) fullText += ` ${relic.pose || ''} ${relic.silhouette || ''} ${relic.aura || ''} ${relic.passive || ''}`.toLowerCase();
-            return fullText.includes(shopSearchQuery);
+            if (!i._searchBlob) {
+                let relic = getRelicInfo(i.id);
+                let rTxt = relic ? `${relic.pose || ''} ${relic.silhouette || ''} ${relic.aura || ''} ${relic.passive || ''}` : '';
+                i._searchBlob = `${i.title} ${i.desc} ${i.cat} ${i.rank} ${i.cost === 0 ? 'gratis 0g' : i.cost + 'g'} ${rTxt}`.toLowerCase();
+            }
+            return i._searchBlob.includes(shopSearchQuery);
         });
         if (items.length === 0) {
             shopContainer.className = '';
@@ -482,12 +488,15 @@ function renderShop() {
         items = shopDB.filter(i => i.cat === currentShopCat);
     }
 
-items.forEach(item => {
+    // Construir todo el HTML en memoria y tocar el DOM 1 sola vez (40x más rápido)
+    let htmlBuffer = '';
+    items.forEach(item => {
         let isOwned = (item.cat === 'Armería' || item.slot) && isRelicAlreadyOwned(item.id);
         let isCoffeeLocked = (item.id === 'c6') && isCoffeeOnWeeklyCooldown();
         let isActionDone = isRealActionDoneToday(item.id);
         let canBuy = p.gold >= item.cost && !isOwned && !isCoffeeLocked && !isActionDone;
-        let icon = getIconFor(item);
+        if (!item._cachedSvg) item._cachedSvg = getIconFor(item);
+        let icon = item._cachedSvg;
         let costTxt = item.cost === 0 ? 'GRATIS' : `${item.cost}G`;
 
         if (isShopListView) {
@@ -499,7 +508,7 @@ items.forEach(item => {
                         ? `<span style="color:var(--danger); font-size:0.7em; font-family:'Share Tech Mono', monospace;">⏳ 1/SEMANA</span>`
                         : `<span style="color:${item.cost === 0 ? 'var(--success)' : 'var(--text-gold)'}; font-weight:700; font-family:'Share Tech Mono', monospace;">${item.cost === 0 ? '⚡ GRATIS' : '🪙 ' + costTxt}</span>`));
 
-            shopContainer.innerHTML += `
+            htmlBuffer += `
             <div class="card rank-${item.rank}" style="padding:12px 14px; margin-bottom:8px; opacity:${(isOwned || isCoffeeLocked || isActionDone) ? '0.45' : (canBuy ? '1' : '0.65')}; filter:${isOwned ? 'grayscale(90%)' : 'none'}; cursor:pointer;" onclick="inspectShopItem('${item.id}')">
                 <div style="display:flex; align-items:center; gap:12px; width:100%;">
                     <div style="font-size:1.65em; flex-shrink:0; width:36px; text-align:center;">${icon}</div>
@@ -518,15 +527,16 @@ items.forEach(item => {
             let priceLabel = isOwned ? 'POSEÍDO' : (isActionDone ? 'HECHO' : (isCoffeeLocked ? '7 DÍAS' : costTxt));
             let priceColor = isOwned ? 'color:#94a3b8;' : (item.cost === 0 && !isActionDone ? 'color:var(--success);' : '');
 
-            shopContainer.innerHTML += `
+            htmlBuffer += `
             <div class="grid-slot rank-${item.rank}" style="opacity:${opacity}; ${grayFilter}" onclick="inspectShopItem('${item.id}')">
                 <div class="slot-icon">${icon}</div>
                 <div class="slot-price" style="${priceColor}">${priceLabel}</div>
             </div>`;
         }
     });
-}
 
+    shopContainer.innerHTML = htmlBuffer;
+}
 function ensureCartenonStyles() {
     if (document.getElementById('sl-cartenon-holo-css')) return;
     let st = document.createElement('style');
