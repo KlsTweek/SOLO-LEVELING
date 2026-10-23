@@ -87,6 +87,13 @@ function getEffectiveMissionGoldReward(m) {
 
     return netGold;
 }
+
+let selectedRoutineMissionId = null;
+
+window.toggleMissionCardSelect = function(id) {
+    selectedRoutineMissionId = (selectedRoutineMissionId === id) ? null : id;
+    renderRoutine();
+};
 function renderRoutine() {
     if (!p) return;
 
@@ -172,14 +179,24 @@ function renderRoutine() {
         </div>`;
     }
 
-    let todayMissions = getTodayMissions();
+let todayMissions = getTodayMissions();
     if (!p.completedToday) p.completedToday = [];
     if (!p.activeMissions) p.activeMissions = {};
 
-    todayMissions.forEach(m => {
-        if (p.completedToday.includes(m.id)) return;
+    // Auto-ordenar: Las misiones en ejecución suben siempre al 1er puesto (ordenadas por cuál iniciaste primero)
+    let pendingMissions = todayMissions.filter(m => !p.completedToday.includes(m.id));
+    pendingMissions.sort((a, b) => {
+        let aAct = !!p.activeMissions[a.id];
+        let bAct = !!p.activeMissions[b.id];
+        if (aAct && !bAct) return -1;
+        if (!aAct && bAct) return 1;
+        if (aAct && bAct) return p.activeMissions[a.id] - p.activeMissions[b.id];
+        return 0;
+    });
 
+    pendingMissions.forEach(m => {
         let isActive = !!p.activeMissions[m.id];
+        let isSelected = (selectedRoutineMissionId === m.id);
         let tagLabel = m.type === 'main' ? 'PRINCIPAL' : 'PARALELA';
         let tagClass = m.type === 'main' ? 'exclusive' : 'parallel';
         let rClass = `rank-${m.rank || 'B'}`;
@@ -198,12 +215,17 @@ function renderRoutine() {
             elapsedText = `<span id="mission-live-timer-${m.id}" style="color:${colorTimer}; font-size:0.75em; font-family:'Share Tech Mono', monospace;">${labelTimer}</span>`;
         }
 
-        let btnHtml = isActive 
-            ? `<button class="btn btn-gold" style="width: 100%; margin-top: 12px;" onclick="finishRoutineMission('${m.id}')">⚔️ SELLAR MISIÓN (${m.mins}m)</button>`
-            : `<button class="btn btn-main" style="width: 100%; margin-top: 12px;" onclick="deployRoutineMission('${m.id}')">DESPLEGAR (${m.mins}m)</button>`;
+        // Mostrar botón solo si la misión ya está activa o si el jugador tocó esta tarjeta
+        let showActionBtn = isActive || isSelected;
+        let btnHtml = '';
+        if (showActionBtn) {
+            btnHtml = isActive 
+                ? `<button class="btn btn-gold" style="width: 100%; margin-top: 12px; animation: popIn 0.2s ease-out;" onclick="event.stopPropagation(); finishRoutineMission('${m.id}')">⚔️ SELLAR MISIÓN (${m.mins}m)</button>`
+                : `<button class="btn btn-main" style="width: 100%; margin-top: 12px; animation: popIn 0.2s ease-out;" onclick="event.stopPropagation(); selectedRoutineMissionId = null; deployRoutineMission('${m.id}')">DESPLEGAR (${m.mins}m)</button>`;
+        }
 
         html += `
-        <div class="card ${isActive ? 'active-task' : ''} ${rClass}" style="flex-direction: column; align-items: flex-start;">
+        <div class="card ${isActive ? 'active-task' : ''} ${rClass}" style="flex-direction: column; align-items: flex-start; cursor: pointer;" onclick="toggleMissionCardSelect('${m.id}')">
             <div class="card-body" style="width: 100%; padding-right: 0;">
                 <div class="card-title">
                     <span>${m.title}</span>
@@ -211,16 +233,16 @@ function renderRoutine() {
                     ${elapsedText}
                 </div>
                 <div class="card-desc">${m.desc}</div>
-<div class="card-rewards">
+                <div class="card-rewards">
                     <span class="r-xp">+${m.xp} XP</span>
                     <span class="r-gold">+${getEffectiveMissionGoldReward(m)} G</span>
                     <span class="r-sp">-${getEffectiveMissionSpCost(m)} SP</span>
                     <span class="r-stat">+${(m.mins && m.mins >= 40) ? 65 : 45} MP</span>
                 </div>
+                ${btnHtml}
             </div>
         </div>`;
     });
-
     routContainer.innerHTML = html;
 }
 
