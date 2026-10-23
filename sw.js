@@ -1,33 +1,29 @@
 /* ==========================================================================
-   SW.JS - SERVICE WORKER 100% OFFLINE (MODO NATIVO)
+   SW.JS - SERVICE WORKER V5.1 COMPATIBLE CON VERCEL Y WEBAPK ANDROID
    ========================================================================== */
-const CACHE_NAME = 'monarch-domain-v5.0';
+const CACHE_NAME = 'monarch-domain-v5.1';
 const ASSETS_TO_CACHE = [
-  './',
-  './index.html',
-  './style.css',
-  './manifest.json',
-  './icon-192.png',
-  './icon-512.png',
-  './js/database.js',
-  './js/dialogues.js',
-  './js/core.js',
-  './js/combat.js',
-  './js/events.js',
-  './js/inventory.js',
-  './js/missions.js',
-  './js/ui.js'
+  '/',
+  '/index.html',
+  '/style.css',
+  '/manifest.json',
+  '/js/database.js',
+  '/js/dialogues.js',
+  '/js/core.js',
+  '/js/combat.js',
+  '/js/events.js',
+  '/js/inventory.js',
+  '/js/missions.js',
+  '/js/ui.js'
 ];
 
-// Chrome rechaza servir una respuesta "redirigida" a una navegación.
-// Vercel redirige /index.html -> / (cleanUrls), así que hay que "limpiarla".
 async function cleanResponse(res) {
-  if (!res.redirected) return res;
+  if (!res || !res.redirected) return res;
   const body = await res.blob();
   return new Response(body, {
     status: res.status,
     statusText: res.statusText,
-    headers: res.headers
+    headers: new Headers(res.headers)
   });
 }
 
@@ -39,7 +35,9 @@ self.addEventListener('install', (event) => {
         ASSETS_TO_CACHE.map((url) =>
           fetch(url, { cache: 'reload' })
             .then(async (res) => {
-              if (res.ok) return cache.put(url, await cleanResponse(res));
+              if (res && res.ok) {
+                await cache.put(url, await cleanResponse(res));
+              }
             })
             .catch(() => {})
         )
@@ -62,36 +60,32 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
   event.respondWith(
-    caches.match(event.request, { ignoreSearch: true }).then((cachedResponse) => {
-      if (cachedResponse) {
-        // Actualiza en segundo plano si hay internet, pero sirve desde caché al instante
-        fetch(event.request)
-          .then(async (networkResponse) => {
-            if (networkResponse && networkResponse.status === 200) {
-              const clean = await cleanResponse(networkResponse);
-              const cache = await caches.open(CACHE_NAME);
-              cache.put(event.request, clean);
-            }
-          })
-          .catch(() => {});
-        return cachedResponse;
-      }
+    (async () => {
+      const cache = await caches.open(CACHE_NAME);
+      const cached = await cache.match(event.request, { ignoreSearch: true });
 
-      return fetch(event.request)
-        .then(async (networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            const clean = await cleanResponse(networkResponse);
-            const clone = clean.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+      const networkFetch = fetch(event.request)
+        .then(async (res) => {
+          if (res && res.status === 200) {
+            const clean = await cleanResponse(res);
+            cache.put(event.request, clean.clone());
             return clean;
           }
-          return networkResponse;
+          return res;
         })
-        .catch(() => {
-          if (event.request.mode === 'navigate') {
-            return caches.match('./index.html');
-          }
-        });
-    })
+        .catch(() => null);
+
+      if (cached) {
+        return cached;
+      }
+
+      const netRes = await networkFetch;
+      if (netRes) return netRes;
+
+      if (event.request.mode === 'navigate') {
+        return (await cache.match('/index.html')) || (await cache.match('/'));
+      }
+      return new Response('Offline', { status: 503 });
+    })()
   );
 });
