@@ -720,9 +720,7 @@ function formatCartenonDesc(text) {
 
 function buildCartenonInspectorHTML(item, count = 1) {
     ensureCartenonStyles();
-    if (count === 1 && item._cachedInspectorHtml) {
-        return item._cachedInspectorHtml;
-    }
+    // Genera siempre el icono actualizado en tiempo real
 
     let catLabel = item.cat || (item.slot ? "Armería" : (item.type === "loot" ? "Botín" : (item.type === "box" ? "Cofre" : "Consumible")));
     let rankLabel = item.rank || "A";
