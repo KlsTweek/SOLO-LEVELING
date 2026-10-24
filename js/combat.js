@@ -76,9 +76,9 @@ const COMMANDERS_META = {
 const INFANTRY_META = {
     soldiers: { id: 'soldiers', name: 'Soldados de Sombra', icon: '🗡️', cost: 1, max: 25, desc: 'Reduce en -1% la probabilidad de que tus ítems se rompan al morir (Máx 25).' },
     mages:    { id: 'mages',    name: 'Magos de Sombra',    icon: '🔮', cost: 2, max: 20, desc: 'Cada mago regenera +4 MP por minuto de forma pasiva para sostener a tus comandantes.' },
-    bears:    { id: 'bears',    name: 'Osos de Hielo Menores', icon: '🐾', cost: 2, max: 15, desc: 'Aumenta tu Vida Máxima (Max HP) base en +5 HP por cada oso reclutado.' },
+    bears:    { id: 'bears',    name: 'Osos de Hielo', icon: '🐾', cost: 2, max: 15, desc: 'Aumenta tu Vida Máxima (Max HP) base en +5 HP por cada oso reclutado.' },
     orcs:     { id: 'orcs',     name: 'Guerreros Altos Orcos', icon: '👹', cost: 3, max: 15, desc: 'Aumenta en +3 G el oro base ganado en misiones físicas (STR).' },
-    ants:     { id: 'ants',     name: 'Hormigas Soldado (Jeju)', icon: '🐜', cost: 3, max: 25, desc: 'Cada 5 hormigas reducen en -1 SP el costo de Zona Limpia y Ruta Los Chorros.' }
+    ants:     { id: 'ants',     name: 'Hormigas de Jeju', icon: '🐜', cost: 3, max: 25, desc: 'Cada 5 hormigas reducen en -1 SP el costo de Zona Limpia y Ruta Los Chorros.' }
 };
 
 let currentShowcaseCmd = 'igris';
