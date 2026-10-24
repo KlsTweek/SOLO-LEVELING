@@ -1057,6 +1057,16 @@ let copperFocusMult = (pendingReward.type === 'study' && accId === "eq_acc_coppe
         finalGold += Math.floor(p.infantry.orcs * orcMult);
     }
     if (pendingReward.id && pendingReward.id.includes('traffic') && aId === "eq_a_serpento") {
+    if (pendingReward.id === 'm_traffic_ida') {
+                p.chorrosIdaFinishedAt = Date.now();
+                saveData();
+                setTimeout(() => {
+                    if (typeof renderRoutine === "function") renderRoutine();
+                    if (typeof systemNotify === "function") {
+                        systemNotify("🛣️ Ruta Los Chorros (Retorno) ya está disponible en tu Tablón para tu viaje de regreso.", "info");
+                    }
+                }, 30100);
+            }
         finalGold += 15;
     }
     if (pendingReward.type === 'routine' && accId === "eq_acc_silver") {
@@ -1134,7 +1144,8 @@ let copperFocusMult = (pendingReward.type === 'study' && accId === "eq_acc_coppe
             }
             p.chorrosDailyCount = (p.chorrosDailyCount || 0) + 1;
 
-            if (p.chorrosDailyCount === 2) {
+if (p.chorrosDailyCount >= 4) {
+                p.chorros4Unlocked = true;
                 p.fallenSoulsPendingNextLvl = true;
                 p.arcticShield = (p.arcticShield || 0) + 80;
                 p.sp = 100;
@@ -1145,7 +1156,7 @@ let copperFocusMult = (pendingReward.type === 'study' && accId === "eq_acc_coppe
                     p.titles.push({
                         id: 'title_fallen_souls',
                         name: '🕊️ Protección de las Almas Caídas',
-                        desc: 'Cruzar dos veces la Ruta Los Chorros en una misma jornada despertó una gracia silenciosa sobre tu camino. «Jehová guardará tu salida y tu entrada desde ahora y para siempre» (Salmos 121:8).'
+                        desc: 'Cruzar cuatro veces la Ruta Los Chorros en una misma jornada despertó una gracia silenciosa sobre tu camino. «Jehová guardará tu salida y tu entrada desde ahora y para siempre» (Salmos 121:8).'
                     });
                 }
 
@@ -1516,20 +1527,44 @@ function renderShadowSanctuary() {
     let infCont = document.getElementById('infantry-list-container');
 
     if (infCont) {
-        infCont.innerHTML = '';
+        if (!p.infantryDisabled) p.infantryDisabled = {};
+        let hideTexts = !!p.hideInfantryDescriptions;
+
+        infCont.innerHTML = `
+        <div style="display:flex; justify-content:flex-end; margin-bottom:10px;">
+            <button class="btn btn-blue" style="padding:5px 10px; font-size:0.74em;" onclick="p.hideInfantryDescriptions = !p.hideInfantryDescriptions; saveData(); renderShadowSanctuary();">
+                ${hideTexts ? '👁️ Mostrar Textos de Infantería' : '🙈 Ocultar Textos de Infantería'}
+            </button>
+        </div>`;
+
         Object.keys(INFANTRY_META).forEach(k => {
             let inf = INFANTRY_META[k];
             let count = p.infantry[k] || 0;
+            let isOff = !!p.infantryDisabled[k];
             infCont.innerHTML += `
-            <div class="card rank-B" style="margin-bottom:10px;">
+            <div class="card rank-B" style="margin-bottom:10px; opacity:${isOff ? '0.5' : '1'};">
                 <div class="card-body">
-                    <div class="card-title">${inf.icon} ${inf.name} <span class="card-tag B">${count} / ${inf.max}</span></div>
-                    <div class="card-desc" style="margin-bottom:0;">${inf.desc}</div>
+                    <div class="card-title">
+                        ${inf.icon} ${inf.name} 
+                        <span class="card-tag ${isOff ? 'A' : 'B'}">${count} / ${inf.max} ${isOff ? '(PAUSADO)' : ''}</span>
+                    </div>
+                    ${hideTexts ? '' : `<div class="card-desc" style="margin-bottom:0;">${inf.desc}</div>`}
                 </div>
-                <button class="btn btn-purple" onclick="recruitInfantry('${k}')">+1 (${inf.cost} CM)</button>
+                <div style="display:flex; flex-direction:column; gap:6px;">
+                    <button class="btn btn-purple" style="padding:8px 12px; font-size:0.8em;" onclick="recruitInfantry('${k}')">+1 (${inf.cost} CM)</button>
+                    ${count > 0 ? `<button class="btn ${isOff ? 'btn-green' : 'btn-red'}" style="padding:5px 8px; font-size:0.68em;" onclick="toggleInfantryUnit('${k}')">${isOff ? 'Activar' : 'Desactivar'}</button>` : ''}
+                </div>
             </div>`;
         });
     }
+}
+
+function toggleInfantryUnit(typeKey) {
+    if (!p.infantryDisabled) p.infantryDisabled = {};
+    p.infantryDisabled[typeKey] = !p.infantryDisabled[typeKey];
+    saveData();
+    if (typeof updateHUD === "function") updateHUD();
+    renderShadowSanctuary();
 }
 
 function toggleEquipCommander(cmdId) {
@@ -1891,6 +1926,14 @@ function renderTitles() {
     const cont = document.getElementById('titles-container');
     if (!cont) return;
     ensureShadowStructure();
+
+    // Si aún no se han cumplido las 4 rutas en 1 día, mantener en false y quitar el logro guardado antes con 2
+    if (!p.chorros4Unlocked) {
+        p.fallenSoulsPendingNextLvl = false;
+        if (Array.isArray(p.titles)) {
+            p.titles = p.titles.filter(t => t.id !== 'title_fallen_souls');
+        }
+    }
 
     if (!p.titles || p.titles.length === 0) {
         cont.innerHTML = `<p style="color:var(--text-muted); font-size:0.9em;">Aún no has desbloqueado reliquias de título en tu expediente.</p>`;

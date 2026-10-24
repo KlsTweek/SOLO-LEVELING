@@ -543,18 +543,19 @@ function ensureCartenonStyles() {
     st.id = 'sl-cartenon-holo-css';
     st.innerHTML = `
         #inspect-modal .modal-content {
-            background: 
-                radial-gradient(circle at 20% 25%, rgba(88, 28, 135, 0.28) 0%, transparent 55%),
-                radial-gradient(circle at 80% 70%, rgba(2, 132, 199, 0.22) 0%, transparent 60%),
-                repeating-linear-gradient(0deg, rgba(0, 210, 255, 0.04) 0px, rgba(0, 210, 255, 0.04) 1px, transparent 1px, transparent 18px),
-                repeating-linear-gradient(90deg, rgba(0, 210, 255, 0.04) 0px, rgba(0, 210, 255, 0.04) 1px, transparent 1px, transparent 18px),
-                linear-gradient(180deg, #030714 0%, #050b1e 50%, #02050f 100%) !important;
-            border: 1.5px solid rgba(125, 211, 252, 0.75) !important;
-            box-shadow: 0 0 35px rgba(0, 195, 255, 0.35), inset 0 0 40px rgba(0, 140, 255, 0.18) !important;
+            background-color: #030818 !important;
+            background-image: 
+                linear-gradient(rgba(0, 195, 255, 0.045) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 195, 255, 0.045) 1px, transparent 1px),
+                radial-gradient(circle at 50% 42%, rgba(20, 75, 165, 0.38) 0%, rgba(5, 14, 36, 0.96) 72%, #02050f 100%) !important;
+            background-size: 16px 16px, 16px 16px, 100% 100% !important;
+            border: 1.5px solid #38bdf8 !important;
+            box-shadow: 0 0 32px rgba(0, 195, 255, 0.42), inset 0 0 28px rgba(0, 140, 255, 0.22), 0 12px 40px rgba(0, 0, 0, 0.95) !important;
             padding: 20px 18px !important;
             max-width: 430px !important;
             position: relative;
             overflow: hidden;
+            animation: none !important;
         }
         .ct-circuit-bg {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -566,31 +567,28 @@ function ensureCartenonStyles() {
         }
         .ct-top-row {
             display: grid;
-            grid-template-columns: 112px 1fr;
+            grid-template-columns: 106px 1fr;
             gap: 14px;
             align-items: stretch;
-            margin-bottom: 18px;
+            margin-bottom: 16px;
         }
         .ct-wireframe-box {
-            width: 112px; height: 118px;
+            width: 106px; height: 112px;
             border: 1.5px solid rgba(186, 230, 253, 0.85);
-            background: radial-gradient(circle, rgba(14, 165, 233, 0.16) 0%, rgba(3, 7, 20, 0.85) 80%);
-            box-shadow: 0 0 14px rgba(56, 189, 248, 0.4), inset 0 0 16px rgba(56, 189, 248, 0.22);
+            background: radial-gradient(circle at 50% 50%, rgba(126, 34, 206, 0.34) 0%, rgba(3, 8, 22, 0.96) 78%);
+            box-shadow: none !important;
             display: flex; justify-content: center; align-items: center;
-            padding: 10px; position: relative;
+            padding: 12px; position: relative;
         }
         .ct-wireframe-box::after {
             content: ''; position: absolute; inset: 3px;
-            border: 1px solid rgba(56, 189, 248, 0.28); pointer-events: none;
+            border: 1px solid rgba(56, 189, 248, 0.28);
+            pointer-events: none;
         }
         .ct-wireframe-svg {
             width: 100%; height: 100%;
-            filter: drop-shadow(0 0 5px #ffffff) drop-shadow(2px 0 6px #00d2ff) drop-shadow(-2px 0 6px #9333ea);
-            animation: ctHoloFlicker 3.5s infinite alternate;
-        }
-        @keyframes ctHoloFlicker {
-            0%, 92%, 100% { opacity: 0.96; transform: scale(1); }
-            95% { opacity: 0.78; transform: scale(1.015) skewX(1deg); }
+            overflow: visible;
+            filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.75)) drop-shadow(0 0 10px rgba(0, 210, 255, 0.95)) drop-shadow(0 0 22px rgba(99, 102, 241, 0.85)) !important;
         }
         .ct-right-col {
             display: flex; flex-direction: column; justify-content: space-between; min-width: 0;
@@ -598,8 +596,7 @@ function ensureCartenonStyles() {
         .ct-title-Banner {
             border: 1.5px solid rgba(186, 230, 253, 0.78);
             border-right: none;
-            background: linear-gradient(90deg, rgba(14, 165, 233, 0.18) 0%, rgba(14, 165, 233, 0.02) 100%);
-            box-shadow: -4px 0 14px rgba(56, 189, 248, 0.25), inset 0 0 12px rgba(56, 189, 248, 0.15);
+            background: linear-gradient(90deg, rgba(14, 165, 233, 0.28) 0%, rgba(14, 165, 233, 0.06) 75%, transparent 100%);
             padding: 7px 10px;
             margin-bottom: 10px;
             text-align: left !important;
@@ -607,12 +604,13 @@ function ensureCartenonStyles() {
         .ct-item-label {
             font-family: 'Share Tech Mono', monospace;
             font-size: 0.76em; color: #bae6fd; letter-spacing: 1.5px;
-            text-shadow: 0 0 8px #00d2ff; margin-right: 4px;
+            margin-right: 4px;
+            text-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
         }
         .ct-item-name {
             font-size: 1.15em; font-weight: 700; color: #ffffff;
-            text-shadow: 0 0 10px #ffffff, 0 0 18px #00d2ff;
             letter-spacing: 0.5px; line-height: 1.15;
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.75), 0 0 18px rgba(0, 210, 255, 0.9) !important;
         }
         .ct-submeta-grid {
             display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 10px;
@@ -621,42 +619,41 @@ function ensureCartenonStyles() {
         .ct-meta-lbl {
             font-family: 'Share Tech Mono', monospace;
             font-size: 0.65em; color: #bae6fd; letter-spacing: 1px;
-            text-transform: uppercase;
-            text-shadow: 0 0 6px rgba(0, 210, 255, 0.65);
-            margin-bottom: 3px; white-space: nowrap;
+            text-transform: uppercase; margin-bottom: 3px; white-space: nowrap;
         }
         .ct-meta-val {
             font-family: 'Share Tech Mono', monospace;
             font-size: 1.08em; font-weight: 700; color: #ffffff;
-            text-shadow: 0 0 10px #ffffff, 0 0 16px #00d2ff;
             letter-spacing: 1px;
+            text-shadow: 0 0 8px rgba(255, 255, 255, 0.7), 0 0 16px rgba(56, 189, 248, 0.85) !important;
         }
         .ct-desc-area {
             text-align: left !important;
-            border-top: 1px solid rgba(56, 189, 248, 0.25);
-            padding-top: 14px; margin-top: 4px;
+            border-top: 1px solid rgba(56, 189, 248, 0.28);
+            padding-top: 12px; margin-top: 4px;
         }
         .ct-desc-line {
             font-size: 1.02em; color: #f1f5f9; font-weight: 600;
-            line-height: 1.55; margin-bottom: 8px;
-            text-shadow: 0 0 8px rgba(186, 230, 253, 0.55), 0 0 14px rgba(0, 210, 255, 0.35);
-            letter-spacing: 0.3px;
+            line-height: 1.5; margin-bottom: 7px; letter-spacing: 0.2px;
+            text-shadow: 0 0 7px rgba(186, 230, 253, 0.42) !important;
         }
-        .ct-red-Runic {
-            color: #ff2a55 !important; font-weight: 700;
-            text-shadow: 0 0 10px #ff0044, 0 0 18px rgba(255, 0, 68, 0.8) !important;
+        .ct-red-Runic { 
+            color: #ff2a55 !important; font-weight: 700; 
+            text-shadow: 0 0 8px rgba(255, 42, 85, 0.95), 0 0 18px rgba(244, 63, 94, 0.7) !important;
         }
-        .ct-cyan-Runic {
-            color: #7dd3fc !important; font-weight: 700;
-            text-shadow: 0 0 10px #00d2ff, 0 0 16px rgba(0, 210, 255, 0.7) !important;
+        .ct-cyan-Runic { 
+            color: #7dd3fc !important; font-weight: 700; 
+            text-shadow: 0 0 8px rgba(125, 211, 252, 0.95), 0 0 18px rgba(0, 210, 255, 0.85) !important;
+        }
+        #inspect-price {
+            text-shadow:none !important;
         }
     `;
     document.head.appendChild(st);
 }
-
 function getCartenonWireframeSVG(item) {
-    let rawSvg = getIconFor(item);
-    return rawSvg.replace('class="sl-holo-glyph"', 'class="ct-wireframe-svg"');
+    if (!item._cachedSvg) item._cachedSvg = getIconFor(item);
+    return item._cachedSvg.replace('class="sl-holo-glyph"', 'class="ct-wireframe-svg"');
 }
 
 function formatCartenonDesc(text) {
@@ -667,11 +664,14 @@ function formatCartenonDesc(text) {
 
 function buildCartenonInspectorHTML(item, count = 1) {
     ensureCartenonStyles();
+    if (count === 1 && item._cachedInspectorHtml) {
+        return item._cachedInspectorHtml;
+    }
+
     let catLabel = item.cat || (item.slot ? "Armería" : (item.type === "loot" ? "Botín" : (item.type === "box" ? "Cofre" : "Consumible")));
     let rankLabel = item.rank || "A";
     let stackTag = count > 1 ? ` <span class="ct-cyan-Runic">(x${count})</span>` : '';
 
-    // Dividir la descripción en oraciones separadas como en la referencia del anime
     let rawSentences = (item.desc || "").split(/(?<=\.)\s+/);
     let paragraphsHtml = rawSentences.map(s => `<div class="ct-desc-line">${formatCartenonDesc(s)}</div>`).join('');
 
@@ -691,7 +691,7 @@ function buildCartenonInspectorHTML(item, count = 1) {
         relicRow = `<div class="ct-desc-line"><span class="ct-cyan-Runic">[${styleLabel.toUpperCase()}]</span> ${formatCartenonDesc(relicMeta.passive)}</div>`;
     }
 
-    return `
+    let finalHtml = `
         <svg class="ct-circuit-bg" viewBox="0 0 400 300" preserveAspectRatio="none">
             <path d="M10 140 L90 140 L110 160 L240 160 M160 110 L210 110 L225 125 L380 125 M140 190 L190 190 L205 175 L340 175" fill="none" stroke="#00d2ff" stroke-width="1.2"/>
             <rect x="245" y="152" width="16" height="10" fill="none" stroke="#38bdf8" stroke-width="1"/>
@@ -726,6 +726,8 @@ function buildCartenonInspectorHTML(item, count = 1) {
             </div>
         </div>
     `;
+    if (count === 1) item._cachedInspectorHtml = finalHtml;
+    return finalHtml;
 }
 
 function inspectShopItem(id) {
@@ -744,7 +746,7 @@ function inspectShopItem(id) {
     
     let priceEl = document.getElementById('inspect-price');
     priceEl.innerText = `COSTO DE ADQUISICIÓN: ${item.cost} G`;
-    priceEl.style.cssText = 'text-align:center; color:#38bdf8; font-family:"Share Tech Mono", monospace; font-size:1.1em; font-weight:700; margin:12px 0; letter-spacing:1px;';
+    priceEl.style.cssText = 'text-align:center; color:#38bdf8; font-family:"Share Tech Mono", monospace; font-size:0.76em; font-weight:700; margin:10px 0 6px 0; letter-spacing:0.8px; opacity:0.92;';
     priceEl.style.display = 'block';
 
     let btnUsar = document.getElementById('inspect-buy-btn');
@@ -764,7 +766,7 @@ let isOwned = (item.cat === 'Armería' || item.slot) && isRelicAlreadyOwned(item
     let isActionDone = isRealActionDoneToday(item.id);
 
     if (item.cost === 0) {
-        priceEl.innerText = `MICRO-MISIÓN FÍSICA // COSTO: 0 G (1 POR DÍA)`;
+        priceEl.innerText = `MICRO-MISIÓN FÍSICA (1 POR DÍA)`;
         priceEl.style.color = '#00ffcc';
     }
 
@@ -785,7 +787,7 @@ let isOwned = (item.cat === 'Armería' || item.slot) && isRelicAlreadyOwned(item
         btnUsar.style.opacity = "0.6";
         btnUsar.onclick = () => { systemNotify(`☕ Límite semanal: Solo puedes comprar 1 Café de Medianoche por semana (Faltan ${daysLeft} días).`, "danger"); };
     } else if (p.gold >= item.cost) {
-        btnUsar.innerText = item.cost === 0 ? "⚡ Reclamar Micro-Misión" : "Sellar Compra";
+        btnUsar.innerText = item.cost === 0 ? " Reclamar Micro-Misión" : "Sellar Compra";
         btnUsar.className = "btn btn-main";
         btnUsar.style.opacity = "1";
         btnUsar.onclick = () => { 
@@ -1929,7 +1931,15 @@ function updateEquipmentUI() {
 
     let equipGrid = document.querySelector('#tab-inventory .equipment-grid');
     if (!equipGrid) return;
-
+let curW = (p.equipment && p.equipment.weapon) ? p.equipment.weapon.id : '';
+    let curA = (p.equipment && p.equipment.armor) ? p.equipment.armor.id : '';
+    let curAcc = (p.equipment && p.equipment.accessory) ? p.equipment.accessory.id : '';
+    let curDodge = (typeof getHunterDodgeChance === "function") ? getHunterDodgeChance() : 0;
+    let equipHash = `${curW}|${curA}|${curAcc}|${curDodge}`;
+    if (window._lastEquipHash === equipHash && document.getElementById('hunter-equip-showcase')) {
+        return;
+    }
+    window._lastEquipHash = equipHash;
     let showcaseEl = document.getElementById('hunter-equip-showcase');
     if (!showcaseEl) {
         showcaseEl = document.createElement('div');

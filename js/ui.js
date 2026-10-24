@@ -161,22 +161,16 @@ function startEmojiVectorizer() {
     }
     document.title = document.title.replace(_EMO_RE, '').trim();
     vectorizeEmojisIn(document.body);
-    new MutationObserver(muts => {
-        const roots = new Set();
-        muts.forEach(m => {
-            if (m.type === 'characterData') {
-                if (m.target.parentElement) roots.add(m.target.parentElement);
-            } else {
-                m.addedNodes.forEach(n => {
-                    const el = n.nodeType === 1 ? n : n.parentElement;
-                    if (el) roots.add(el);
-                });
+new MutationObserver(muts => {
+        for (let i = 0; i < muts.length; i++) {
+            const added = muts[i].addedNodes;
+            for (let j = 0; j < added.length; j++) {
+                const n = added[j];
+                if (n.nodeType === 1) vectorizeEmojisIn(n);
             }
-        });
-        roots.forEach(vectorizeEmojisIn);
-    }).observe(document.body, { childList: true, subtree: true, characterData: true });
+        }
+    }).observe(document.body, { childList: true, subtree: true });
 }
-
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', startEmojiVectorizer);
 } else {
@@ -771,36 +765,63 @@ function formatAiTemplate(rawStr) {
         .replace(/\{agi\}/g, p.stats.agi.toFixed(2));
 }
 
-function triggerAiMonarchComment(contextKey = 'ai_thoughts', forceManual = false) {
+let recentAiLinesHistory = [];
+
+function triggerAiMonarchComment(contextKey = null, forceManual = false) {
     if (typeof SYSTEM_AI_LINES === 'undefined') return;
 
     let now = Date.now();
-    // Si no han pasado 5 segundos desde la última frase, NO interrumpir al cambiar de pestañas
     if (!forceManual && (now - lastAiCommentTime < AI_COOLDOWN_MS)) {
         return;
     }
     lastAiCommentTime = now;
 
+    let maxHP = (typeof calculateHunterMaxHP === "function") ? calculateHunterMaxHP() : 100;
+    let activeMissionsCount = (p && p.activeMissions) ? Object.keys(p.activeMissions).length : 0;
+    let isIdleFull = p && !p.penaltyActive && p.hp >= (maxHP * 0.95) && p.sp >= 95 && activeMissionsCount === 0;
+
     let pool = [];
     if (p && p.penaltyActive) {
         pool = SYSTEM_AI_LINES.penalty;
-    } else if (p && p.hp <= 35 && Math.random() < 0.55) {
+    } else if (p && p.hp <= 35 && Math.random() < 0.65) {
         pool = SYSTEM_AI_LINES.critical_hp;
-    } else if (SYSTEM_AI_LINES[contextKey]) {
-        pool = SYSTEM_AI_LINES[contextKey];
+    } else if (contextKey && SYSTEM_AI_LINES[contextKey] && contextKey !== 'ai_thoughts') {
+        // Si cambiaste a la pestaña de rutina y no has iniciado nada con todo al 100%, mezclar con frases de calma
+        if (contextKey === 'tab_routine' && isIdleFull && SYSTEM_AI_LINES.idle_calm) {
+            pool = [...SYSTEM_AI_LINES.tab_routine, ...SYSTEM_AI_LINES.idle_calm];
+        } else {
+            pool = SYSTEM_AI_LINES[contextKey];
+        }
     } else {
+        // Rotación automática o toque en la barra superior: combina Hora + Pensamientos + Estado Calma
         let h = new Date().getHours();
-        if (h >= 5 && h < 12) pool = SYSTEM_AI_LINES.morning;
-        else if (h >= 12 && h < 19) pool = SYSTEM_AI_LINES.afternoon;
-        else pool = SYSTEM_AI_LINES.night;
+        let timePool = (h >= 5 && h < 12) ? SYSTEM_AI_LINES.morning : ((h >= 12 && h < 19) ? SYSTEM_AI_LINES.afternoon : SYSTEM_AI_LINES.night);
+        pool = [...(SYSTEM_AI_LINES.ai_thoughts || []), ...(timePool || [])];
+
+        if (isIdleFull && SYSTEM_AI_LINES.idle_calm) {
+            pool.push(...SYSTEM_AI_LINES.idle_calm);
+        }
+        if (p && p.sp <= 40 && SYSTEM_AI_LINES.stamina_status) {
+            pool.push(...SYSTEM_AI_LINES.stamina_status);
+        }
     }
 
     if (!pool || pool.length === 0) pool = SYSTEM_AI_LINES.ai_thoughts;
-    let rawLine = pool[Math.floor(Math.random() * pool.length)];
+
+    // Filtro anti-repetición de las últimas 25 frases
+    let available = pool.filter(line => !recentAiLinesHistory.includes(line));
+    if (available.length === 0) {
+        recentAiLinesHistory = [];
+        available = pool;
+    }
+
+    let rawLine = available[Math.floor(Math.random() * available.length)];
+    recentAiLinesHistory.push(rawLine);
+    if (recentAiLinesHistory.length > 25) recentAiLinesHistory.shift();
+
     let finalLine = formatAiTemplate(rawLine);
     typeWriterMessage(finalLine, 'sys-message', 18);
 }
-
 function initAiBootScreen() {
     if (document.getElementById('ai-boot-overlay')) return;
 
@@ -971,11 +992,19 @@ function updateHUD() {
       let currentMP = p.mp !== undefined ? p.mp : 0;
   let displayMp = (currentMP % 1 === 0) ? currentMP.toFixed(0) : currentMP.toFixed(1);
     
+let hasUnlockedAnyShadow = p.shadowArmy && ['igris', 'tank', 'iron', 'tusk', 'beru'].some(k => p.shadowArmy[k] && p.shadowArmy[k].unlocked);
+
     safeSetText('mp-text', `${displayMp}/${maxMP}`);
     let mpBar = document.getElementById('mp-bar'); 
     if (mpBar) {
         mpBar.style.width = `${Math.max(0, Math.min(100, (currentMP / maxMP) * 100))}%`;
         mpBar.classList.toggle('arc-st-04', !!(p.zeroMpDrainUntil && now < p.zeroMpDrainUntil));
+        let hudMpTile = mpBar.closest('.vital-tile');
+        if (hudMpTile) hudMpTile.style.display = hasUnlockedAnyShadow ? 'block' : 'none';
+    }
+    let raidMpBarEl = document.getElementById('raid-mp-bar');
+    if (raidMpBarEl && raidMpBarEl.closest('.raid-vital-row')) {
+        raidMpBarEl.closest('.raid-vital-row').style.display = hasUnlockedAnyShadow ? 'grid' : 'none';
     }
 
     let hpWrap = document.getElementById('hp-wrap');

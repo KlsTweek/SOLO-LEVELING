@@ -8,15 +8,21 @@
 function getTodayMissions(forcedDay = null) {
     let rawList = typeof baseMissions !== 'undefined' ? [...baseMissions] : [];
     let now = new Date();
+    let nowMs = now.getTime();
+    let todayKey = now.toDateString();
     let currentDay = forcedDay !== null ? forcedDay : now.getDay();
     let currentHour = now.getHours();
 
     let list = [];
+    let hasExtraPass = p && p.extraChorrosUnlockedDay === todayKey;
+    let idaCompleted = p && Array.isArray(p.completedToday) && p.completedToday.includes('m_traffic_ida');
+    let idaReadyAfter30s = idaCompleted && (!p.chorrosIdaFinishedAt || (nowMs -  p.chorrosIdaFinishedAt >= 30000));
+
     rawList.forEach(m => {
-        let hasExtraPass = p && p.extraChorrosUnlockedDay === new Date().toDateString();
         if (forcedDay === null && !hasExtraPass) {
-            if (m.id === 'm_traffic_ida' && currentHour >= 14) return;
-            if (m.id === 'm_traffic_vuelta' && currentHour < 14) return;
+            if (m.id === 'm_traffic_ida' && currentHour >= 14 && ! (p.activeMissions && p.activeMissions['m_traffic_ida'])) return;
+            // El Retorno aparece desde las 14:00 PM O 30 segundos después de haber sellado la Ida
+            if (m.id === 'm_traffic_vuelta' && currentHour < 14 && !idaReadyAfter30s) return;
         }
         if ((currentDay === 0 || currentDay === 6) && m.id === 'm_work') return;
         list.push(m);

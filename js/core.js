@@ -654,7 +654,7 @@ if (p.halfMpDrainUntil && nowMs < p.halfMpDrainUntil) drainPerMin = +(drainPerMi
             drainPerMin = 0;
         }
         let mageMult = (accId === "eq_acc_metus") ? 6 : 4;
-        let mageRegenPerMin = (p.infantry && p.infantry.mages) ? (p.infantry.mages * mageMult) : 0;
+let mageRegenPerMin = (p.infantry && p.infantry.mages && !(p.infantryDisabled && p.infantryDisabled.mages)) ? (p.infantry.mages * mageMult) : 0;
         if (aId === "eq_a_mage_b") mageRegenPerMin += 6;
         if (accId === "eq_acc_black_heart") mageRegenPerMin += 25;
         if (isSupremeSet) mageRegenPerMin += 10;
@@ -679,7 +679,7 @@ if (p.halfMpDrainUntil && nowMs < p.halfMpDrainUntil) drainPerMin = +(drainPerMi
         let maxMP = p.stats ? Math.floor(1000 + ((p.stats.int - 1) * 1000)) : 1000;
 
         if (netPerMin !== 0) {
-            let deltaPerTick = netPerMin / 300;
+            let deltaPerTick = netPerMin / 60;
             p.mp = Math.max(0, Math.min(maxMP, (p.mp !== undefined ? p.mp : 0) + deltaPerTick));
 
             if (p.mp <= 0 && p.equippedShadows && p.equippedShadows.length > 0) {
@@ -710,7 +710,7 @@ if (p.halfMpDrainUntil && nowMs < p.halfMpDrainUntil) drainPerMin = +(drainPerMi
         if (activeDungeon && typeof syncRaidVitalsUI === "function") {
             syncRaidVitalsUI();
         }
-    }, 200);
+    }, 1000);
 }
 
 /* ==========================================================================
@@ -3209,7 +3209,7 @@ function openRaidFloatingDrawer(mode) {
     if (!drawer) {
         drawer = document.createElement('div');
         drawer.id = 'raid-tactical-drawer';
-        drawer.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(2,6,16,0.9); backdrop-filter:blur(8px); z-index:9450; display:flex; justify-content:center; align-items:center; padding:18px;';
+        drawer.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(2,6,16,0.9);z-index:9450; display:flex; justify-content:center; align-items:center; padding:18px;';
         document.body.appendChild(drawer);
     }
 
@@ -3236,7 +3236,7 @@ function openRaidFloatingDrawer(mode) {
         contentHtml = `<div class="minecraft-grid">` + items.map(item => {
             let canBuy = p.gold >= item.cost;
             let icon = (typeof getIconFor === "function") ? getIconFor(item) : (item.icon || '🧪');
-            return `<div class="grid-slot rank-${item.rank}" style="opacity:${canBuy ? '1' : '0.45'};" onclick="inspectShopItem('${item.id}')">
+return `<div class="grid-slot rank-${item.rank}" style="opacity:${canBuy ? '1' : '0.45'};" onclick="inspectShopItem('${item.id}'); setTimeout(()=>{ if(document.getElementById('raid-tactical-drawer')?.style.display==='flex') openRaidFloatingDrawer('shop'); }, 350);">
                 <div class="slot-icon">${icon}</div>
                 <div class="slot-price">${item.cost}G</div>
             </div>`;
@@ -3271,3 +3271,119 @@ function abrirTiendaMazmorra() {
 }
 
 function inyectarBotonRetorno() {}
+/* ==========================================================================
+   16. CAJA NEGRA DE PERSISTENCIA OFFLINE (PANTALLA APAGADA / APAGÓN DE CELULAR)
+   ========================================================================== */
+function saveBlackBoxState() {
+    if (!p) return;
+    p.lastHeartbeat = Date.now();
+    if (typeof activeDungeon !== 'undefined' && activeDungeon && !waitingForValidation) {
+        p._savedRaidState = {
+            dungId: activeDungeon.id,
+            phaseIdx: currentPhase,
+            phaseEndsAt: Date.now() + (raidTimeLeft * 1000),
+            phaseInitialSecs: phaseInitialSecs
+        };
+    } else if (!activeDungeon) {
+        p._savedRaidState = null;
+    }
+    saveData();
+}
+
+function recoverFromSystemCollapse(wasHardReboot = false) {
+    if (!p || !p.lastHeartbeat) {
+        if (p) p.lastHeartbeat = Date.now();
+        return;
+    }
+    let now = Date.now();
+    let offlineSecs = Math.floor((now - p.lastHeartbeat) / 1000);
+    p.lastHeartbeat = now;
+
+    // Solo intervenir si estuvo apagado/bloqueado al menos 15 segundos
+    if (offlineSecs < 15) return;
+
+    let offlineMins = +(offlineSecs / 60).toFixed(1);
+
+    // 1. Sincronizar el flujo de Maná (MP) y curación de Beru durante el tiempo apagado
+    if (!p.penaltyActive) {
+        let maxMP = p.stats ? Math.floor(1000 + ((p.stats.int - 1) * 1000)) : 1000;
+        let maxHP = (typeof calculateHunterMaxHP === "function") ? calculateHunterMaxHP() : 100;
+        if (typeof currentNetMpPerMin !== 'undefined' && currentNetMpPerMin !== 0) {
+            let mpDelta = currentNetMpPerMin * (offlineSecs / 60);
+            p.mp = Math.max(0, Math.min(maxMP, (p.mp || 0) + mpDelta));
+            if (p.mp <= 0 && p.equippedShadows && p.equippedShadows.length > 0) {
+                p.mp = 0;
+                p.equippedShadows = [];
+                Object.keys(p.shadowArmy).forEach(k => { if (p.shadowArmy[k]) p.shadowArmy[k].active = false; });
+            }
+        }
+        if (p.equippedShadows && p.equippedShadows.includes('beru')) {
+            let healAdd = Math.floor(offlineSecs / 60) * 2;
+            if (healAdd > 0) {
+                p.hp = Math.min(maxHP, p.hp + healAdd);
+                p.sp = Math.min(100, p.sp + healAdd);
+            }
+        }
+    }
+
+    // 2. Si el teléfono se apagó del todo a mitad de una Mazmorra, restaurarla y descontar el tiempo transcurrido
+    if (!activeDungeon && p._savedRaidState && !p.penaltyActive && typeof dungeonDB !== 'undefined') {
+        let st = p._savedRaidState;
+        let dung = dungeonDB.find(d => d.id === st.dungId);
+        if (dung) {
+            activeDungeon = dung;
+            currentPhase = st.phaseIdx || 0;
+            phaseInitialSecs = st.phaseInitialSecs || 60;
+            let remSecs = Math.max(1, Math.floor((st.phaseEndsAt - now) / 1000));
+
+            let overlay = document.getElementById('dungeon-overlay');
+            if (overlay) {
+                overlay.style.display = 'block';
+                overlay.className = 'biome-' + (dung.biome || 'default');
+            }
+            initBiomeCanvas(dung.biome || 'default');
+            loadPhaseUI();
+            raidTimeLeft = remSecs;
+            updateRaidTimerUI();
+            pushRaidLog(`⚡ CAJA NEGRA: Incursión recuperada tras corte de energía (${Math.ceil(offlineMins)}m sincronizados).`, "#00ffcc");
+        }
+    } else if (activeDungeon && p._savedRaidState && !waitingForValidation) {
+        // Si solo bloqueó la pantalla y volvió a encenderla dentro de la mazmorra
+        let remSecs = Math.max(1, Math.floor((p._savedRaidState.phaseEndsAt - now) / 1000));
+        raidTimeLeft = remSecs;
+        updateRaidTimerUI();
+    }
+
+    saveData();
+    if (typeof updateHUD === "function") updateHUD();
+    if (typeof renderRoutine === "function") renderRoutine();
+    if (typeof renderBosses === "function") renderBosses();
+
+    let oneHourMs = 3600000;
+    let canShowReconnectToast = !p.lastReconnectToastAt || ((now - p.lastReconnectToastAt) >= oneHourMs);
+
+    if (canShowReconnectToast && offlineSecs >= 45) {
+        p.lastReconnectToastAt = now;
+        saveData();
+        let timeLabel = offlineSecs >= 60 ? `${Math.floor(offlineSecs / 60)}m ${offlineSecs % 60}s` : `${offlineSecs}s`;
+        setTimeout(() => {
+            if (typeof systemNotify === "function") {
+                systemNotify(`⚠️ RECONEXIÓN DEL SISTEMA: El dispositivo colapsó o permaneció inactivo por [${timeLabel}], pero tu progreso, misiones y cronómetros fueron resguardados intactos.`, "info");
+            }
+        }, 4600000);
+    }
+}
+
+// Guardar latido cada 3 segundos y escuchar bloqueo/encendido de pantalla
+setInterval(saveBlackBoxState, 3000);
+window.addEventListener('pagehide', saveBlackBoxState);
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+        saveBlackBoxState();
+    } else {
+        recoverFromSystemCollapse(false);
+    }
+});
+
+// Al encender el teléfono y abrir la app, recuperar estado de inmediato
+setTimeout(() => recoverFromSystemCollapse(true), 450);
