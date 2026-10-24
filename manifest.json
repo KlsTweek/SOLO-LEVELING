@@ -1,24 +1,30 @@
 {
-  "id": "/",
+  "id": "/?app=monarch-v5",
   "name": "Solo Leveling: The Monarch's Domain",
   "short_name": "Monarch System",
   "description": "Sistema del Monarca: rutinas, misiones y progreso.",
-  "start_url": "./",
-  "scope": "./",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#030611",
   "theme_color": "#030611",
   "icons": [
     {
-      "src": "icon-192.png",
+      "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "icon-512.png",
-      "sizes": "512x512",
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "499x499 512x512 any",
       "type": "image/png",
       "purpose": "any"
     }
