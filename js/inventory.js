@@ -287,7 +287,7 @@ function getIconFor(itemOrTitle, type) {
         const s2 = `stroke="${strokeAccent}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"`;
     const f1 = `fill="${fillGlow}"`;
 
-    let body = UNIQUE_ITEM_SVGS[id];
+    let body = UNIQUE_ITEM_SVGS[id] || UNIQUE_LOOT_SVGS[t];
     if (!body) {
         if (slot === "weapon" || id.startsWith("eq_w")) {
             body = `<path d="M32 8 L38 14 L26 44 L20 38 Z" F1 S1/><path d="M16 42 L28 54 M22 36 L32 46" S2/>`;
@@ -307,6 +307,62 @@ function getIconFor(itemOrTitle, type) {
     body = body.replace(/\bS1\b/g, s1).replace(/\bS2\b/g, s2).replace(/\bF1\b/g, f1);
     return `<svg ${baseAttr}>${body}</svg>`;
 }
+
+const UNIQUE_LOOT_SVGS = {
+    // --- 20 CHATARRAS DE RANGO E (DISEÑOS INDIVIDUALES) ---
+    "tuerca oxidada de mazmorra": `<polygon points="32,8 52,19 52,45 32,56 12,45 12,19" F1 S1/><circle cx="32" cy="32" r="10" fill="#030818" S2/><path d="M18 22 L24 26 M46 42 L40 38" S2/>`,
+    "cable pelado de cobre": `<path d="M12 46 C22 46 24 24 38 24" S1/><path d="M12 52 C26 52 28 30 38 30" S1/><rect x="10" y="42" width="14" height="14" rx="2" F1 S1/><path d="M38 24 L52 12 M38 27 L54 24 M38 30 L50 36" S2/>`,
+    "engranaje de golem roto": `<circle cx="32" cy="32" r="14" F1 S1/><circle cx="32" cy="32" r="6" fill="#030818" S2/><path d="M30 8 L34 8 L36 16 L28 16 Z M30 56 L34 56 L36 48 L28 48 Z M8 30 L8 34 L16 36 L16 28 Z M46 14 L52 20 L45 25 L40 20 Z M14 46 L20 52 L25 45 L20 40 Z" F1 S1/><polyline points="32,26 38,32 46,30" S2/>`,
+    "plástico fundido de escombro": `<path d="M14 46 C10 36 18 28 22 20 C26 12 38 14 42 24 C46 32 56 36 50 46 C44 54 20 54 14 46 Z" F1 S1/><path d="M24 34 Q32 28 38 36 M28 44 L40 44" S2/>`,
+    "bujía desgastada de serpento": `<rect x="26" y="14" width="12" height="16" F1 S1/><path d="M24 20 L40 20 M24 25 L40 25" S2/><polygon points="22,30 42,30 38,40 26,40" F1 S1/><rect x="28" y="40" width="8" height="12" S1/><path d="M32 8 L32 14 M32 52 L32 57 L38 57" S2/>`,
+    "perno de chasis suelto": `<polygon points="18,12 46,12 42,22 22,22" F1 S1/><rect x="26" y="22" width="12" height="32" F1 S1/><path d="M26 28 L38 31 M26 35 L38 38 M26 42 L38 45 M26 49 L38 52" S2/>`,
+    "llave doblada de candado": `<circle cx="20" cy="20" r="9" F1 S1/><circle cx="20" cy="20" r="3" S2/><polyline points="27,25 38,32 34,48 44,52" S1/><line x1="35" y1="42" x2="42" y2="44" S2/>`,
+    "goma de neumático quemada": `<circle cx="32" cy="32" r="20" F1 S1/><circle cx="32" cy="32" r="10" fill="#030818" S2/><path d="M32 12 L32 18 M32 46 L32 52 M12 32 L18 32 M46 32 L52 32 M18 18 L23 23 M46 46 L41 41 M46 18 L41 23 M18 46 L23 41" S2/>`,
+    "resorte de embrague tensor": `<path d="M22 10 C42 10 42 20 22 20 C42 20 42 30 22 30 C42 30 42 40 22 40 C42 40 42 50 22 50" S1/><path d="M22 10 C16 6 28 4 28 8 M22 50 C16 54 28 56 28 52" S2/>`,
+    "filtro de aire obstruido": `<polygon points="16,14 48,14 44,50 20,50" F1 S1/><ellipse cx="32" cy="14" rx="16" ry="4" F1 S1/><path d="M22 20 L24 46 M28 20 L29 46 M34 20 L34 46 M40 20 L39 46" S2/>`,
+    "tornillo de mariposa m8": `<path d="M32 22 C18 8 10 18 22 28 L42 28 C54 18 46 8 32 22 Z" F1 S1/><rect x="28" y="28" width="8" height="26" F1 S1/><path d="M28 34 L36 36 M28 41 L36 43 M28 48 L36 50" S2/>`,
+    "lata de refresco abollada": `<polygon points="20,12 44,12 46,24 38,32 44,42 42,52 22,52 18,38 24,28" F1 S1/><ellipse cx="32" cy="12" rx="12" ry="3" S2/><path d="M26 28 L38 32 M24 38 L36 36" S2/>`,
+    "placa base frita de laptop": `<rect x="12" y="12" width="40" height="40" rx="2" F1 S1/><rect x="24" y="24" width="16" height="16" S2/><path d="M12 20 L24 20 M12 32 L24 32 M40 28 L52 28 M28 12 L28 24 M36 40 L36 52 M20 44 L26 38" S2/>`,
+    "tapón de válvula de aire": `<path d="M22 16 L42 16 L44 46 L20 46 Z" F1 S1/><rect x="27" y="10" width="10" height="6" F1 S1/><path d="M26 22 L25 42 M32 22 L32 42 M38 22 L39 42 M20 46 L44 46" S2/>`,
+    "fusible de filamento quemado": `<rect x="22" y="10" width="20" height="10" rx="2" F1 S1/><rect x="22" y="44" width="20" height="10" rx="2" F1 S1/><rect x="24" y="20" width="16" height="24" S1/><path d="M32 20 L28 28 L30 31 M32 44 L36 36 L34 33" S2/><circle cx="32" cy="32" r="2" fill="#fb7185"/>`,
+    "clavo retorcido de madera": `<ellipse cx="22" cy="14" rx="8" ry="3" F1 S1/><polyline points="22,17 22,30 38,36 34,54" S1/><polyline points="20,17 20,31 35,37 34,54" S2/>`,
+    "pedazo de alambre galvanizado": `<path d="M14 44 C10 24 28 12 40 24 C52 36 34 52 22 38 C14 28 36 14 50 20" S1/><path d="M12 42 L16 46 M48 18 L52 22" S2/>`,
+    "arandela de presión deformada": `<circle cx="32" cy="32" r="18" F1 S1/><circle cx="32" cy="32" r="9" fill="#030818" S1/><path d="M44 18 L50 24 M41 22 L47 28" stroke="#030818" stroke-width="4"/><line x1="42" y1="18" x2="36" y2="25" S2/>`,
+    "carbón de motor desgastado": `<polygon points="22,14 44,18 52,36 42,50 18,52 12,34" F1 S1/><polyline points="22,14 32,32 42,50 M12,34 32,32 52,36" S2/><circle cx="16" cy="20" r="1.5" fill="#fff"/><circle cx="48" cy="24" r="2" fill="#fff"/><circle cx="28" cy="46" r="1.5" fill="#fff"/>`,
+    "tapa de combustible rompible": `<circle cx="32" cy="32" r="20" F1 S1/><rect x="18" y="27" width="28" height="10" rx="3" F1 S2/><path d="M32 12 L32 16 M32 48 L32 52 M12 32 L16 32 M48 32 L52 32" S2/>`,
+
+    // --- 25 MINERALES, RELIQUIAS Y BOTINES DE RANGO C / B / A / S ---
+    "cristal de maná opaco": `<polygon points="32,8 48,24 38,54 26,54 16,24" F1 S1/><polyline points="32,8 32,54 M16,24 48,24" S2/>`,
+    "fragmento de espejo ilusorio": `<polygon points="18,10 48,16 52,44 28,54 12,34" F1 S1/><path d="M24 20 L38 36 M32 18 L42 28 M20 34 L30 44" S2/>`,
+    "retazo de cuero de bestia": `<path d="M16 12 Q32 18 48 12 Q42 32 50 50 Q32 44 14 50 Q22 32 16 12 Z" F1 S1/><path d="M26 24 L38 36 M34 22 L42 30" S2/>`,
+    "polvo de esencia mágica": `<path d="M16 48 Q32 34 48 48 Z" F1 S1/><polygon points="32,12 35,20 43,20 37,25 39,33 32,28 25,33 27,25 21,20 29,20" F1 S2/><circle cx="18" cy="28" r="2" fill="#fff"/><circle cx="46" cy="26" r="2" fill="#fff"/>`,
+    "colmillo afilado de monstruo": `<path d="M22 10 C18 32 26 48 44 54 C38 38 36 26 38 12 Z" F1 S1/><path d="M22 16 L37 17 M25 28 L35 28" S2/>`,
+    "esencia destilada de orco": `<circle cx="32" cy="38" r="14" F1 S1/><path d="M27 12 L37 12 M29 12 L29 24 L35 24 L35 12" S1/><path d="M20 38 Q26 33 32 38 T44 38" S2/>`,
+    "fragmento de núcleo de golem": `<polygon points="24,10 44,12 54,28 46,50 20,52 10,32" F1 S1/><circle cx="32" cy="32" r="7" F1 S2/><path d="M32 11 L32 25 M46 50 L37 37 M10 32 L25 32" S2/>`,
+    "moneda del antiguo imperio": `<circle cx="32" cy="32" r="20" F1 S1/><rect x="25" y="25" width="14" height="14" fill="#030818" S2/><path d="M32 12 L32 18 M32 46 L32 52 M12 32 L18 32 M46 32 L52 32" S2/>`,
+    "anillo simbólico de cobre": `<ellipse cx="32" cy="34" rx="18" ry="14" S1/><ellipse cx="32" cy="34" rx="12" ry="8" S2/><polygon points="32,14 40,22 32,26 24,22" F1 S1/>`,
+    "collar de cuentas manchado": `<circle cx="32" cy="14" r="4" F1 S1/><circle cx="20" cy="18" r="4" F1 S1/><circle cx="44" cy="18" r="4" F1 S1/><circle cx="14" cy="30" r="4" F1 S1/><circle cx="50" cy="30" r="4" F1 S1/><circle cx="20" cy="42" r="4" F1 S1/><circle cx="44" cy="42" r="4" F1 S1/><polygon points="32,40 38,50 32,58 26,50" F1 S2/>`,
+    "reloj de bolsillo descompuesto": `<circle cx="32" cy="36" r="16" F1 S1/><path d="M28 12 L36 12 M32 12 L32 20" S1/><polyline points="32,26 32,36 24,42" S2/><polyline points="38,24 34,32 42,36" S2/>`,
+    "cáliz de plata de la aristocracia": `<path d="M18 12 L46 12 C46 28 38 36 32 36 C26 36 18 28 18 12 Z" F1 S1/><path d="M32 36 L32 50 M20 50 L44 50" S1/><polygon points="32,18 36,24 32,30 28,24" S2/>`,
+    "gema de maná inferior": `<polygon points="32,8 50,32 32,56 14,32" F1 S1/><polygon points="32,16 42,32 32,48 22,32" S2/>`,
+    "pequeña estatua de duende": `<polygon points="24,18 12,14 22,26 20,36 16,52 48,52 44,36 42,26 52,14 40,18 32,10" F1 S1/><circle cx="27" cy="24" r="2" fill="#fff"/><circle cx="37" cy="24" r="2" fill="#fff"/><path d="M26 40 L38 40" S2/>`,
+    "esquirla de luz divina": `<polygon points="32,6 37,26 56,32 37,38 32,58 27,38 8,32 27,26" F1 S1/><circle cx="32" cy="32" r="5" fill="#fff"/>`,
+    "gema de maná brillante": `<polygon points="20,12 44,12 54,26 32,54 10,26" F1 S1/><path d="M10 26 L54 26 M20 12 L26 26 L32 54 L38 26 L44 12" S2/>`,
+    "gema de sangre de licántropo": `<path d="M32 8 C18 24 14 36 20,46 C26 56 38 56 44 46 C50 36 46 24 32 8 Z" F1 S1/><polygon points="32,20 40,34 32,48 24,34" S2/>`,
+    "cofre de monedas pequeño": `<rect x="12" y="22" width="40" height="28" rx="2" F1 S1/><path d="M12 22 L20 12 L44 12 L52 22" F1 S1/><circle cx="26" cy="22" r="3" fill="#fff"/><circle cx="34" cy="20" r="3" fill="#fff"/><circle cx="40" cy="22" r="3" fill="#fff"/>`,
+    "escama menor de dragón": `<path d="M32 8 L50 22 C52 38 42 50 32 56 C22 50 12 38 14 22 Z" F1 S1/><polyline points="22,26 32,18 42,26 M22,36 32,28 42,36 M26,44 32,38 38,44" S2/>`,
+    "reliquia perdida de los chorros": `<path d="M24 10 L40 10 L36 20 L46 32 C48 44 42 54 32 54 C22 54 16 44 18 32 L28 20 Z" F1 S1/><path d="M18 16 C10 16 10 28 20 28 M46 16 C54 16 54 28 44 28 M22 38 L42 38" S2/>`,
+    "bolsa de oro pesada": `<path d="M24 18 L40 18 L36 24 C48 28 50 48 40 52 L24 52 C14 48 16 28 28 24 Z" F1 S1/><path d="M24 24 L40 24 M32 32 L32 44 M28 36 L36 36" S2/>`,
+    "moneda de platino puro": `<circle cx="32" cy="32" r="20" F1 S1/><circle cx="32" cy="32" r="15" S2 stroke-dasharray="4 3"/><polygon points="32,18 36,28 46,32 36,36 32,46 28,36 18,32 28,28" fill="#fff"/>`,
+    "lingote de oro macizo": `<polygon points="18,24 46,24 54,44 10,44" F1 S1/><polygon points="22,28 42,28 46,38 18,38" S2/><path d="M14 16 L18 20 M32 12 L32 18 M50 16 L46 20" S2/>`,
+    "corona fracturada del monarca": `<polygon points="12,46 10,20 22,30 30,14 34,28 38,16 44,30 54,20 52,46" F1 S1/><line x1="12" y1="42" x2="52" y2="42" S2/><circle cx="22" cy="36" r="2" fill="#fff"/><circle cx="42" cy="36" r="2" fill="#fff"/>`,
+    "esencia pura de rango s": `<circle cx="32" cy="32" r="8" F1 S1/><ellipse cx="32" cy="32" rx="24" ry="9" transform="rotate(30 32 32)" S2/><ellipse cx="32" cy="32" rx="24" ry="9" transform="rotate(-30 32 32)" S2/><circle cx="32" cy="32" r="3" fill="#fff"/>`,
+
+    // --- BOTINES LEGENDARIOS EXTRA ---
+    "autorización: comida rápida": `<path d="M14 26 C14 12 50 12 50 26 Z" F1 S1/><line x1="12" y1="33" x2="52" y2="33" S2/><path d="M16 40 L48 40 L44 48 L20 48 Z" F1 S1/>`,
+    "reliquia del tiempo físico": `<polygon points="18,10 46,10 32,32 46,54 18,54 32,32" F1 S1/><circle cx="32" cy="32" r="22" S2 stroke-dasharray="5 4"/>`,
+    "amuleto de suerte académica": `<circle cx="32" cy="20" r="8" F1 S1/><circle cx="20" cy="32" r="8" F1 S1/><circle cx="44" cy="32" r="8" F1 S1/><circle cx="32" cy="44" r="8" F1 S1/><path d="M32 44 L36 58" S2/>`
+};
 /* ==========================================================================
    3. RENDERIZADO DEL MERCADO (VISTA CUADRÍCULA / LISTA Y ANTI-DUPLICADOS)
    ========================================================================== */
@@ -652,8 +708,8 @@ function ensureCartenonStyles() {
     document.head.appendChild(st);
 }
 function getCartenonWireframeSVG(item) {
-    if (!item._cachedSvg) item._cachedSvg = getIconFor(item);
-    return item._cachedSvg.replace('class="sl-holo-glyph"', 'class="ct-wireframe-svg"');
+    let svg = getIconFor(item);
+    return svg.replace('class="sl-holo-glyph"', 'class="ct-wireframe-svg"');
 }
 
 function formatCartenonDesc(text) {
