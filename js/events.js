@@ -34,7 +34,7 @@ function checkFissureSpawn(forcedByIron = false) {
     let mult = forcedByIron ? 3 : 1;
 
     activeFissure = {
-        title: forcedByIron ? `[PROVOCADA POR IRON] ${picked.title}` : `Fisura Rango ${picked.rank}: ${picked.title}`,
+        title: forcedByIron ? `[PROVOCADA POR IRON] ${picked.title}` : picked.title,
         desc: picked.desc,
         rank: forcedByIron ? "A" : (picked.rank || "C"),
         xp: (picked.xp || 60) * mult,
@@ -43,8 +43,7 @@ function checkFissureSpawn(forcedByIron = false) {
     };
 
     let titleEl = document.querySelector('.fissure-content .modal-title');
-    if (titleEl) titleEl.innerHTML = `⚠️ FISURA DETECTADA: RANGO ${activeFissure.rank}`;
-
+    if (titleEl) titleEl.innerHTML = `⚠️FISURA DETECTADA: RANGO ${activeFissure.rank}`;
     let descEl = document.getElementById('fissure-desc');
     if (descEl) {
         descEl.innerHTML = `<strong style="color:var(--neon-main); display:block; margin-bottom:8px;">${activeFissure.title}</strong>${activeFissure.desc}<br><br><span style="color:var(--text-gold); font-size:0.9em;">Recompensa: +${activeFissure.xp} XP | +${activeFissure.gold} G Base</span>`;

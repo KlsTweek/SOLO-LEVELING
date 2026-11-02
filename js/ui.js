@@ -2,11 +2,81 @@
    UI.JS - INTERFAZ, SEGURIDAD DE MUERTE, IA DEL MONARCA Y TERMINAL DE ARRANQUE
    ========================================================================== */
 
-function safeSetText(id, text) {
-    let el = document.getElementById(id);
-    if (el) el.innerText = text;
+const _animatedNumCache = {};
+const _bracketFlipCache = {};
+
+function renderMechanicalFlipMarkup(prevStr, nextStr) {
+    let maxLen = Math.max(prevStr.length, nextStr.length);
+    let pPad = prevStr.padStart(maxLen, ' ');
+    let nPad = nextStr.padStart(maxLen, ' ');
+    let out = '';
+
+    for (let i = 0; i < maxLen; i++) {
+        let cOld = pPad[i];
+        let cNew = nPad[i];
+        if (cOld !== cNew && /\d/.test(cNew)) {
+            let oldDisp = cOld === ' ' ? '0' : cOld;
+            out += `<span class="sl-digit-slot"><span class="sl-digit-track"><span class="sl-digit-old">${oldDisp}</span><span class="sl-digit-new">${cNew}</span></span></span>`;
+        } else {
+            out += `<span>${cNew === ' ' ? '' : cNew}</span>`;
+        }
+    }
+    return out;
 }
 
+const _flipCleanTimers = {};
+
+function safeSetText(id, text) {
+    let el = document.getElementById(id);
+    if (!el) return;
+    let nextStr = String(text);
+    let prevStr = _animatedNumCache[id];
+
+    if (prevStr === undefined) {
+        _animatedNumCache[id] = nextStr;
+        el.textContent = nextStr;
+        return;
+    }
+    if (prevStr === nextStr) return;
+
+    _animatedNumCache[id] = nextStr;
+
+    const flipIds = [
+        'gold-display', 'crystal-display', 'lvl-display',
+        'fatigue-val', 'raid-fatigue-val'
+    ];
+
+    if (flipIds.includes(id) && prevStr.length === nextStr.length) {
+        el.innerHTML = renderMechanicalFlipMarkup(prevStr, nextStr);
+        if (_flipCleanTimers[id]) clearTimeout(_flipCleanTimers[id]);
+        _flipCleanTimers[id] = setTimeout(() => {
+            if (el && _animatedNumCache[id] === nextStr) {
+                el.textContent = nextStr;
+            }
+        }, 220);
+    } else {
+        el.textContent = nextStr;
+    }
+}
+
+function setBracketCounterFlip(el, idKey, newBracketStr) {
+    if (!el) return;
+    let prev = _bracketFlipCache[idKey];
+    if (prev === undefined || prev === newBracketStr) {
+        _bracketFlipCache[idKey] = newBracketStr;
+        if (prev === undefined) el.innerText = newBracketStr;
+        return;
+    }
+    _bracketFlipCache[idKey] = newBracketStr;
+    el.innerHTML = renderMechanicalFlipMarkup(prev, newBracketStr);
+}
+
+document.addEventListener('pointerdown', (e) => {
+    let interactive = e.target.closest('.btn, .nav-item, .sl-goal-check-box, .grid-slot, .sonar-blip, .sl-anatomy-node');
+    if (interactive && navigator.vibrate && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) {
+        navigator.vibrate(14);
+    }
+}, { passive: true });
 function _d64(str) {
     try { return decodeURIComponent(escape(window.atob(str))); } catch (e) { return ""; }
 }
@@ -21,155 +91,61 @@ let activeToastTimer = null;
 let activeToastMessages = [];
 let currentToastSeverity = 0; // 1 = Azul Normal, 2 = Rojo Peligro, 3 = Morado Supremo
 
-const SL_VECTOR_MAP = {
-    "⚔️": `<svg class="sl-inline-vec" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><path d="M14.5 17.5L3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M9.5 6.5L21 18v3h-3L6.5 9.5"/></svg>`,
-    "🗡️": `<svg class="sl-inline-vec" viewBox="0 0 24 24" fill="none" stroke="#00e5ff" stroke-width="2"><polygon points="18,2 22,6 11,17 7,13"/><path d="M4 20l4-4M6 12l6 6"/></svg>`,
-    "🗣️": `<svg class="sl-inline-vec" viewBox="0 0 24 24" fill="none" stroke="#c084fc" stroke-width="2"><polygon points="12,5 19,12 12,19 5,12"/><path d="M19 9l3-3M19 15l3 3"/></svg>`,
-    "⚡": `<svg class="sl-inline-vec" viewBox="0 0 24 24" fill="none" stroke="#00e5ff" stroke-width="2.2"><polygon points="13,2 3,14 12,14 11,22 21,10 12,10"/></svg>`,
-    "🌑": `<svg class="sl-inline-vec" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`,
-    "🎒": `<svg class="sl-inline-vec" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><rect x="4" y="6" width="16" height="15" rx="3"/><path d="M9 6V4a3 3 0 0 1 6 0v2M4 12h16"/></svg>`,
-    "🛒": `<svg class="sl-inline-vec" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><polygon points="12,2 21,7 21,17 12,22 3,17 3,7"/><circle cx="12" cy="12" r="3"/></svg>`,
-    "💀": `<svg class="sl-inline-vec" viewBox="0 0 24 24" fill="none" stroke="#f43f5e" stroke-width="2"><circle cx="12" cy="10" r="7"/><path d="M9 16v4h6v-4M9 10h.01M15 10h.01"/></svg>`,
-    "🔥": `<svg class="sl-inline-vec" viewBox="0 0 24 24" fill="none" stroke="#fb7185" stroke-width="2"><path d="M12 2c2 5 6 7 6 12a6 6 0 0 1-12 0c0-5 4-7 6-12z"/></svg>`,
-    "❄️": `<svg class="sl-inline-vec" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><path d="M12 2v20M2 12h20M4.9 4.9l14.2 14.2M19.1 4.9L4.9 19.1"/></svg>`,
-    "🧊": `<svg class="sl-inline-vec" viewBox="0 0 24 24" fill="none" stroke="#7dd3fc" stroke-width="2"><polygon points="12,2 20,7 20,17 12,22 4,17 4,7"/><path d="M12 22V12M20 7l-8 5-8-5"/></svg>`,
-    "🛡️": `<svg class="sl-inline-vec" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`,
-    "🐻‍❄️": `<svg class="sl-inline-vec" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><polygon points="4,8 8,3 12,6 16,3 20,8 19,17 12,21 5,17"/><circle cx="9" cy="11" r="1"/><circle cx="15" cy="11" r="1"/></svg>`,
-    "🐜": `<svg class="sl-inline-vec" viewBox="0 0 24 24" fill="none" stroke="#d946ef" stroke-width="2"><polygon points="12,3 17,8 15,15 12,21 9,15 7,8"/><path d="M9 4L4 2M15 4l5-2M7 11l-5 2M17 11l5 2"/></svg>`,
-    "🌟": `<svg class="sl-inline-vec" viewBox="0 0 24 24" fill="none" stroke="#f3d078" stroke-width="2"><polygon points="12,2 15,9 22,9 16,14 18,21 12,17 6,21 8,14 2,9 9,9"/></svg>`,
-    "✨": `<svg class="sl-inline-vec" viewBox="0 0 24 24" fill="none" stroke="#00e5ff" stroke-width="2"><path d="M12 2l2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5z"/></svg>`,
-    "🪙": `<svg class="sl-inline-vec" viewBox="0 0 24 24" fill="none" stroke="#f3d078" stroke-width="2"><circle cx="12" cy="12" r="9"/><polygon points="12,6 16,12 12,18 8,12"/></svg>`,
-    "💠": `<svg class="sl-inline-vec" viewBox="0 0 24 24" fill="none" stroke="#c084fc" stroke-width="2"><polygon points="12,2 20,9 17,21 7,21 4,9"/><circle cx="12" cy="12" r="2.5"/></svg>`,
-    "🔮": `<svg class="sl-inline-vec" viewBox="0 0 24 24" fill="none" stroke="#c084fc" stroke-width="2"><circle cx="12" cy="10" r="7"/><path d="M7 20h10M9 17h6"/></svg>`,
-    "⚠️": `<svg class="sl-inline-vec" viewBox="0 0 24 24" fill="none" stroke="#f43f5e" stroke-width="2"><polygon points="12,2 22,20 2,20"/><line x1="12" y1="9" x2="12" y2="14"/><circle cx="12" cy="17" r="1"/></svg>`,
-    "🔒": `<svg class="sl-inline-vec" viewBox="0 0 24 24" fill="none" stroke="#f43f5e" stroke-width="2"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>`,
-    "🔓": `<svg class="sl-inline-vec" viewBox="0 0 24 24" fill="none" stroke="#00e5ff" stroke-width="2"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7-2"/></svg>`,
-    "📜": `<svg class="sl-inline-vec" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>`,
-"📡": '<svg class="sl-inline-vec" viewBox="0 0 24 24" fill="none" stroke="#00e5ff" stroke-width="2"><circle cx="12" cy="15" r="2.5"/><path d="M7.5 10.5a6.5 6.5 0 0 1 9 0M4 7a11.5 11.5 0 0 1 16 0"/></svg>',
-   "🏆": `<svg class="sl-inline-vec" viewBox="0 0 24 24" fill="none" stroke="#f3d078" stroke-width="2"><path d="M7 4h10v6a5 5 0 0 1-10 0V4zM12 15v5M8 20h8"/></svg>`,
-    "💧": `<svg class="sl-inline-vec" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>`,
-    "🩸": `<svg class="sl-inline-vec" viewBox="0 0 24 24" fill="none" stroke="#f43f5e" stroke-width="2"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>`,
-    "👁️": `<svg class="sl-inline-vec" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>`,
-    "⚙️": `<svg class="sl-inline-vec" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"/></svg>`,
-    "🚪": `<svg class="sl-inline-vec" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><rect x="5" y="2" width="14" height="20"/><circle cx="15" cy="12" r="1"/></svg>`,
-    "🎁": `<svg class="sl-inline-vec" viewBox="0 0 24 24" fill="none" stroke="#f3d078" stroke-width="2"><rect x="3" y="8" width="18" height="13" rx="2"/><path d="M12 8v13M3 12h18"/></svg>`,
-    "📦": `<svg class="sl-inline-vec" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><polygon points="12,2 21,7 21,17 12,22 3,17 3,7"/><polyline points="3,7 12,12 21,7"/></svg>`,
-    "🎫": `<svg class="sl-inline-vec" viewBox="0 0 24 24" fill="none" stroke="#00e5ff" stroke-width="2"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M9 6v12"/></svg>`,
-    "🥗": `<svg class="sl-inline-vec" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2"><path d="M4 12h16a8 8 0 0 1-16 0zM8 8l4 4 4-4"/></svg>`,
-    "🪨": `<svg class="sl-inline-vec" viewBox="0 0 24 24" fill="none" stroke="#00e5ff" stroke-width="2"><polygon points="12,2 19,8 17,20 7,20 5,8"/></svg>`,
-    "🚩": `<svg class="sl-inline-vec" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><path d="M4 22V2l15 5-15 5"/></svg>`,
-    "👑": `<svg class="sl-inline-vec" viewBox="0 0 24 24" fill="none" stroke="#d946ef" stroke-width="2"><polygon points="2,18 5,7 12,12 19,7 22,18"/></svg>`,
-    "⬆️": `<svg class="sl-inline-vec" viewBox="0 0 24 24" fill="none" stroke="#c084fc" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>`,
-    "✅": `<svg class="sl-inline-vec" viewBox="0 0 24 24" fill="none" stroke="#00e5ff" stroke-width="2"><polyline points="20,6 9,17 4,12"/></svg>`,
-    "🔔": `<svg class="sl-inline-vec" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg>`
-};
+const _EMO_SRC = '(?:[\\u{1F000}-\\u{1FAFF}]|[\\u2600-\\u26FF]|[\\u2700-\\u27BF]|[\\u2B00-\\u2BFF]|[\\u2300-\\u23FF]|[\\u25A0-\\u25FF]|[\\u2190-\\u21FF]|[\\u3030\\u303D\\u3297\\u3299])(?:[\\uFE0E\\uFE0F]|[\\u{1F3FB}-\\u{1F3FF}]|\\u200D(?:[\\u{1F000}-\\u{1FAFF}]|[\\u2600-\\u27BF\\u2B50])[\\uFE0E\\uFE0F]?)*';
+const _EMO_RE = new RegExp(_EMO_SRC + '\\s*', 'gu');
+const _EMO_TEST = new RegExp(_EMO_SRC, 'u');
+
+function stripAllSystemEmojis(str) {
+    if (!str || typeof str !== 'string') return str;
+    return str.replace(_EMO_RE, '');
+}
 
 function replaceEmojisWithVectors(str) {
-    if (!str || typeof str !== 'string') return str;
-    let out = str;
-    for (const [emo, svg] of Object.entries(SL_VECTOR_MAP)) {
-        if (out.includes(emo)) out = out.split(emo).join(svg);
-    }
-    return out;
+    return stripAllSystemEmojis(str);
 }
-/* ==========================================================================
-   VECTORIZADOR GLOBAL: reemplaza TODO emoji de la pantalla por arte vectorial
-   ========================================================================== */
-const _vx = (c, inner) => `<svg class="sl-inline-vec" viewBox="0 0 24 24" fill="none" stroke="${c}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
-const _VX_BOOK = '<path d="M4 4h12a3 3 0 0 1 3 3v13H7a3 3 0 0 1-3-3z"/><path d="M8 8h7"/>';
-const _VX_FALLBACK = _vx('#38bdf8', '<polygon points="12,3 21,12 12,21 3,12"/>');
-
-const _VX_GROUPS = [
-    [['🐉','🐺','🐗','🐷','🐍','🦎','🐙','🕷'], _vx('#f43f5e', '<path d="M5 4c4 0 7 4 7 9M19 4c-4 0-7 4-7 9M9 13l3 7 3-7"/>')],
-    [['👹','🧟','👽','👾','🤖','👻','🥷','👵','🧝\u200D♂','🎭','🕶'], _vx('#c084fc', '<path d="M12 3a7 7 0 0 1 7 7v11l-3-2-2 2-2-2-2 2-2-2-3 2V10a7 7 0 0 1 7-7z"/><path d="M9 10h.01M15 10h.01"/>')],
-    [['🚔','🚂','🏍'], _vx('#38bdf8', '<rect x="3" y="8" width="18" height="8" rx="2"/><circle cx="7" cy="19" r="2"/><circle cx="17" cy="19" r="2"/>')],
-    [['🔨','🪚'], _vx('#38bdf8', '<path d="M14 4l6 6-3 3-6-6zM13 11L4 20"/>')],
-    [['🔫','🎯'], _vx('#f43f5e', '<circle cx="12" cy="12" r="8"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/>')],
-    [['📘'], _vx('#38bdf8', _VX_BOOK)],
-    [['📗'], _vx('#2dd4bf', _VX_BOOK)],
-    [['🧪'], _vx('#2dd4bf', '<path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3"/>')],
-    [['🧠'], _vx('#c084fc', '<path d="M9 4a3 3 0 0 0-3 3 3 3 0 0 0-2 5 3 3 0 0 0 2 5 3 3 0 0 0 6 1V4a3 3 0 0 0-3 0zM15 4a3 3 0 0 1 3 3 3 3 0 0 1 2 5 3 3 0 0 1-2 5 3 3 0 0 1-6 1"/>')],
-    [['🗿'], _vx('#00e5ff', '<path d="M7 21V8l2-5h6l2 5v13z"/><path d="M10 11h.01M14 11h.01M10 16h4"/>')],
-    [['🪶'], _vx('#38bdf8', '<path d="M20 4c-9 0-14 5-14 14M20 4c0 9-5 14-14 14M6 18L3 21"/>')],
-    [['💣'], _vx('#f43f5e', '<circle cx="11" cy="14" r="7"/><path d="M16 9l3-3M19 3v3M17 6h3"/>')],
-    [['🟣'], _vx('#a855f7', '<circle cx="12" cy="12" r="7" fill="#a855f7"/>')],
-    [['🌹'], _vx('#f43f5e', '<circle cx="12" cy="9" r="5"/><path d="M12 14v8M12 18l-4-2M12 19l4-2"/>')],
-    [['🎷'], _vx('#f3d078', '<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>')],
-    [['☣'], _vx('#2dd4bf', '<circle cx="12" cy="12" r="3"/><path d="M12 9V3M9.4 13.5L4 16.5M14.6 13.5L20 16.5"/>')],
-    [['🌋'], _vx('#fb7185', '<path d="M3 21l6-12h6l6 12zM9 9L8 5M15 9l1-4M12 8V3"/>')],
-    [['🌙'], _vx('#a855f7', '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>')],
-    [['💎'], _vx('#00e5ff', '<polygon points="6,3 18,3 22,9 12,22 2,9"/><path d="M2 9h20M10 3L8 9l4 13 4-13-2-6"/>')],
-    [['🌩'], _vx('#c084fc', '<path d="M17 18a4 4 0 0 0 0-8 6 6 0 0 0-11 1 4 4 0 0 0 1 7"/><path d="M13 12l-3 5h4l-3 5"/>')],
-    [['💥'], _vx('#f3d078', '<polygon points="12,2 14,8 21,6 16,12 22,16 15,16 14,22 11,17 5,20 7,13 2,9 9,9"/>')],
-    [['🔍'], _vx('#38bdf8', '<circle cx="10" cy="10" r="6"/><path d="M15 15l6 6"/>')],
-    [['❌','✖'], _vx('#f43f5e', '<path d="M5 5l14 14M19 5L5 19"/>')],
-    [['✔'], _vx('#00e5ff', '<polyline points="20,6 9,17 4,12"/>')],
-    [['⭐','★'], _vx('#f3d078', '<polygon points="12,2 15,9 22,9 16,14 18,21 12,17 6,21 8,14 2,9 9,9"/>')],
-    [['❤'], _vx('#f43f5e', '<path d="M12 21s-8-5-8-11a4.5 4.5 0 0 1 8-2.5A4.5 4.5 0 0 1 20 10c0 6-8 11-8 11z"/>')],
-    [['⏳','⌛'], _vx('#38bdf8', '<path d="M6 3h12M6 21h12M7 3c0 6 5 6 5 9s-5 3-5 9M17 3c0 6-5 6-5 9s5 3 5 9"/>')]
-];
-
-const _vxStrip = s => s.replace(/[\uFE0E\uFE0F]/g, '');
-const _VEC_NORM = {};
-Object.entries(SL_VECTOR_MAP).forEach(([k, v]) => { _VEC_NORM[_vxStrip(k)] = v; });
-_VX_GROUPS.forEach(([keys, svg]) => keys.forEach(k => { _VEC_NORM[_vxStrip(k)] = svg; }));
-_VEC_NORM['👁\u200D🗨'] = _VEC_NORM['👁'];
-
-const _EMO_SRC = '(?:[\\u{1F000}-\\u{1FAFF}]|[\\u2600-\\u26FF]|[\\u2702-\\u2793\\u27A1\\u27B0\\u27BF]|[\\u2B05-\\u2B07\\u2B1B\\u2B1C\\u2B50\\u2B55]|[\\u231A\\u231B\\u23E9-\\u23F3\\u23F8-\\u23FA])(?:[\\uFE0E\\uFE0F]|[\\u{1F3FB}-\\u{1F3FF}]|\\u200D(?:[\\u{1F000}-\\u{1FAFF}]|[\\u2600-\\u27BF\\u2B50])[\\uFE0E\\uFE0F]?)*';
-const _EMO_RE = new RegExp(_EMO_SRC, 'gu');
-const _EMO_TEST = new RegExp(_EMO_SRC, 'u');
 
 function vectorizeEmojisIn(root) {
     if (!root || root.nodeType !== 1) return;
+    if (!root.textContent || !_EMO_TEST.test(root.textContent)) return;
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
         acceptNode(n) {
             const par = n.parentElement;
-            if (!par || par.closest('svg, script, style, textarea, noscript')) return NodeFilter.FILTER_REJECT;
+            if (!par || par.closest('svg, script, style, textarea, noscript, .sl-digit-slot')) return NodeFilter.FILTER_REJECT;
             return _EMO_TEST.test(n.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
         }
     });
     const nodes = [];
     while (walker.nextNode()) nodes.push(walker.currentNode);
-    nodes.forEach(n => {
-        const par = n.parentElement;
-        const s = n.nodeValue;
-        if (par && (par.tagName === 'OPTION' || par.tagName === 'TITLE')) {
-            n.nodeValue = s.replace(_EMO_RE, '').trim();
-            return;
-        }
-        const frag = document.createDocumentFragment();
-        let last = 0;
-        s.replace(_EMO_RE, (m, idx) => {
-            frag.append(s.slice(last, idx));
-            const tpl = document.createElement('template');
-            tpl.innerHTML = _VEC_NORM[_vxStrip(m)] || _VX_FALLBACK;
-            frag.append(tpl.content);
-            last = idx + m.length;
-            return m;
-        });
-        frag.append(s.slice(last));
-        n.replaceWith(frag);
-    });
+    for (let i = 0; i < nodes.length; i++) {
+        nodes[i].nodeValue = nodes[i].nodeValue.replace(_EMO_RE, '');
+    }
 }
 
 function startEmojiVectorizer() {
-    if (!document.getElementById('sl-vec-style')) {
-        const st = document.createElement('style');
-        st.id = 'sl-vec-style';
-        st.textContent = ':where(.sl-inline-vec){width:1.15em;height:1.15em;vertical-align:-0.2em;display:inline-block;flex:none;}';
-        document.head.appendChild(st);
-    }
-    document.title = document.title.replace(_EMO_RE, '').trim();
+    document.title = stripAllSystemEmojis(document.title).trim();
     vectorizeEmojisIn(document.body);
-new MutationObserver(muts => {
+    new MutationObserver(muts => {
+        if (document.hidden) return;
         for (let i = 0; i < muts.length; i++) {
-            const added = muts[i].addedNodes;
-            for (let j = 0; j < added.length; j++) {
-                const n = added[j];
-                if (n.nodeType === 1) vectorizeEmojisIn(n);
+            const m = muts[i];
+            if (m.type === 'characterData') {
+                const t = m.target;
+                if (t && t.nodeValue && _EMO_TEST.test(t.nodeValue)) {
+                    t.nodeValue = t.nodeValue.replace(_EMO_RE, '');
+                }
+            } else {
+                const added = m.addedNodes;
+                for (let j = 0; j < added.length; j++) {
+                    const n = added[j];
+                    if (n.nodeType === 1) {
+                        if (n.textContent && _EMO_TEST.test(n.textContent)) vectorizeEmojisIn(n);
+                    } else if (n.nodeType === 3 && n.nodeValue && _EMO_TEST.test(n.nodeValue)) {
+                        n.nodeValue = n.nodeValue.replace(_EMO_RE, '');
+                    }
+                }
             }
         }
-    }).observe(document.body, { childList: true, subtree: true });
+    }).observe(document.body, { childList: true, subtree: true, characterData: true });
 }
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', startEmojiVectorizer);
@@ -178,75 +154,46 @@ if (document.readyState === 'loading') {
 }
 
 function scrubAllDOMVectors(root = document.body) {
-    if (!root) return;
-    const elems = root.querySelectorAll('.btn, .card-title, .shadow-title, .modal-title, .sl-status-top-bar span, .sl-status-center-stat, .raid-phase-badge, #raid-shield-indicator, .boss-clash-header span');
-    elems.forEach(el => {
-        if (el.children.length === 0 || !el.innerHTML.includes('<svg')) {
-            let clean = replaceEmojisWithVectors(el.innerHTML);
-            if (clean !== el.innerHTML) el.innerHTML = clean;
-        }
-    });
+    if (root) vectorizeEmojisIn(root);
 }
 
 function highlightAnimeKeywords(text) {
-    let base = replaceEmojisWithVectors(text || "");
+    let base = stripAllSystemEmojis(text || "");
     return base
-        .replace(/(JUGADOR 1|CAZADOR|ÉXITO|NIVEL \d+|ASCENSIÓN AL NIVEL \d+|¡SURGE!|MILAGRO CONSUMADO)/g, '<span style="color:#00ffcc; font-weight:800; text-shadow:0 0 8px rgba(0,255,204,0.6);">$1</span>')
-        .replace(/(PENALIZACIÓN|CASTIGO|COLAPSO|ALERTA|PELIGRO|FALLIDA|-[0-9.]+ HP|-[0-9]+ SP)/g, '<span style="color:#ff2a55; font-weight:800; text-shadow:0 0 8px rgba(255,42,85,0.65);">$1</span>')
-        .replace(/(RECOMPENSA|\+[0-9]+ G|\+[0-9]+ XP|\+[0-9]+ MP|\+[0-9]+ CM|CRÍTICO PERFECTO)/g, '<span style="color:#38bdf8; font-weight:800; text-shadow:0 0 8px rgba(56,189,248,0.65);">$1</span>');
+        .replace(/(\[[^\]]+\])/g, '<span style="color:#7dd3fc; font-weight:700; text-shadow:0 0 8px rgba(0,210,255,0.65);">$1</span>')
+        .replace(/(\+[0-9,]+ (?:G|XP|EXP|MP|CM|HP|SP|FATIGA)|[0-9]+% [A-ZÁÉÍÓÚÑ]+|\+[0-9.]+ (?:STR|INT|AGI|FUE|VIT|PER))/gi, '<span style="color:#00e5ff; font-weight:700; text-shadow:0 0 10px rgba(0,229,255,0.8);">$1</span>')
+        .replace(/(JUGADOR 1|CAZADOR|ÉXITO|NIVEL \d+|ASCENSIÓN AL NIVEL \d+|¡SURGE!|MILAGRO CONSUMADO)/g, '<span style="color:#ffffff; font-weight:700; text-shadow:0 0 10px #00d2ff;">$1</span>')
+        .replace(/(PENALIZACIÓN|CASTIGO|COLAPSO|ALERTA|PELIGRO|FALLIDA|-[0-9.]+ HP|-[0-9]+ SP)/g, '<span style="color:#fb7185; font-weight:700; text-shadow:0 0 8px rgba(255,42,85,0.85);">$1</span>');
 }
 
 function getBaroqueCornerSVG() {
-    return `<svg viewBox="0 0 28 28" width="100%" height="100%" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M1 26 L1 1 L26 1" stroke="#ffffff" stroke-width="1.8"/>
-        <path d="M5 20 L5 5 L20 5" stroke="#38bdf8" stroke-width="1.2"/>
-        <path d="M5 12 C9 12, 12 9, 12 5" stroke="#e0f2fe" stroke-width="1.2"/>
-        <polygon points="8,8 12,6 10,10" fill="#ffffff"/>
-    </svg>`;
+    return `<svg viewBox="0 0 28 28" width="100%" height="100%" fill="none" stroke="#e0f2fe" stroke-width="1.6"><path d="M2 26V2h24"/><path d="M6 18V6h12"/><circle cx="6" cy="6" r="2" fill="#00d2ff"/></svg>`;
 }
 
 function isMajorMonarchNotification(msg, type) {
-    if (type === "dungeon_major") return true;
+    if (type === "monarch_supreme") return true;
     let upper = (msg || "").toUpperCase();
-    // EXCLUSIVO PARA MAZMORRAS IMPORTANTES (Rango A, S, SSS, Portales Rojos, Isla de Jeju, Abismo) y NADA MÁS
-    if (
-        upper.includes("INCURSIÓN DESPEJADA") ||
-        upper.includes("ISLA DE JEJU") ||
-        upper.includes("PORTAL ROJO") ||
-        upper.includes("CAPITAL DE LOS NO DEVUELTOS") ||
-        upper.includes("CASTILLO DE HYRULE") ||
-        upper.includes("CASTILLO OSCURO") ||
-        upper.includes("EL INFIERNO") ||
-        upper.includes("MUNDO DEL ROMANCE") ||
-        upper.includes("CALLEJÓN EVADARE") ||
-        upper.includes("DOMINIO DE LOS ELFOS") ||
-        upper.includes("TREN INFINITO")
-    ) {
-        return true;
-    }
-    return false;
+    return upper.includes("CAMBIO DE CLASE") || upper.includes("CORAZÓN NEGRO") || upper.includes("SOBERANO DE LOS MUERTOS") || upper.includes("CAJA NEGRA DESCIFRADA") || upper.includes("ISLA DE JEJU") || upper.includes("PORTAL ROJO") || upper.includes("LOGRO OCULTO");
 }
 
-let holoTypingInterval = null;
-
 function dismissActiveHoloToast() {
-    const tc = document.getElementById('toast-container');
-    if (!tc) return;
-    const currentFrame = tc.querySelector('.sl-holo-frame');
     if (activeToastTimer) {
         clearTimeout(activeToastTimer);
         activeToastTimer = null;
     }
+    const tc = document.getElementById('toast-container');
+    if (!tc) return;
+    const frame = tc.querySelector('.sl-holo-frame');
+    if (frame && !frame.classList.contains('holo-closing')) {
+        frame.classList.add('holo-closing');
+        setTimeout(() => {
+            if (frame && frame.parentNode) frame.remove();
+        }, 250);
+    } else {
+        tc.innerHTML = '';
+    }
     activeToastMessages = [];
     currentToastSeverity = 0;
-
-    if (currentFrame && !currentFrame.classList.contains('holo-closing')) {
-        // Sin sonido de cierre para mantener la interfaz limpia
-        currentFrame.classList.add('holo-closing');
-        setTimeout(() => {
-            if (currentFrame && currentFrame.parentNode) currentFrame.remove();
-        }, 220);
-    }
 }
 
 function systemNotify(msg, type = "info") {
@@ -261,72 +208,38 @@ function systemNotify(msg, type = "info") {
     const tc = document.getElementById('toast-container');
     if (!tc) return;
 
-    let isMajorPurple = isMajorMonarchNotification(msg, type);
-    let newSeverity = isMajorPurple ? 3 : (type === "danger" ? 2 : 1);
+let newSeverity = isMajorMonarchNotification(msg, type) ? 3 : (type === "danger" ? 2 : 1);
+    let existingFrame = tc.querySelector('.sl-holo-frame:not(.holo-closing)');
+    let isConsecutiveNotif = !!existingFrame;
 
-    let isShadowToggle = msg.includes("Comandante") && (msg.includes("desplegado") || msg.includes("regresado a tu sombra") || msg.includes("reposo"));
-    if (isShadowToggle) {
-        activeToastMessages = activeToastMessages.filter(m => !(m.includes("Comandante") && (m.includes("desplegado") || m.includes("regresado a tu sombra") || m.includes("reposo"))));
-    }
-
-    if (!activeToastMessages.includes(msg)) {
-        activeToastMessages.push(msg);
-    }
-    if (activeToastMessages.length > 3) {
-        activeToastMessages.shift();
-    }
-
-    if (newSeverity > currentToastSeverity || activeToastMessages.length === 1) {
-        currentToastSeverity = newSeverity;
-    }
-
-    let frameThemeClass = "";
-    let headerLabel = "INFORMACIÓN";
-    let subBracketText = "[NOTIFICACIÓN DEL SISTEMA]";
-
-    if (currentToastSeverity === 3) {
-        frameThemeClass = "monarch-purple";
-        headerLabel = "AUTORIDAD DEL MONARCA";
-        subBracketText = "[DIRECTIVA SOBERANA]";
-    } else if (currentToastSeverity === 2) {
-        frameThemeClass = "danger";
-        headerLabel = "ALARMA // PELIGRO";
-        subBracketText = "[ADVERTENCIA CRÍTICA]";
-    } else if (type === "gold" || type === "success") {
-        headerLabel = "MISIÓN // BOTÍN";
-        subBracketText = "[NOTIFICACIÓN DEL SISTEMA]";
-    }
-
-    let existingFrame = tc.querySelector('.sl-holo-frame');
-    let cornerSVG = getBaroqueCornerSVG();
-
-    // Texto directo con fade-in limpio sin saltos de línea ni tecleo trabado
-    let combinedHtml = activeToastMessages
-        .map(m => `<div class="sl-holo-msg-item">${highlightAnimeKeywords(m)}</div>`)
-        .join('<div class="sl-holo-msg-divider"></div>');
-
-    if (existingFrame && !existingFrame.classList.contains('holo-closing')) {
-        existingFrame.className = `toast sl-holo-frame ${frameThemeClass} holo-pulse-update`;
-        setTimeout(() => { if (existingFrame) existingFrame.classList.remove('holo-pulse-update'); }, 300);
-
-        let titleRect = existingFrame.querySelector('.sl-title-rect');
-        let subEl = existingFrame.querySelector('.sl-holo-subbracket');
-        let listEl = existingFrame.querySelector('.sl-holo-msg-list');
-
-        if (titleRect) titleRect.innerText = headerLabel;
-        if (subEl) subEl.innerText = subBracketText;
-        if (listEl) listEl.innerHTML = combinedHtml;
-    } else {
+    if (!existingFrame) {
         tc.innerHTML = '';
-        const t = document.createElement('div');
-        t.className = `toast sl-holo-frame ${frameThemeClass}`;
-        t.onclick = dismissActiveHoloToast;
+        activeToastMessages = [msg];
+        currentToastSeverity = newSeverity;
 
-        t.innerHTML = `
+        let themeClass = currentToastSeverity === 3 ? "monarch-purple" : (currentToastSeverity === 2 ? "danger" : "");
+        let headerTitle = currentToastSeverity === 3 ? "SISTEMA DEL MONARCA" : (currentToastSeverity === 2 ? "ALERTA DE SISTEMA" : "NOTIFICACIÓN");
+        let subBracket = currentToastSeverity === 3 ? "[ DIRECTIVA DEL ABISMO ]" : (currentToastSeverity === 2 ? "[ ADVERTENCIA CRÍTICA ]" : "[ MENSAJE DEL SISTEMA ]");
+        let cornerSVG = getBaroqueCornerSVG();
+
+const frame = document.createElement('div');
+        frame.className = `sl-holo-frame ${themeClass}`.trim();
+        let toastStartY = null;
+        frame.addEventListener('pointerdown', (e) => { toastStartY = e.clientY; }, { passive: true });
+        frame.addEventListener('pointermove', (e) => {
+            if (toastStartY !== null && (e.clientY - toastStartY < -14)) {
+                toastStartY = null;
+                dismissActiveHoloToast();
+            }
+        }, { passive: true });
+        frame.onclick = (e) => {
+            e.stopPropagation();
+            dismissActiveHoloToast();
+        };
+
+        frame.innerHTML = `
             <div class="sl-holo-rail top">
-                <span class="rail-cap left"></span>
-                <span class="rail-core"></span>
-                <span class="rail-cap right"></span>
+                <span class="rail-cap left"></span><span class="rail-core"></span><span class="rail-cap right"></span>
             </div>
             <div class="sl-holo-glass">
                 <div class="sl-holo-inner-box">
@@ -334,32 +247,63 @@ function systemNotify(msg, type = "info") {
                     <span class="sl-baroque-corner tr">${cornerSVG}</span>
                     <span class="sl-baroque-corner bl">${cornerSVG}</span>
                     <span class="sl-baroque-corner br">${cornerSVG}</span>
-                    <span class="sl-manhwa-controls">— ✕</span>
-
+                    <span class="sl-manhwa-controls">_ □ X</span>
                     <div class="sl-holo-header-row">
                         <div class="sl-excl-square">!</div>
-                        <div class="sl-title-rect">${headerLabel}</div>
+                        <div class="sl-title-rect" id="sl-holo-title-txt">${headerTitle}</div>
                     </div>
-                    <div class="sl-holo-subbracket">${subBracketText}</div>
-                    <div class="sl-holo-msg-list">${combinedHtml}</div>
-                    <div class="sl-holo-footer-hint">[ TOCA LA VENTANA PARA CERRAR ]</div>
+                    <div class="sl-holo-subbracket" id="sl-holo-sub-txt">${subBracket}</div>
+                    <div class="sl-holo-msg-list" id="sl-holo-msg-list">
+                        <div class="sl-holo-msg-item">${highlightAnimeKeywords(msg)}</div>
+                    </div>
+                    <div class="sl-holo-footer-hint">[ TOCA PARA CERRAR ]</div>
                 </div>
             </div>
             <div class="sl-holo-rail bottom">
-                <span class="rail-cap left"></span>
-                <span class="rail-core"></span>
-                <span class="rail-cap right"></span>
+                <span class="rail-cap left"></span><span class="rail-core"></span><span class="rail-cap right"></span>
             </div>
         `;
-        tc.appendChild(t);
+
+        tc.appendChild(frame);
+    } else {
+        if (!activeToastMessages.includes(msg)) {
+            activeToastMessages.push(msg);
+            if (activeToastMessages.length > 3) activeToastMessages.shift();
+        }
+        if (newSeverity > currentToastSeverity) {
+            currentToastSeverity = newSeverity;
+        }
+
+        existingFrame.classList.remove('monarch-purple', 'danger', 'holo-pulse-update');
+        if (currentToastSeverity === 3) existingFrame.classList.add('monarch-purple');
+        else if (currentToastSeverity === 2) existingFrame.classList.add('danger');
+
+        void existingFrame.offsetWidth;
+        existingFrame.classList.add('holo-pulse-update');
+
+        let headerTitle = currentToastSeverity === 3 ? "SISTEMA DEL MONARCA" : (currentToastSeverity === 2 ? "ALERTA DE SISTEMA" : "NOTIFICACIÓN");
+        let subBracket = currentToastSeverity === 3 ? "[ DIRECTIVA DEL ABISMO ]" : (currentToastSeverity === 2 ? "[ ADVERTENCIA CRÍTICA ]" : "[ MENSAJE DEL SISTEMA ]");
+
+        let titleEl = existingFrame.querySelector('#sl-holo-title-txt');
+        let subEl = existingFrame.querySelector('#sl-holo-sub-txt');
+        let listEl = existingFrame.querySelector('#sl-holo-msg-list');
+
+        if (titleEl) titleEl.innerText = headerTitle;
+        if (subEl) subEl.innerText = subBracket;
+        if (listEl) {
+            listEl.innerHTML = activeToastMessages
+                .map(m => `<div class="sl-holo-msg-item">${highlightAnimeKeywords(m)}</div>`)
+                .join('<div class="sl-holo-msg-divider"></div>');
+        }
     }
 
-    if (typeof playSystemSound === 'function') playSystemSound(type);
-
-    if ("Notification" in window && Notification.permission === "granted" && document.hidden) {
-        try {
-            new Notification("Sistema del Monarca", { body: msg.replace(/<[^>]*>?/gm, '') });
-        } catch (e) {}
+// 1ª notificación usa system-notification.mp3; todas las notificaciones seguidas (incluso del mismo daño) usan notification-clic.mp3
+    if (isConsecutiveNotif) {
+        if (typeof playSystemSound === 'function') {
+            playSystemSound('type');
+        }
+    } else if (typeof playSystemSound === 'function') {
+        playSystemSound(type);
     }
 
     if (activeToastTimer) clearTimeout(activeToastTimer);
@@ -367,7 +311,6 @@ function systemNotify(msg, type = "info") {
         dismissActiveHoloToast();
     }, 4200);
 }
-
 function openNotifHistoryModal() {
     let modal = document.getElementById('notif-history-modal');
     if (!modal) {
@@ -489,7 +432,10 @@ function switchTab(tab, idx) {
 
     if (tab === 'routine' && typeof renderRoutine === 'function') renderRoutine();
     if (tab === 'bosses' && typeof renderBosses === 'function') renderBosses();
-    if (tab === 'gacha' && typeof renderShadowSanctuary === 'function') renderShadowSanctuary();
+if (tab === 'gacha' && typeof renderShadowSanctuary === 'function') {
+        renderShadowSanctuary();
+        if (typeof enforceSanctuaryMonochrome === 'function') enforceSanctuaryMonochrome();
+    }
     if (tab === 'profile') {
         if (typeof renderStatusRadarProfile === 'function') renderStatusRadarProfile();
         if (typeof renderTitles === 'function') renderTitles();
@@ -540,7 +486,7 @@ function renderStatusRadarProfile() {
     let spiVal = +(10 + ((p.equippedShadows ? p.equippedShadows.length : 0) * 2.5) + ((p.stats.int - 1) * 5)).toFixed(2);
 
     let apVal = Math.floor(strVal * 1.2 + agiVal * 0.5);
-    let defVal = Math.floor(strVal * 1.1 + ((p.infantry && p.infantry.bears) ? p.infantry.bears * 2 : 0));
+    let bearsOn = p.infantry && p.infantry.bears && !(p.infantryDisabled && p.infantryDisabled.bears); let defVal = Math.floor(strVal * 1.1 + (bearsOn ? p.infantry.bears * 2 : 0));
     let leaderPts = +((strVal + intVal + agiVal + disVal + spiVal) / 4.8 + (p.level * 1.25)).toFixed(3);
     let physRed = Math.min(75, Math.floor(4 + (p.stats.str * 1.5) + (p.equippedShadows && p.equippedShadows.includes('iron') ? 35 : 0)));
     let magRed = Math.min(75, Math.floor(3 + (p.stats.int * 1.5)));
@@ -555,15 +501,21 @@ function renderStatusRadarProfile() {
     const statPoints = angles.map((ang, i) => `${(cx + Math.cos(ang) * maxR * vals[i]).toFixed(1)},${(cy + Math.sin(ang) * maxR * vals[i]).toFixed(1)}`).join(' ');
     const statDots = angles.map((ang, i) => `<circle cx="${(cx + Math.cos(ang) * maxR * vals[i]).toFixed(1)}" cy="${(cy + Math.sin(ang) * maxR * vals[i]).toFixed(1)}" r="3.5" fill="#00aaff" stroke="#ffffff" stroke-width="1"/>`).join('');
 
-    let discCount = Array.isArray(p.discoveredArcs) ? p.discoveredArcs.length : 0;
+let discCount = Array.isArray(p.discoveredArcs) ? p.discoveredArcs.length : 0;
+    let bioDayStr = (typeof getBiologicalDayStr === "function") ? getBiologicalDayStr() : new Date().toDateString();
+    let isSleeping = (typeof isSleepingNow === "function") ? isSleepingNow() : (p.sleepingUntilMorning === bioDayStr);
+    let vigilLeft = (typeof ensureNightVigilQuota === "function") ? ensureNightVigilQuota() : 2;
+    let isVigilActiveTonight = (typeof isNightVigilActiveNow === "function") ? isNightVigilActiveNow() : (p.nightPassActive === bioDayStr);
 
-    statusCard.innerHTML = `
+let gearSvg = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#e0f2fe" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px #00e5ff);"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
+    let cubeSvg = `<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="#7dd3fc" stroke-width="2" style="margin-right:3px; filter:drop-shadow(0 0 4px #00e5ff);"><polygon points="12,2 21,7 21,17 12,22 3,17 3,7"/><circle cx="12" cy="12" r="2.5" fill="#ffffff"/></svg>`;
+
+statusCard.innerHTML = `
         <div class="sl-status-top-bar">
-            <span style="opacity:0.75; cursor:pointer;" onclick="openModal('schedule-modal')">⚙️</span>
+            <span style="opacity:0.9; cursor:pointer; width:48px; height:22px; display:inline-flex; align-items:center; justify-content:center; border:1px solid rgba(186,230,253,0.4); background:rgba(4,15,32,0.8);" onclick="openModal('schedule-modal')" title="Configurar Horario">${gearSvg}</span>
             <h2 class="sl-status-main-title">ESTADO</h2>
-            <span style="opacity:0.75; font-size:0.8em; font-family:'Share Tech Mono', monospace; cursor:pointer;" onclick="openArcProtocolsModal()">🔮 ${discCount}/15</span>
+            <span style="opacity:0.9; width:48px; height:22px; display:inline-flex; align-items:center; justify-content:center; font-size:0.65em; font-family:'Share Tech Mono', monospace; cursor:pointer; border:1px solid rgba(125,211,252,0.35); background:rgba(4,15,32,0.8);" onclick="openArcProtocolsModal()">${cubeSvg}${discCount}/15</span>
         </div>
-
         <div class="sl-status-divider"></div>
 
         <div class="sl-status-id-grid">
@@ -575,8 +527,8 @@ function renderStatusRadarProfile() {
             </div>
             <div class="sl-status-rank-box">
                 <svg viewBox="0 0 100 100" width="78" height="78">
-                    <polygon points="50,6 90,28 76,86 24,86 10,28" fill="none" stroke="#00aaff" stroke-width="1.8" opacity="0.85"/>
-                    <polygon points="50,94 90,72 76,14 24,14 10,72" fill="rgba(0, 170, 255, 0.08)" stroke="#38bdf8" stroke-width="1.8"/>
+<polygon points="50,6 90,28 76,86 24,86 10,28" fill="none" stroke="#e0f2fe" stroke-width="1.8" opacity="0.9" filter="drop-shadow(0 0 6px #00e5ff)"/>
+                    <polygon points="50,94 90,72 76,14 24,14 10,72" fill="rgba(0, 229, 255, 0.14)" stroke="#7dd3fc" stroke-width="1.8" filter="drop-shadow(0 0 8px rgba(0,229,255,0.65))"/>
                     <text x="50" y="64" text-anchor="middle" fill="#ffffff" font-family="Rajdhani, sans-serif" font-weight="700" font-size="42">${hunterRank}</text>
                 </svg>
                 <div class="sl-rank-label">RANGO</div>
@@ -622,61 +574,160 @@ function renderStatusRadarProfile() {
             </svg>
         </div>
 
-        <div class="sl-status-divider"></div>
-        <div class="sl-status-center-stat">PUNTOS DE CLASIFICACIÓN: <b>${leaderPts}</b></div>
-        <div class="sl-status-divider"></div>
-        <div class="sl-status-center-stat" style="font-size:0.95em;">
-            <div>REDUCCIÓN DE DAÑO FÍSICO: <b>${physRed}%</b></div>
-            <div style="margin-top:4px;">REDUCCIÓN DE DAÑO MÁGICO: <b>${magRed}%</b></div>
-        </div>
-        <div class="sl-status-divider"></div>
-        <div class="sl-status-center-stat" style="font-size:0.88em; color:var(--neon-main); cursor:pointer;" onclick="openArcProtocolsModal()">
-            🔍 PROTOCOLOS OCULTOS DESCUBIERTOS: <b>${discCount} / 15</b> (TOCA PARA ABRIR)
+<div class="sl-status-divider"></div>
+        <div style="display:flex; flex-direction:column; gap:8px; margin-top:6px;">
+            <button class="btn btn-main" style="width:100%; padding:10px; font-size:0.8em;" onclick="openHunterSkillsModal()">
+                [ HABILIDADES DEL CAZADOR (PASIVAS Y ACTIVAS) ]
+            </button>
+            ${isVigilActiveTonight
+                ? `<div style="padding:9px 12px; background:rgba(30,41,59,0.55); border:1px solid #818cf8; text-align:center; font-size:0.78em; color:#e0f2fe;">
+                    <b>PASE DE VIGILIA NOCTURNA ACTIVO HOY</b><br>
+                    <span style="color:#94a3b8;">Cero corrosión nocturna • Misiones al 100% (${vigilLeft}/2 restantes)</span>
+                   </div>`
+                : `<button class="btn btn-blue" style="width:100%; padding:10px; font-size:0.78em;" onclick="openNightVigilModal()">
+                    PASE DE VIGILIA NOCTURNA (${vigilLeft}/2 ESTA SEMANA)
+                   </button>`}
+            ${isSleeping
+                ? `<div style="padding:10px; background:rgba(14,165,233,0.12); border:1px solid #7dd3fc; text-align:center;">
+                    <div style="color:#e0f2fe; font-weight:700; font-size:0.85em; margin-bottom:4px;">MODO HIBERNACIÓN ACTIVO</div>
+                    <div style="color:#94a3b8; font-size:0.76em; margin-bottom:8px;">Signos vitales y tesorería protegidos hasta las 5:00 AM.</div>
+                    <button class="btn btn-blue" style="padding:6px 12px; font-size:0.72em;" onclick="wakeUpFromSleepMode()">Desbloquear antes de las 5:00 AM</button>
+                   </div>`
+                : `<button class="btn btn-main" style="width:100%; padding:11px; font-size:0.78em;" onclick="activateNightSleepMode()">
+                    TERMINAR DÍA Y DORMIR (CONGELAR DRENAJE NOCTURNO)
+                   </button>`}
         </div>
     `;
-} 
-
+}
 /* ==========================================================================
    2. DRENAJE VISUAL RÁPIDO DE MANÁ (HUD Y MAZMORRA EN TIEMPO REAL)
    ========================================================================== */
+let _rollingMpValue = null;
+let _rollingMpRaf = null;
+let _lastRenderedMpInt = null;
+let _lastRenderedMpPct = null;
+let _mpDomCache = null;
+
+function _getMpDomElements() {
+    if (!_mpDomCache || !_mpDomCache.mpTxtEl || !_mpDomCache.mpTxtEl.isConnected) {
+        _mpDomCache = {
+            mpTxtEl: document.getElementById('mp-text'),
+            mpBarEl: document.getElementById('mp-bar'),
+            rMpTxtEl: document.getElementById('raid-mp-text'),
+            rMpBarEl: document.getElementById('raid-mp-bar')
+        };
+    }
+    return _mpDomCache;
+}
+
+function renderMpElementsNow(val, maxMP) {
+    let dom = _getMpDomElements();
+    let safeMax = Math.max(1, maxMP);
+    let displayInt = Math.max(0, Math.min(safeMax, Math.round(val)));
+    let pctNum = Math.max(0, Math.min(100, (val / safeMax) * 100));
+    let pctStr = `${pctNum.toFixed(2)}%`;
+
+    if (_lastRenderedMpInt !== displayInt) {
+        _lastRenderedMpInt = displayInt;
+        let txt = `${displayInt}/${safeMax}`;
+        if (dom.mpTxtEl) dom.mpTxtEl.textContent = txt;
+        if (dom.rMpTxtEl) dom.rMpTxtEl.textContent = txt;
+    }
+
+    if (_lastRenderedMpPct !== pctStr) {
+        _lastRenderedMpPct = pctStr;
+        if (dom.mpBarEl) dom.mpBarEl.style.width = pctStr;
+        if (dom.rMpBarEl) dom.rMpBarEl.style.width = pctStr;
+    }
+}
+
+function animateMPDisplayTo(targetMP, maxMP) {
+    if (document.hidden) {
+        _rollingMpValue = targetMP;
+        renderMpElementsNow(targetMP, maxMP);
+        return;
+    }
+    if (_rollingMpValue === null) {
+        _rollingMpValue = targetMP;
+        renderMpElementsNow(targetMP, maxMP);
+        return;
+    }
+
+    let diff = targetMP - _rollingMpValue;
+    if (Math.abs(diff) < 0.05) {
+        _rollingMpValue = targetMP;
+        renderMpElementsNow(targetMP, maxMP);
+        return;
+    }
+
+    if (_rollingMpRaf) cancelAnimationFrame(_rollingMpRaf);
+
+    let startVal = _rollingMpValue;
+    let absDiff = Math.abs(diff);
+    // Si es el tick continuo por segundo (drenaje/recarga), interpolar durante 960ms para que baje de 1 en 1 (100->99->98) sin pausas
+    let durationMs = absDiff <= 25 ? 960 : Math.min(520, Math.max(240, absDiff * 1.1));
+    let startTime = performance.now();
+
+    function stepMpFrame(now) {
+        let elapsed = now - startTime;
+        let t = Math.min(1, elapsed / durationMs);
+        _rollingMpValue = startVal + (targetMP - startVal) * t;
+        renderMpElementsNow(_rollingMpValue, maxMP);
+
+        if (t < 1) {
+            _rollingMpRaf = requestAnimationFrame(stepMpFrame);
+        } else {
+            _rollingMpValue = targetMP;
+            _rollingMpRaf = null;
+            renderMpElementsNow(targetMP, maxMP);
+        }
+    }
+    _rollingMpRaf = requestAnimationFrame(stepMpFrame);
+}
+window.animateMPDisplayTo = animateMPDisplayTo;
+
 function consumeMPFast(amount, onComplete) {
     if (!p) return false;
     let currentMP = p.mp !== undefined ? p.mp : 0;
     if (currentMP < amount) {
-        systemNotify(`💧 Maná insuficiente en el núcleo (${Math.floor(currentMP)}/${amount} MP).`, "danger");
+        systemNotify(`Maná insuficiente en el núcleo (${Math.floor(currentMP)}/${amount} MP).`, "danger");
         return false;
     }
 
-    if (window.mpFastInterval) clearInterval(window.mpFastInterval);
+    let maxMP = p.stats ? Math.floor(1000 + ((p.stats.int - 1) * 1000)) : 1000;
+    let startMP = currentMP;
+    let targetMP = Math.max(0, Math.round((currentMP - amount) * 100) / 100);
+    p.mp = targetMP;
 
-    let steps = 25;
-    let drainPerStep = amount / steps;
-    let count = 0;
+    if (_rollingMpRaf) cancelAnimationFrame(_rollingMpRaf);
+    let dom = _getMpDomElements();
+    if (dom.mpBarEl) dom.mpBarEl.style.boxShadow = '0 0 20px #d946ef';
 
-    let mpBar = document.getElementById('mp-bar');
-    if (mpBar) mpBar.style.boxShadow = '0 0 20px #d946ef';
+    let durationMs = 360;
+    let startTime = performance.now();
 
-    window.mpFastInterval = setInterval(() => {
-        p.mp = Math.max(0, p.mp - drainPerStep);
-        count++;
+    function drainFrame(now) {
+        let t = Math.min(1, (now - startTime) / durationMs);
+        _rollingMpValue = startMP + (targetMP - startMP) * t;
+        renderMpElementsNow(_rollingMpValue, maxMP);
 
-        let maxMP = p.stats ? Math.floor(1000 + ((p.stats.int - 1) * 1000)) : 1000;
-        if (mpBar) mpBar.style.width = `${Math.max(0, Math.min(100, (p.mp / maxMP) * 100))}%`;
-        safeSetText('mp-text', `${p.mp.toFixed(2)}/${maxMP}`);
-        if (typeof syncRaidVitalsUI === 'function') syncRaidVitalsUI();
-
-        if (count >= steps || p.mp <= 0) {
-            clearInterval(window.mpFastInterval);
-            p.mp = Math.round(p.mp * 100) / 100;
-            if (mpBar) mpBar.style.boxShadow = '';
+        if (t < 1) {
+            _rollingMpRaf = requestAnimationFrame(drainFrame);
+        } else {
+            _rollingMpValue = targetMP;
+            _rollingMpRaf = null;
+            if (dom.mpBarEl) dom.mpBarEl.style.boxShadow = '';
+            renderMpElementsNow(targetMP, maxMP);
             updateHUD();
             saveData();
             if (typeof onComplete === 'function') onComplete();
         }
-    }, 40);
-
-        return true;
+    }
+    _rollingMpRaf = requestAnimationFrame(drainFrame);
+    return true;
 }
+
+// Funciones antiguas de MP eliminadas (ahora usa el motor 60 FPS de arriba)
 
 function animateSPChange(deltaAmount, onComplete) {
     if (!p) return;
@@ -725,8 +776,31 @@ const AI_COOLDOWN_MS = 5000;
 function typeWriterMessage(text, elementId = 'sys-message', speed = 20) {
     const el = document.getElementById(elementId);
     if (!el) return;
-    if (aiTypewriterTimer) clearInterval(aiTypewriterTimer);
+    if (aiTypewriterTimer) {
+        clearInterval(aiTypewriterTimer);
+        aiTypewriterTimer = null;
+    }
 
+    const sysBar = el.closest('.sys-log');
+    if (document.hidden || (sysBar && sysBar.classList.contains('sys-log-collapsed'))) {
+        el.textContent = text;
+        return;
+    }
+
+    let censorTriggered = (Math.random() < 0.24 && text.length > 28);
+    let censorWord = "";
+    let censoredText = text;
+    if (censorTriggered) {
+        let words = text.split(' ').filter(w => w.length >= 6 && /^[a-zA-ZáéíóúÁÉÍÓÚñÑ]+$/.test(w));
+        if (words.length > 0) {
+            censorWord = words[Math.floor(Math.random() * words.length)];
+            censoredText = text.replace(censorWord, '[ █████ ]');
+        } else {
+            censorTriggered = false;
+        }
+    }
+
+    let activeStream = censorTriggered ? censoredText : text;
     el.style.opacity = 1;
     el.style.whiteSpace = "normal";
     el.style.wordBreak = "break-word";
@@ -734,11 +808,26 @@ function typeWriterMessage(text, elementId = 'sys-message', speed = 20) {
     let i = 0;
 
     aiTypewriterTimer = setInterval(() => {
-        i++;
-        el.textContent = text.slice(0, i);
-        if (i >= text.length) {
+        if (document.hidden || (sysBar && sysBar.classList.contains('sys-log-collapsed'))) {
             clearInterval(aiTypewriterTimer);
             aiTypewriterTimer = null;
+            el.textContent = text;
+            return;
+        }
+        i += 2;
+        el.textContent = activeStream.slice(0, i);
+        if (i >= activeStream.length) {
+            clearInterval(aiTypewriterTimer);
+            aiTypewriterTimer = null;
+            if (censorTriggered) {
+                setTimeout(() => {
+                    if (el && el.textContent.includes('[ █████ ]')) {
+                        el.classList.add('sl-km-anomaly-pulse');
+                        el.textContent = text;
+                        setTimeout(() => el.classList.remove('sl-km-anomaly-pulse'), 650);
+                    }
+                }, 520);
+            }
         }
     }, speed);
 }
@@ -893,7 +982,6 @@ function dismissAiBootScreen() {
 function updateHUD() {
     if (!p) return;
 
-    // SEGURO CRÍTICO: Si la vida llega a 0 y no está penalizado, forzar muerte de inmediato
     if (p.hp <= 0 && !p.penaltyActive) {
         p.hp = 0;
         if (typeof triggerDeath === "function") {
@@ -903,6 +991,28 @@ function updateHUD() {
     }
 
     document.body.classList.toggle('penalty-active', !!p.penaltyActive);
+     let _mH = (typeof calculateHunterMaxHP === 'function') ? calculateHunterMaxHP() : 100;
+     document.body.classList.toggle('tenacity-glitch-active', !!(p.hp > 0 && p.hp <= _mH * 0.30));
+    let isStealthNow = !!(p.stealthModeUntil && Date.now() < p.stealthModeUntil);
+    document.body.classList.toggle('stealth-camouflage-active', isStealthNow);
+    let stealthBadge = document.getElementById('sl-stealth-hud-badge');
+    if (isStealthNow) {
+        let minsRem = Math.max(1, Math.ceil((p.stealthModeUntil - Date.now()) / 60000));
+        if (!stealthBadge) {
+            let hdr = document.querySelector('.header');
+            if (hdr) {
+                stealthBadge = document.createElement('div');
+                stealthBadge.id = 'sl-stealth-hud-badge';
+                stealthBadge.className = 'sl-stealth-hud-banner';
+                hdr.insertBefore(stealthBadge, hdr.firstChild);
+            }
+        }
+        if (stealthBadge) {
+            stealthBadge.innerHTML = `<span>[ HABILIDAD: SIGILO ACTIVO • ${minsRem}M RESTANTES ]</span><span>EMBOSCADA x3 LISTA</span>`;
+        }
+    } else if (stealthBadge) {
+        stealthBadge.remove();
+    }
 
     let navItems = document.querySelectorAll('.nav-item');
     [1, 4, 5].forEach(i => {
@@ -911,106 +1021,107 @@ function updateHUD() {
     
     let now = Date.now();
     let currentDayStr = new Date().toDateString();
-
-    let maxHP = (typeof calculateHunterMaxHP === 'function') ? calculateHunterMaxHP() : 100;
+let maxHP = (typeof calculateHunterMaxHP === 'function') ? calculateHunterMaxHP() : 100;
     if (p.hp <= maxHP) p.magmaOverheal = false;
-    
+
+    // Comprobador universal de Ascensión de Nivel (por si ganas EXP con habilidades activas o pergaminos)
+    if (p.xp >= p.maxXp) {
+        while (p.xp >= p.maxXp) {
+            p.level++;
+            p.xp -= p.maxXp;
+            p.maxXp = (typeof getRequiredXpForLevel === "function") ? getRequiredXpForLevel(p.level) : Math.floor(100 + (p.level - 1) * 18);
+            maxHP = (typeof calculateHunterMaxHP === 'function') ? calculateHunterMaxHP() : 100;
+            p.hp = maxHP;
+            p.sp = 100;
+            p.crystals = (p.crystals || 0) + 2;
+        }
+        saveData();
+        systemNotify(`¡ASCENSIÓN AL NIVEL ${p.level}! Vitalidad restaurada al 100% (+2 CM).`, "gold");
+    }
+
+    // Límite real y visual de Escudo = 800 (ej. 80 de escudo = 10% de la barra, sin sobrepasar la barra blanca de HP)
+    p.arcticShield = Math.min(800, Math.max(0, Math.floor(p.arcticShield || 0)));
+    let shieldVal = p.arcticShield;
     let displayHp = (p.hp % 1 === 0) ? p.hp : p.hp.toFixed(1);
-    
+    let isTenacityActive = (p.hp > 0 && p.hp <= maxHP * 0.30);
+
     safeSetText('lvl-display', p.level);
     safeSetText('xp-text', `${Math.floor(p.xp)}/${p.maxXp}`);
-    safeSetText('hp-text', `${displayHp}/${maxHP}`);
+    safeSetText('hp-text', `${displayHp}/${maxHP}${isTenacityActive ? ' [TENACIDAD]' : ''}`);
     safeSetText('sp-text', `${Math.floor(p.sp)}/100`);
     safeSetText('gold-display', Math.floor(p.gold));
     safeSetText('crystal-display', Math.floor(p.crystals || 0));
 
+ let shieldTagEl = document.getElementById('hud-shield-text');
+    let shieldBarEl = document.getElementById('shield-bar');
+    if (shieldTagEl) {
+        shieldTagEl.innerText = shieldVal > 0 ? `[+${shieldVal}/800]` : '';
+    }
+    if (shieldBarEl) {
+        shieldBarEl.style.width = '0%';
+    }
+    // Actualizar Anillo de 12 Segmentos de FATIGA (Fatiga = 100 - SP)
+    let fatigueNum = Math.max(0, Math.min(100, Math.round(100 - (p.sp !== undefined ? p.sp : 100))));
+    safeSetText('fatigue-val', fatigueNum);
+    let activeSegments = Math.round((fatigueNum / 100) * 12);
+    let ringWidget = document.getElementById('sl-fatigue-widget');
+    if (ringWidget) {
+        ringWidget.classList.toggle('fatigue-critical-pulse', fatigueNum >= 100);
+    }
+    for (let sIdx = 0; sIdx < 12; sIdx++) {
+        let segEl = document.getElementById(`fat-seg-${sIdx}`);
+        if (segEl) {
+            segEl.classList.toggle('active-seg', sIdx < activeSegments && fatigueNum < 80);
+            segEl.classList.toggle('danger-seg', sIdx < activeSegments && fatigueNum >= 80);
+        }
+    }
+
+
     let goldTxtEl = document.querySelector('.gold-txt');
     if (goldTxtEl) {
-        if (p.starStreamNext) {
-            goldTxtEl.style.color = '#00ffff';
-            goldTxtEl.style.textShadow = '0 0 15px #00ffff';
-        } else if (p._arcGildedUntil && now < p._arcGildedUntil) {
-            goldTxtEl.style.color = '#fde047';
-            goldTxtEl.style.textShadow = '0 0 18px #f59e0b';
-        } else {
-            goldTxtEl.style.color = '';
-            goldTxtEl.style.textShadow = '';
-        }
+        goldTxtEl.style.color = '';
+        goldTxtEl.style.textShadow = '';
     }
     
     let xpBar = document.getElementById('xp-bar'); 
     if (xpBar) {
         xpBar.style.width = `${Math.min(100, (p.xp / p.maxXp) * 100)}%`;
-        xpBar.classList.toggle('arc-st-01', !!(p._arcPrismUntil && now < p._arcPrismUntil));
-        if (p.voidXpBuffUntil && now < p.voidXpBuffUntil) {
-            xpBar.style.background = 'linear-gradient(90deg, #7928ca, #ff0080)';
-            xpBar.style.boxShadow = '0 0 15px rgba(255, 0, 128, 0.7)';
-        } else {
-            xpBar.style.background = '';
-            xpBar.style.boxShadow = '';
-        }
+        xpBar.classList.remove('arc-st-01');
+        xpBar.style.background = '';
+        xpBar.style.boxShadow = '';
     }
-    
- let hpBar = document.getElementById('hp-bar');
+    let hpBar = document.getElementById('hp-bar');
     let hpWrapEl = document.getElementById('hp-wrap');
     if (hpWrapEl) {
-        hpWrapEl.classList.toggle('mercy-emerald-halo', p.mercyActive === currentDayStr);
-    }
+        hpWrapEl.classList.toggle('mercy-emerald-halo', isMercyActive());
+        hpWrapEl.classList.toggle('pulse-danger', p.hp <= 30);
+  }
     if (hpBar) {
         hpBar.style.width = `${Math.max(0, Math.min(100, (p.hp / maxHP) * 100))}%`;
         hpBar.classList.toggle('arc-st-02', !!(p._arcEclipseActive && now < p._arcEclipseActive));
-        if (p.hp > maxHP || p.magmaOverheal) {
-            hpBar.style.background = 'linear-gradient(90deg, #ff4500, #ffcc00)';
-            hpBar.style.boxShadow = '0 0 14px rgba(255, 102, 0, 0.75)';
-} else if (p.mercyActive === currentDayStr) {
-            // Interior 100% Rojo Sangre limpio sin brillo verde adentro
-            hpBar.style.background = 'linear-gradient(90deg, #990022, #ff2a55)';
-            hpBar.style.boxShadow = 'none';
-        } else if (p.cryoBuffUntil && now < p.cryoBuffUntil) {
-            hpBar.style.background = 'linear-gradient(90deg, #990022, #ff2a55, #38bdf8)';
-            hpBar.style.boxShadow = '0 0 12px rgba(56, 189, 248, 0.5)';
-        } else {
-            hpBar.style.background = ''; 
-            hpBar.style.boxShadow = '';
-        }
     }
 
-    let spBar = document.getElementById('sp-bar'); 
-    if (spBar) {
-        spBar.style.width = `${Math.max(0, Math.min(100, p.sp))}%`;
-        spBar.classList.toggle('arc-st-03', !!(p._arcOverdriveUntil && now < p._arcOverdriveUntil));
-        if (p.entropyBuffUntil && now < p.entropyBuffUntil) {
-            spBar.style.background = 'linear-gradient(90deg, #00ffcc, #0099ff)';
-            spBar.style.boxShadow = '0 0 15px rgba(0, 255, 204, 0.5)';
-        } else {
-            spBar.style.background = '';
-            spBar.style.boxShadow = '';
-        }
-    }
+let maxMP = p.stats ? Math.floor(1000 + ((p.stats.int - 1) * 1000)) : 1000; 
+    let currentMP = p.mp !== undefined ? p.mp : 0;
+    let hasUnlockedAnyShadow = p.shadowArmy && ['igris', 'tank', 'iron', 'tusk', 'beru'].some(k => p.shadowArmy[k] && p.shadowArmy[k].unlocked);
 
-    let maxMP = p.stats ? Math.floor(1000 + ((p.stats.int - 1) * 1000)) : 1000; 
-      let currentMP = p.mp !== undefined ? p.mp : 0;
-  let displayMp = (currentMP % 1 === 0) ? currentMP.toFixed(0) : currentMP.toFixed(1);
-    
-let hasUnlockedAnyShadow = p.shadowArmy && ['igris', 'tank', 'iron', 'tusk', 'beru'].some(k => p.shadowArmy[k] && p.shadowArmy[k].unlocked);
-
-    safeSetText('mp-text', `${displayMp}/${maxMP}`);
+    animateMPDisplayTo(currentMP, maxMP);
     let mpBar = document.getElementById('mp-bar'); 
     if (mpBar) {
-        mpBar.style.width = `${Math.max(0, Math.min(100, (currentMP / maxMP) * 100))}%`;
         mpBar.classList.toggle('arc-st-04', !!(p.zeroMpDrainUntil && now < p.zeroMpDrainUntil));
-        let hudMpTile = mpBar.closest('.vital-tile');
-        if (hudMpTile) hudMpTile.style.display = hasUnlockedAnyShadow ? 'block' : 'none';
-    }
-    let raidMpBarEl = document.getElementById('raid-mp-bar');
-    if (raidMpBarEl && raidMpBarEl.closest('.raid-vital-row')) {
-        raidMpBarEl.closest('.raid-vital-row').style.display = hasUnlockedAnyShadow ? 'grid' : 'none';
     }
 
-    let hpWrap = document.getElementById('hp-wrap');
-    if (hpWrap) { 
-        if (p.hp <= 30) hpWrap.classList.add('pulse-danger'); 
-        else hpWrap.classList.remove('pulse-danger'); 
+    // Mostrar la barra de MP desde Nivel 1 (igual que en el Episodio 3 del anime)
+    let mpColEl = document.getElementById('sl-mp-col');
+    if (mpColEl) {
+        mpColEl.classList.remove('mp-locked-hidden');
+        mpColEl.classList.add('mp-unlocked-visible');
+    }
+
+    // Ocultar botones de sombras en mazmorra si aún no hay sombras desbloqueadas
+    let raidCmdBar = document.getElementById('raid-cmd-btn-bar');
+    if (raidCmdBar) {
+        raidCmdBar.style.display = hasUnlockedAnyShadow ? 'grid' : 'none';
     }
 
     let overlay = document.getElementById('damage-overlay');
@@ -1026,35 +1137,20 @@ let hasUnlockedAnyShadow = p.shadowArmy && ['igris', 'tank', 'iron', 'tusk', 'be
 
     safeSetText('prof-streak', `${p.perfectDays} Días`);
     safeSetText('prof-missions', p.totalMissions || 0);
-        // Inyectar botón de Historial de 10 Notificaciones en la barra superior
+
     let sysBarEl = document.querySelector('.sys-log');
     if (sysBarEl && !document.getElementById('btn-notif-log')) {
         let logBtn = document.createElement('button');
         logBtn.id = 'btn-notif-log';
         logBtn.className = 'btn btn-blue';
         logBtn.style.cssText = 'margin-left:auto; padding:3px 8px; font-size:0.72em; flex-shrink:0;';
-        logBtn.innerText = '📜 10';
+        logBtn.innerText = 'REG 10';
         logBtn.onclick = (ev) => { ev.stopPropagation(); openNotifHistoryModal(); };
         sysBarEl.appendChild(logBtn);
     }
 
-    // Inyectar fila interactiva de Protocolos Ocultos (X/15) en el Perfil
-    let profMissionsEl = document.getElementById('prof-missions');
-    if (profMissionsEl && profMissionsEl.parentElement && !document.getElementById('prof-arc-row')) {
-        let parentCard = profMissionsEl.parentElement.parentElement;
-        profMissionsEl.parentElement.className = 'stat-row';
-        let arcRow = document.createElement('div');
-        arcRow.id = 'prof-arc-row';
-        arcRow.className = 'stat-row-last';
-        arcRow.style.cursor = 'pointer';
-        arcRow.onclick = openArcProtocolsModal;
-        parentCard.appendChild(arcRow);
-    }
-    let arcRowEl = document.getElementById('prof-arc-row');
-    if (arcRowEl) {
-        let discCount = Array.isArray(p.discoveredArcs) ? p.discoveredArcs.length : 0;
-        arcRowEl.innerHTML = `<span>Protocolos Ocultos (Toca para ver):</span><span style="color:var(--neon-main); font-weight:700; font-size:1.1em; text-decoration:underline;">🔮 ${discCount} / 15</span>`;
-    }
+let oldArcRowEl = document.getElementById('prof-arc-row');
+    if (oldArcRowEl) oldArcRowEl.remove();
 
     if (p.history) {
         safeSetText('history-deaths', p.history.deaths);
@@ -1068,14 +1164,38 @@ let hasUnlockedAnyShadow = p.shadowArmy && ['igris', 'tank', 'iron', 'tusk', 'be
         safeSetText('time-traffic', formatTime(p.timeStats.traffic || 0));
     }
 
-    if (typeof _evalArcHudHook === 'function') _evalArcHudHook();
+if (typeof _evalArcHudHook === 'function') _evalArcHudHook();
     if (typeof checkPassiveTitlesUnlock === 'function') checkPassiveTitlesUnlock();
-    if (typeof renderStatusRadarProfile === 'function') renderStatusRadarProfile();
-    if (typeof syncRaidVitalsUI === 'function') syncRaidVitalsUI();
-    if (typeof renderShadowSanctuary === 'function') renderShadowSanctuary();
-    if (typeof renderTitles === 'function') renderTitles();
+
+    if (typeof activeDungeon !== 'undefined' && activeDungeon && typeof syncRaidVitalsUI === 'function') {
+        syncRaidVitalsUI();
+    }
+
+    const tabProfEl = document.getElementById('tab-profile');
+    if (tabProfEl && !tabProfEl.classList.contains('hidden')) {
+        if (typeof renderStatusRadarProfile === 'function') renderStatusRadarProfile();
+        if (typeof renderTitles === 'function') renderTitles();
+    }
+
+    const tabGachaEl = document.getElementById('tab-gacha');
+    if (tabGachaEl && !tabGachaEl.classList.contains('hidden')) {
+        if (typeof renderShadowSanctuary === 'function') renderShadowSanctuary();
+        if (typeof enforceSanctuaryMonochrome === 'function') enforceSanctuaryMonochrome();
+    }
 }
 
+function enforceSanctuaryMonochrome() {
+    const tabGacha = document.getElementById('tab-gacha');
+    if (!tabGacha) return;
+    tabGacha.querySelectorAll('[style]').forEach(el => {
+        let st = el.getAttribute('style') || '';
+        let newSt = st
+            .replace(/#00ffcc|#10b981|#39ff14|#2dd4bf|var\(--success\)/gi, '#7dd3fc')
+            .replace(/#fde047|#ffcc00|#f59e0b|var\(--text-gold\)/gi, '#e0f2fe')
+            .replace(/#f43f5e|#ff2a55|#fb7185|var\(--danger\)/gi, '#93c5fd');
+        if (newSt !== st) el.setAttribute('style', newSt);
+    });
+}
 /* ==========================================================================
    5. SANTUARIO, ESCÁNER DE JEFES Y CÁMARA DE FOCUS BLINDADA
    ========================================================================== */
@@ -1248,11 +1368,60 @@ function stopStudy() {
     }
 }
 
+window.setSysLogCollapsed = function(collapsed) {
+    const sysBar = document.querySelector('.sys-log');
+    if (!sysBar) return;
+    if (collapsed && aiTypewriterTimer) {
+        clearInterval(aiTypewriterTimer);
+        aiTypewriterTimer = null;
+    }
+    let handle = document.getElementById('sys-log-restore-handle');
+    if (!handle && sysBar.parentElement) {
+        handle = document.createElement('div');
+        handle.id = 'sys-log-restore-handle';
+        handle.className = 'sys-log-restore-handle';
+        handle.innerHTML = `<svg viewBox="0 0 24 10" width="28" height="10" fill="none" stroke="#7dd3fc" stroke-width="2" stroke-linecap="round"><polyline points="4,2 12,8 20,2"/></svg>`;
+        handle.onclick = () => window.setSysLogCollapsed(false);
+        sysBar.parentElement.insertBefore(handle, sysBar.nextSibling);
+    }
+    sysBar.classList.toggle('sys-log-collapsed', !!collapsed);
+    if (handle) handle.classList.toggle('visible', !!collapsed);
+    if (collapsed && typeof dismissActiveHoloToast === 'function') {
+        dismissActiveHoloToast();
+    }
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     const sysBar = document.querySelector('.sys-log');
     if (sysBar) {
         sysBar.style.cursor = 'pointer';
-        sysBar.addEventListener('click', () => {
+        let touchStartY = null;
+        let swipedUp = false;
+
+        sysBar.addEventListener('pointerdown', (e) => {
+            touchStartY = e.clientY;
+            swipedUp = false;
+        }, { passive: true });
+
+        sysBar.addEventListener('pointermove', (e) => {
+            if (touchStartY === null) return;
+            if (e.clientY - touchStartY < -14) {
+                swipedUp = true;
+                touchStartY = null;
+                window.setSysLogCollapsed(true);
+            }
+        }, { passive: true });
+
+        sysBar.addEventListener('pointerup', () => {
+            touchStartY = null;
+        }, { passive: true });
+
+        sysBar.addEventListener('click', (e) => {
+            if (swipedUp) {
+                swipedUp = false;
+                return;
+            }
+            if (e.target.closest('#btn-notif-log')) return;
             if (typeof _evalArcPulseClick === 'function') _evalArcPulseClick();
             if (typeof triggerAiMonarchComment === 'function') triggerAiMonarchComment('ai_thoughts');
         });
@@ -1268,14 +1437,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof triggerAiMonarchComment === 'function') triggerAiMonarchComment();
     }, 1200);
 
-    // Rotar comentarios de la IA cada 45 segundos para que siempre esté viva la barra superior
+// Rotar comentarios de la IA cada 45 segundos solo cuando la app está visible en pantalla
     setInterval(() => {
-        if (typeof triggerAiMonarchComment === 'function' && !p.penaltyActive) {
+        if (document.hidden) return;
+        const _sb = document.querySelector('.sys-log'); if (typeof triggerAiMonarchComment === 'function' && p && !p.penaltyActive && (!_sb || !_sb.classList.contains('sys-log-collapsed'))) {
             triggerAiMonarchComment();
         }
     }, 45000);
 });
-
 /* ==========================================================================
    6. CINEMÁTICA OFICIAL DE CAMBIO DE CLASE Y DESPERTAR DE TÍTULOS (MANHWA)
    ========================================================================== */
@@ -1354,3 +1523,383 @@ function playJobChangeCinematic(leadText = "TU CLASE HA CAMBIADO", oldName = "NI
         ov.remove();
     };
 }
+
+/* ==========================================================================
+   7. MOTOR CIFRADO DE MICRO-ANOMALÍAS CANON (11 SECRETOS DE DESCUBRIMIENTO)
+   ========================================================================== */
+(function _initCanonAnomalyMatrix() {
+    if (window._canonMatrixLoaded) return;
+    window._canonMatrixLoaded = true;
+
+    const _k = (s) => _d64(s);
+    const _once = (id) => {
+        if (!p) return false;
+        if (!p._kmLog) p._kmLog = {};
+        let d = new Date().toDateString();
+        if (p._kmLog[id] === d) return false;
+        p._kmLog[id] = d;
+        if (typeof saveData === 'function') saveData();
+        return true;
+    };
+
+    // Efecto visual de Intercambio de Sombra al cambiar o invocar comandante
+    const _origSelectCmd = window.selectShowcaseCommander;
+    if (typeof _origSelectCmd === 'function') {
+        window.selectShowcaseCommander = function(cmdId) {
+            _origSelectCmd(cmdId);
+            let stg = document.getElementById('throne-cmd-stage');
+            if (stg) {
+                stg.classList.remove('shadow-exchange-dive');
+                void stg.offsetWidth;
+                stg.classList.add('shadow-exchange-dive');
+            }
+        };
+    }
+
+    // M01 & M02
+    let _taps = 0, _tTimer = null;
+    document.addEventListener('click', (e) => {
+        if (!p || p.penaltyActive) return;
+        let lBox = e.target.closest('.lvl-container');
+        if (lBox) {
+            _taps++;
+            clearTimeout(_tTimer);
+            _tTimer = setTimeout(() => { _taps = 0; }, 1400);
+            if (_taps === 3 && _once('km_01')) {
+                _taps = 0;
+                p.mp = Math.min(1000 + ((p.stats.int - 1) * 1000), (p.mp || 0) + 45);
+                updateHUD();
+                systemNotify(_k('W1JFRUNWQUxVQUNJw5NOIERFTCBTQ0FOTkVSXTogRXJyb3IgZGUgbWVkaWNpw7NuIGVuIGVsIG1hbmFtw6l0cm8uIFJlY2FsaWJyYW5kbyByYW5nbyBkZWwgSnVnYWRvciAoKzQ1IE1QKS4='), 'info');
+            }
+        }
+        let fWidget = e.target.closest('#sl-fatigue-widget');
+        if (fWidget && (100 - p.sp) >= 70 && _once('km_02')) {
+            p.sp = Math.min(100, p.sp + 12);
+            updateHUD();
+            systemNotify(_k('W1JFU1BJUkFDSU9OIERFTCBDQVpBRE9SXSDCq05vIGNlZGFzIGFudGUgbGEgZmF0aWdhwrsuIFR1IHB1bHNvIHNlIGVzdGFiaWxpemEgKC0xMiBGYXRpZ2EpLg=='), 'info');
+        }
+    });
+
+    // M03, M04, M05 & M06
+    setInterval(() => {
+        if (document.hidden || !p || p.penaltyActive) return;
+        let now = new Date();
+        let hh = now.getHours(), mm = now.getMinutes();
+
+        if (hh === mm && (hh === 11 || hh === 22 || hh === 0) && _once('km_03_' + hh)) {
+            p.arcticShield = Math.min(800, (p.arcticShield || 0) + 30);
+            updateHUD();
+            systemNotify(_k('W01BTkRBTUlFTlRPIERFIENBUlRFTk9OXSAxLiBBZG9yYXLDoXMgYWwgU2XDsW9yLiAyLiBBbGFiYXLDoXMgYWwgU2XDsW9yLiAzLiBEZW1vc3RyYXLDoXMgdHUgZmUgKCszMCBFc2N1ZG8pLg=='), 'purple');
+        }
+
+        if (Math.floor(p.hp) === 1 && _once('km_04')) {
+            p.hp = Math.min((typeof calculateHunterMaxHP === 'function' ? calculateHunterMaxHP() : 100), p.hp + 33);
+            updateHUD();
+            systemNotify(_k('W01JU0lP TiBTRUNSRVRBOiBFTCBWQVRpQ0lOSU8gREUgTE9TIERFQklMRVNdIFR1IGNvcmF6w7NuIHNlIG5pZWdhIGEgbW9yaXIuICszMyBIUCBkZSBlbWVyZ2VuY2lhLg=='), 'gold');
+        }
+
+        if (Math.floor(p.gold) === 777 && _once('km_05')) {
+            p.gold += 77;
+            updateHUD();
+            systemNotify(_k('W1NVQkFTVEEgREUgTE9TIEdSRU1JT1NdIFVuIGNvbGVjY2lvbmlzdGEgYW5vbmltbyBwYWfDsyB1biBib25vIHBvciB0dSB0ZXNvcmVyw61hIGV4YWN0YSAoKzc3IEcpLg=='), 'gold');
+        }
+
+        if ((100 - p.sp) === 0 && p.hp >= ((typeof calculateHunterMaxHP === 'function' ? calculateHunterMaxHP() : 100)) && Math.random() < 0.012 && _once('km_06')) {
+            p.mp = Math.min(1000 + ((p.stats.int - 1) * 1000), (p.mp || 0) + 35);
+            updateHUD();
+            systemNotify(_k('W1NJTkNST05JWkFDSU9OIERFTCBSRUNFUFRBQ1VMT10gRWwgQXJxdWl0ZWN0byByZWdpc3RyYSB1biBlcXVpbGlicmlvIGZpc2ljbyBwZXJmZWN0byAoKzM1IE1QKS4='), 'info');
+        }
+    }, 10000);
+
+    // M07 & M08
+    document.addEventListener('input', (e) => {
+        if (!e.target || e.target.id !== 'shop-search-input') return;
+        let v = (e.target.value || '').trim().toLowerCase();
+        if ((v === _k('YXNoYm9ybg==') || v === _k('a2FuZGlhcnU=')) && _once('km_07')) {
+            p.mp = Math.min(1000 + ((p.stats.int - 1) * 1000), (p.mp || 0) + 60);
+            updateHUD();
+            systemNotify(_k('W1JFR0lTVFJPIENMQVNJRklDQURPXSAwMDE6IEVsIG5vbWJyZSBpbmdyZXNhZG8gcGVydGVuZWNlIGEgdW4gYWRtaW5pc3RyYWRvciBkZWwgU2lzdGVtYSAoKzYwIE1QKS4='), 'purple');
+        } else if (v === _k('c3VyZ2U=') && _once('km_08')) {
+            p.sp = Math.min(100, p.sp + 15);
+            updateHUD();
+            systemNotify(_k('W0NPTUFORF8gREUgRVhUUkFDQ0lPTl0gTuKAmW8gaGF5IGNhZGF2ZXJlcyBlbiBlbCBtZXJjYWRvLCBwZXJvIHR1IGF1cmEgcmV2aXRhbGl6w7MgdHUgY3VlcnBvICgtMTUgRmF0aWdhKS4='), 'purple');
+        }
+    });
+
+    // M09, M10 & M11
+    document.addEventListener('pointerdown', (e) => {
+        if (!p || p.penaltyActive) return;
+        if (e.target.closest('.sonar-center-dot') && _once('km_09')) {
+            p.mp = Math.min(1000 + ((p.stats.int - 1) * 1000), (p.mp || 0) + 30);
+            updateHUD();
+            systemNotify(_k('W1BVTFNPIERFIERFVEVDQ0lPTl0gRW1pdGlzdGUgdW5hIG9uZGEgZGUgbWFuw6EgZGlyZWN0YSBkZXNkZSB0dSBwb3NpY2nDs24gYWN0dWFsICgrMzAgTVApLg=='), 'info');
+        }
+        if (e.target.closest('.sl-anatomy-body-center') && _once('km_10')) {
+            let mh = (typeof calculateHunterMaxHP === 'function') ? calculateHunterMaxHP() : 100;
+            p.hp = Math.min(mh, +(p.hp + 15).toFixed(1));
+            updateHUD();
+            systemNotify(_k('W0NPUkFaT04gTkVHUk9dIFR1IG51Y2xlbyBpbnRlcm5vIGxhdGUgY29uIGxhIGVuZXJnw61hIGRlbCBNb25hcmNhIGRlIGxhcyBTb21icmFzICgrMTUgSFApLg=='), 'purple');
+        }
+        if (e.target.closest('.sl-status-rank-box') && _once('km_11')) {
+            p.gold += 25;
+            updateHUD();
+            systemNotify(_k('W0FTT0NJQUNJT04gREUgQ0FaQURPUkVTXSBTdWJzaWRpbyBkaWFyaW8gZGUgaW5zZWNjaW9uIGRlIGxpY2VuY2lhIGFjcmVkaXRhZG8gKCsyNSBHKS4='), 'gold');
+        }
+    }, { passive: true });
+})();
+/* ==========================================================================
+   17. PRÓLOGO CINEMATOGRÁFICO: DÍA CERO (DESPERTAR EN EL TEMPLO DE CARTENON)
+   ========================================================================== */
+let dayZeroStep = 0;
+let dayZeroPlayerName = "Cristian";
+
+const DAY_ZERO_SEQUENCE = [
+    {
+        frame: "sl-holo-frame",
+        header: "[ ! ] NOTIFICACIÓN",
+        sub: "[ MISIÓN SECRETA COMPLETADA ]",
+        body: "Has cumplido todos los requisitos necesarios para completar la Misión Secreta: «El Valor de los Débiles».",
+        action: "Toca para continuar..."
+    },
+    {
+        frame: "sl-holo-frame",
+        header: "[ ! ] NOTIFICACIÓN",
+        sub: "[ SELECCIÓN DE RECEPTÁCULO ]",
+        body: "Has obtenido el derecho de convertirte en un JUGADOR.<br><br>¿Aceptas la designación del Sistema?",
+        action: "Toca para continuar..."
+    },
+    {
+        frame: "sl-holo-frame danger",
+        header: "[ ! ] ADVERTENCIA",
+        sub: "[ CRONÓMETRO VITAL ACTIVO ]",
+        body: "<span class='ct-red-Runic'>NO TE QUEDA MUCHO TIEMPO.</span>",
+        action: "Toca para continuar...",
+        sound: "danger"
+    },
+    {
+        frame: "sl-holo-frame danger",
+        header: "[ ! ] CRÍTICO",
+        sub: "[ AMENAZA BIOLÓGICA ]",
+        body: "Si te niegas, tus signos vitales colapsarán y tu corazón se detendrá en <b class='ct-red-Runic' id='dz-crit-timer'>0.02 segundos</b>.<br><br>¿Aceptas ser el Receptáculo?",
+        type: "choice"
+    },
+    {
+        frame: "sl-holo-frame",
+        header: "REGISTRO",
+        sub: "[ EXPEDIENTE DEL CAZADOR ]",
+        body: "Ingresa el nombre del Jugador:",
+        type: "input"
+    },
+    {
+        frame: "sl-holo-frame",
+        header: "[ ! ] NOTIFICACIÓN",
+        sub: "",
+        body: "[ Felicitaciones por convertirte en un JUGADOR. ]",
+        action: "Toca para continuar..."
+    },
+    {
+        frame: "sl-holo-frame",
+        header: "[ ! ] NOTIFICACIÓN",
+        sub: "",
+        body: "[ El Sistema asistirá y guiará el crecimiento continuo del Jugador. ]",
+        action: "Toca para continuar..."
+    },
+    {
+        frame: "sl-holo-frame danger",
+        header: "[ ! ] NOTIFICACIÓN",
+        sub: "[ CLÁUSULA INQUEBRANTABLE ]",
+        body: "[ En caso de no cumplir estrictamente las directivas diarias del Sistema, se aplicará una <b class='ct-red-Runic'>ZONA DE PENALIZACIÓN</b> apropiada. ]",
+        action: "Toca para continuar..."
+    },
+    {
+        frame: "sl-holo-frame",
+        header: "RECOMPENSA",
+        sub: "",
+        body: `
+            <div style="width:58px; height:58px; margin:0 auto 12px auto;">
+                ${(typeof UNIQUE_ITEM_SVGS !== 'undefined') ? UNIQUE_ITEM_SVGS.box_start : '🎁'}
+            </div>
+            [ Has recibido suministros iniciales: Caja de Despertar y Cupón de Almuerzo han sido materializados en tu Bolsa Dimensional. ]
+        `,
+        action: "Toca para continuar...",
+        sound: "gold"
+    },
+    {
+        frame: "sl-holo-frame",
+        header: "NUEVO MENSAJE",
+        sub: "",
+        body: `
+            <div style="width:58px; height:58px; margin:0 auto 12px auto;">
+                ${(typeof UNIQUE_ITEM_SVGS !== 'undefined') ? UNIQUE_ITEM_SVGS.p_blood_contract : '✉️'}
+            </div>
+            [ Misión Diaria: «La preparación para volverse fuerte» ha sido asignada. <span style="color:#fb7185;">(NO LEÍDA)</span>. ]
+        `,
+        type: "finish"
+    }
+];
+
+window.startDayZeroPrologue = function() {
+    let ov = document.getElementById('sl-day-zero-overlay');
+    if (!ov) return;
+    ov.style.display = 'flex';
+    dayZeroStep = 0;
+    renderDayZeroStep();
+};
+
+window.renderDayZeroStep = function() {
+    let ov = document.getElementById('sl-day-zero-overlay');
+    let cont = document.getElementById('sl-day-zero-content');
+    if (!ov || !cont) return;
+
+    if (dayZeroStep >= DAY_ZERO_SEQUENCE.length) {
+        finishDayZeroPrologue();
+        return;
+    }
+
+    let stepData = DAY_ZERO_SEQUENCE[dayZeroStep];
+    let cornerSVG = (typeof getBaroqueCornerSVG === "function") ? getBaroqueCornerSVG() : '';
+
+    if (stepData.sound && typeof playSystemSound === "function") {
+        playSystemSound(stepData.sound);
+    } else if (typeof playSystemSound === "function" && dayZeroStep > 0) {
+        playSystemSound('step_arrow');
+    }
+
+    let innerContent = "";
+    if (stepData.type === "choice") {
+        innerContent = `
+            <div style="display:flex; gap:8px; margin-top:16px;">
+                <button class="btn btn-main" style="flex:1;" onclick="advanceDayZeroStep()">ACEPTAR</button>
+                <button class="btn btn-red" id="dz-btn-reject" style="flex:1;" onclick="handleDayZeroReject()">RECHAZAR</button>
+            </div>
+        `;
+    } else if (stepData.type === "input") {
+        innerContent = `
+            <input type="text" id="dz-name-input" class="sl-name-bestow-input" value="${p.playerName || 'Cristian'}" style="margin:16px auto 12px auto; max-width:240px;">
+            <button class="btn btn-main" style="width:100%;" onclick="confirmDayZeroRegistration()">CONFIRMAR REGISTRO</button>
+        `;
+    } else if (stepData.type === "finish") {
+        innerContent = `
+            <button class="btn btn-main" style="width:100%; margin-top:16px; padding:14px; font-size:1em;" onclick="finishDayZeroPrologue()">INGRESAR AL DOMINIO DEL MONARCA</button>
+        `;
+    } else {
+        innerContent = `
+            <div class="sl-holo-footer-hint" style="margin-top:16px; cursor:pointer;" onclick="advanceDayZeroStep()">${stepData.action}</div>
+        `;
+    }
+
+    cont.innerHTML = `
+        <div class="${stepData.frame} sl-day-zero-fade" style="width:100%; cursor:default;" ${(!stepData.type) ? 'onclick="advanceDayZeroStep()"' : ''}>
+            <div class="sl-holo-rail top"><span class="rail-core"></span></div>
+            <div class="sl-holo-glass">
+                <div class="sl-holo-inner-box" style="padding:22px 18px; text-align:center;">
+                    <span class="sl-baroque-corner tl">${cornerSVG}</span>
+                    <span class="sl-baroque-corner tr">${cornerSVG}</span>
+                    <span class="sl-baroque-corner bl">${cornerSVG}</span>
+                    <span class="sl-baroque-corner br">${cornerSVG}</span>
+                    <div class="sl-holo-header-row" style="margin-bottom:8px;">
+                        <div class="sl-excl-square">!</div>
+                        <div class="sl-title-rect">${stepData.header}</div>
+                    </div>
+                    ${stepData.sub ? `<div class="sl-holo-subbracket" style="margin-bottom:14px;">${stepData.sub}</div>` : ''}
+                    <div style="font-family:'Share Tech Mono', monospace; font-size:0.95em; color:#e2e8f0; line-height:1.5; margin-bottom:8px; word-break:break-word;">
+                        ${stepData.body}
+                    </div>
+                    ${innerContent}
+                </div>
+            </div>
+            <div class="sl-holo-rail bottom"><span class="rail-core"></span></div>
+        </div>
+    `;
+
+    if (stepData.type === "input") {
+        setTimeout(() => {
+            let inp = document.getElementById('dz-name-input');
+            if (inp) { inp.focus(); inp.select(); }
+        }, 150);
+    }
+};
+
+window.advanceDayZeroStep = function() {
+    dayZeroStep++;
+    renderDayZeroStep();
+};
+
+window.handleDayZeroReject = function() {
+    let btnR = document.getElementById('dz-btn-reject');
+    let timerTxt = document.getElementById('dz-crit-timer');
+    if (btnR) {
+        btnR.style.opacity = '0.4';
+        btnR.style.pointerEvents = 'none';
+        btnR.innerText = "BLOQUEADO";
+    }
+    if (timerTxt) {
+        timerTxt.innerText = "0.01 segundos";
+        timerTxt.classList.add('dayzero-crit-blink');
+    }
+    let cont = document.getElementById('sl-day-zero-content');
+    if (cont) {
+        cont.classList.remove('arena-hit-shake');
+        void cont.offsetWidth;
+        cont.classList.add('arena-hit-shake');
+    }
+    if (typeof playSystemSound === "function") playSystemSound('danger');
+    if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+};
+
+window.confirmDayZeroRegistration = function() {
+    let inp = document.getElementById('dz-name-input');
+    if (inp && inp.value.trim()) {
+        dayZeroPlayerName = inp.value.trim();
+        if (p) p.playerName = dayZeroPlayerName;
+    }
+    advanceDayZeroStep();
+};
+
+window.finishDayZeroPrologue = function() {
+    let ov = document.getElementById('sl-day-zero-overlay');
+    if (!ov) return;
+
+    if (p) {
+        p.dayZeroCompleted = true;
+        if (!p.inventory) p.inventory = [];
+        let hasStartBox = p.inventory.some(i => i.id === "box_start");
+        if (!hasStartBox) {
+            p.inventory.push({
+                id: "box_start",
+                icon: "🎁",
+                title: "Caja de Despertar",
+                desc: "Contiene provisiones básicas para el nuevo jugador.",
+                rank: "B",
+                type: "box"
+            });
+            p.inventory.push({
+                id: "lunch_ticket",
+                icon: "🥗",
+                title: "Cupón de Almuerzo",
+                desc: "Regenera 40 SP de forma pausada. Válido únicamente de 11:15 AM a 2:00 PM.",
+                rank: "B",
+                type: "item"
+            });
+        }
+        if (typeof saveData === "function") saveData();
+    }
+
+    if (typeof playSystemSound === "function") playSystemSound('monarch_awakening');
+
+    ov.style.transition = "opacity 0.6s ease";
+    ov.style.opacity = "0";
+    setTimeout(() => {
+        ov.remove();
+        if (typeof initializeSystem === "function") {
+            if (typeof updateHUD === "function") updateHUD();
+            if (typeof updateEquipmentUI === "function") updateEquipmentUI();
+            if (typeof renderRoutine === "function") renderRoutine();
+            if (typeof renderBosses === "function") renderBosses();
+            if (typeof renderShop === "function") renderShop();
+            if (typeof renderInventory === "function") renderInventory();
+            if (typeof renderSchedules === "function") renderSchedules();
+            if (typeof switchTab === "function") switchTab('routine', 0);
+        }
+    }, 650);
+};
