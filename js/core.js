@@ -86,9 +86,23 @@ let currentNetMpPerMin = 0;
    ========================================================================== */
 window._isResettingSystem = false;
 
+// Recuerda si esta página cargó datos guardados al abrirse
+let _loadedFromStorage = !!_safeGetStorage('SL_Player_' + VERSION);
+
 function saveData() {
     if (window._isResettingSystem) return;
+
+    // Si los datos desaparecieron mientras la página seguía abierta,
+    // alguien borró el sitio: no volver a escribir el progreso viejo.
+    // Recargar para empezar limpio.
+    if (_loadedFromStorage && _safeGetStorage('SL_Player_' + VERSION) === null) {
+        window._isResettingSystem = true;
+        window.location.reload();
+        return;
+    }
+
     _safeSetStorage('SL_Player_' + VERSION, JSON.stringify(p));
+    _loadedFromStorage = true;
 }
 
 window.resetSistema = window.resetMonarchSystem = async function() {
