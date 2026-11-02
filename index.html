@@ -600,34 +600,34 @@
         </div>
     </div>
 <!-- MÓDULOS DEL SISTEMA (ORDEN DE CARGA ESTRICTO CON BYPASS DE CACHÉ) -->
-    <script src="js/database.js?v=8.2"></script>
-    <script src="js/dialogues.js?v=8.2"></script>
-    <script src="comandantes/igris-svg.js?v=8.2" onerror="var s=document.createElement('script');s.src='igris-svg.js?v=8.2';document.head.appendChild(s);"></script>
-    <script src="comandantes/tank-svg.js?v=8.2" onerror="var s=document.createElement('script');s.src='tank-svg.js?v=8.2';document.head.appendChild(s);"></script>
-    <script src="comandantes/iron-svg.js?v=8.2" onerror="var s=document.createElement('script');s.src='iron-svg.js?v=8.2';document.head.appendChild(s);"></script>
-    <script src="comandantes/tusk-svg.js?v=8.2" onerror="var s=document.createElement('script');s.src='tusk-svg.js?v=8.2';document.head.appendChild(s);"></script>
-<script src="comandantes/min-svg.js?v=8.2" onerror="var s=document.createElement('script');s.src='min-svg.js?v=8.2';document.head.appendChild(s);"></script>
-    <script src="comandantes/beru-svg.js?v=8.2" onerror="var s=document.createElement('script');s.src='beru-svg.js?v=8.2';document.head.appendChild(s);"></script>
-    <script src="models.js?v=8.2" onerror="var s=document.createElement('script');s.src='js/models.js?v=8.2';document.head.appendChild(s);"></script>
-    <script src="js/core.js?v=8.2"></script>
-    <script src="js/combat.js?v=8.2"></script>
-    <script src="js/events.js?v=8.2"></script>
-    <script src="js/inventory.js?v=8.2"></script>
-    <script src="js/missions.js?v=8.2"></script>
-    <script src="js/ui.js?v=8.2"></script>
-    <!-- REGISTRO Y LIMPIEZA AUTOMÁTICA DEL SERVICE WORKER -->
-     <script>
-   if ('serviceWorker' in navigator) {
-     if (!localStorage.getItem('SL_CachePurged_V8_2')) {
-       caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).then(() => {
-         localStorage.setItem('SL_CachePurged_V8_2', '1');
-         window.location.reload();
-       });
-     }
-     navigator.serviceWorker.register('./sw.js?v=8.2')
-       .then(reg => { reg.update(); console.log("SINCRO-LOG:: Service Worker Actualizado."); })
-       .catch(err => console.log("Error de Sistema:", err));
-   }
- </script>
+    <script src="js/database.js?v=8.6"></script>
+    <script src="js/dialogues.js?v=8.6"></script>
+    <script src="comandantes/igris-svg.js?v=8.6" onerror="var s=document.createElement('script');s.src='igris-svg.js?v=8.6';document.head.appendChild(s);"></script>
+    <script src="comandantes/tank-svg.js?v=8.6" onerror="var s=document.createElement('script');s.src='tank-svg.js?v=8.6';document.head.appendChild(s);"></script>
+    <script src="comandantes/iron-svg.js?v=8.6" onerror="var s=document.createElement('script');s.src='iron-svg.js?v=8.6';document.head.appendChild(s);"></script>
+    <script src="comandantes/tusk-svg.js?v=8.6" onerror="var s=document.createElement('script');s.src='tusk-svg.js?v=8.6';document.head.appendChild(s);"></script>
+<script src="comandantes/min-svg.js?v=8.6" onerror="var s=document.createElement('script');s.src='min-svg.js?v=8.6';document.head.appendChild(s);"></script>
+    <script src="comandantes/beru-svg.js?v=8.2" onerror="var s=document.createElement('script');s.src='beru-svg.js?v=8.6';document.head.appendChild(s);"></script>
+    <script src="models.js?v=8.6" onerror="var s=document.createElement('script');s.src='js/models.js?v=8.2';document.head.appendChild(s);"></script>
+    <script src="js/core.js?v=8.6"></script>
+    <script src="js/combat.js?v=8.6"></script>
+    <script src="js/events.js?v=8.6"></script>
+    <script src="js/inventory.js?v=8.6"></script>
+    <script src="js/missions.js?v=8.6"></script>
+    <script src="js/ui.js?v=8.6"></script>
+    <!-- REGISTRO Y LIMPIEZA AUTOMÁTICA DEL SERVICE WORKER V8.6 -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        if (!localStorage.getItem('SL_CachePurged_V8_6')) {
+          caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).then(() => {
+            localStorage.setItem('SL_CachePurged_V8_6', '1');
+            window.location.reload();
+          });
+        }
+        navigator.serviceWorker.register('./sw.js?v=8.3')
+          .then(reg => { reg.update(); console.log("SINCRO-LOG:: Service Worker V8.6 Actualizado."); })
+          .catch(err => console.log("Error de Sistema:", err));
+      }
+    </script>
 </body>
 </html>
