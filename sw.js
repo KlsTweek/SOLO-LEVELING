@@ -1,7 +1,7 @@
 /* ==========================================================================
    SW.JS - SERVICE WORKER V8.2 COMPATIBLE CON VERCEL Y WEBAPK ANDROID
    ========================================================================== */
-const CACHE_NAME = 'monarch-domain-v8.3';
+const CACHE_NAME = 'monarch-domain-v8.4';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
