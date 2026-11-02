@@ -327,9 +327,9 @@ const UNIQUE_ITEM_SVGS = {
     // ==================== 7. ESPECIALES DEL SISTEMA (5) ====================
     "lunch_ticket": `<path d="M12 38 A20 20 0 0 1 52 38 Z" F1 S1/><circle cx="32" cy="14" r="3" fill="#ffffff"/><line x1="6" y1="42" x2="58" y2="42" S1/><path d="M20 50 L44 50" S2/>`,
     "work_pass": `<rect x="14" y="10" width="36" height="46" rx="3" F1 S1/><line x1="26" y1="16" x2="38" y2="16" S2/><circle cx="32" cy="30" r="8" S1/><polyline points="28,30 31,34 37,26" stroke="#ffffff" stroke-width="2.4"/><line x1="22" y1="46" x2="42" y2="46" S2/>`,
-    "box_start": `<polygon points="32,8 54,20 54,44 32,56 10,44 10,20" F1 S1/><path d="M10 20 L32 32 L54 20 M32 32 L32 56" S1/><circle cx="32" cy="22" r="5" fill="#ffffff"/>`,
-    "box_week": `<path d="M16 20 A16 12 0 0 1 48 20 L40 30 L24 30 Z" F1 S2/><rect x="18" y="30" width="28" height="24" rx="2" F1 S1/><path d="M18 42 L46 42 M32 30 L32 54" S1/><rect x="29" y="39" width="6" height="6" fill="#ffffff"/>`,
-    "box_deluxe": `<path d="M12 24 C12 10 52 10 52 24 L50 52 L14 52 Z" F1 S1/><path d="M12 26 L52 26 M20 14 L20 52 M44 14 L44 52" S2/><polygon points="32,16 39,26 32,36 25,26" fill="#ffffff" S1/>`
+    "box_start": `<path d="M10 26 L54 26 L52 54 L12 54 Z" F1 S1/><path d="M14 26 L22 12 L42 12 L50 26" F1 S1/><rect x="26" y="22" width="12" height="8" rx="1" fill="#ffffff" S1/><path d="M32 30 L32 54" S1/>`,
+    "box_week": `<path d="M12 26 L52 26 L50 54 L14 54 Z" F1 S1/><path d="M12 26 L20 10 L44 10 L52 26" F1 S1/><rect x="24" y="22" width="16" height="8" rx="1" fill="#ffffff" S1/><path d="M32 30 L32 54 M12 26 L52 26" S1/>`,
+    "box_deluxe": `<path d="M10 28 L54 28 L52 56 L12 56 Z" F1 S1/><path d="M10 28 L24 8 L40 8 L54 28" F1 S1/><polygon points="32,18 40,28 32,38 24,28" fill="#ffffff" S1/><path d="M32 38 L32 56 M10 28 L54 28" S1/>`
 };
 
 const UNIQUE_LOOT_SVGS = {

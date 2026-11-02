@@ -1447,7 +1447,7 @@ function openSarcophagusChestModal(idx) {
         <div class="sl-sarcophagus-box chest-shake" id="sl-chest-visual-box">
             ${getIconFor(boxItem)}
         </div>
-        <div style="font-family:'Share Tech Mono', monospace; font-size:0.85em; color:#7dd3fc; margin-bottom:12px;" id="sl-chest-status-txt">
+        <div style="font-family:'Share Tech Mono', monospace; font-size:0.78em; color:#7dd3fc; margin-bottom:12px; white-space:nowrap;" id="sl-chest-status-txt">
             [ RANGO DEL CONTENEDOR: ${boxItem.rank || 'B'} // LISTO PARA DESELLAR ]
         </div>
         <div id="sl-chest-reward-slot" style="display:none; margin-bottom:12px;"></div>

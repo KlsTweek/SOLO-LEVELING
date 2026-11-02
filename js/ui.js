@@ -1651,26 +1651,26 @@ function playJobChangeCinematic(leadText = "TU CLASE HA CAMBIADO", oldName = "NI
    17. PRÓLOGO CINEMATOGRÁFICO: DÍA CERO (DESPERTAR EN EL TEMPLO DE CARTENON)
    ========================================================================== */
 let dayZeroStep = 0;
-let dayZeroPlayerName = "Cristian";
+let dayZeroPlayerName = " ";
 
 const DAY_ZERO_SEQUENCE = [
     {
         frame: "sl-holo-frame",
-        header: "[ ! ] NOTIFICACIÓN",
+        header: "NOTIFICACIÓN",
         sub: "[ MISIÓN SECRETA COMPLETADA ]",
         body: "Has cumplido todos los requisitos necesarios para completar la Misión Secreta: «El Valor de los Débiles».",
         action: "Toca para continuar..."
     },
     {
         frame: "sl-holo-frame",
-        header: "[ ! ] NOTIFICACIÓN",
+        header: "NOTIFICACIÓN",
         sub: "[ SELECCIÓN DE RECEPTÁCULO ]",
         body: "Has obtenido el derecho de convertirte en un JUGADOR.<br><br>¿Aceptas la designación del Sistema?",
         action: "Toca para continuar..."
     },
     {
         frame: "sl-holo-frame danger",
-        header: "[ ! ] ADVERTENCIA",
+        header: "ADVERTENCIA",
         sub: "[ CRONÓMETRO VITAL ACTIVO ]",
         body: "<span class='ct-red-Runic'>NO TE QUEDA MUCHO TIEMPO.</span>",
         action: "Toca para continuar...",
@@ -1678,7 +1678,7 @@ const DAY_ZERO_SEQUENCE = [
     },
     {
         frame: "sl-holo-frame danger",
-        header: "[ ! ] CRÍTICO",
+        header: "CRÍTICO",
         sub: "[ AMENAZA BIOLÓGICA ]",
         body: "Si te niegas, tus signos vitales colapsarán y tu corazón se detendrá en <b class='ct-red-Runic' id='dz-crit-timer'>0.02 segundos</b>.<br><br>¿Aceptas ser el Receptáculo?",
         type: "choice"
@@ -1692,21 +1692,21 @@ const DAY_ZERO_SEQUENCE = [
     },
     {
         frame: "sl-holo-frame",
-        header: "[ ! ] NOTIFICACIÓN",
+        header: "NOTIFICACIÓN",
         sub: "",
         body: "[ Felicitaciones por convertirte en un JUGADOR. ]",
         action: "Toca para continuar..."
     },
     {
         frame: "sl-holo-frame",
-        header: "[ ! ] NOTIFICACIÓN",
+        header: "NOTIFICACIÓN",
         sub: "",
         body: "[ El Sistema asistirá y guiará el crecimiento continuo del Jugador. ]",
         action: "Toca para continuar..."
     },
     {
         frame: "sl-holo-frame danger",
-        header: "[ ! ] NOTIFICACIÓN",
+        header: "NOTIFICACIÓN",
         sub: "[ CLÁUSULA INQUEBRANTABLE ]",
         body: "[ En caso de no cumplir estrictamente las directivas diarias del Sistema, se aplicará una <b class='ct-red-Runic'>ZONA DE PENALIZACIÓN</b> apropiada. ]",
         action: "Toca para continuar..."
@@ -1724,7 +1724,7 @@ const DAY_ZERO_SEQUENCE = [
         action: "Toca para continuar...",
         sound: "gold"
     },
-    {
+        {
         frame: "sl-holo-frame",
         header: "NUEVO MENSAJE",
         sub: "",
@@ -1732,6 +1732,7 @@ const DAY_ZERO_SEQUENCE = [
             <div style="width:58px; height:58px; margin:0 auto 12px auto;">
                 ${(typeof UNIQUE_ITEM_SVGS !== 'undefined') ? UNIQUE_ITEM_SVGS.p_blood_contract : '✉️'}
             </div>
+            <div style="margin-bottom:8px; color:#7dd3fc;">[ Jugador: <span id="dz-final-name-disp"></span> ]</div>
             [ Misión Diaria: «La preparación para volverse fuerte» ha sido asignada. <span style="color:#fb7185;">(NO LEÍDA)</span>. ]
         `,
         type: "finish"
@@ -1743,6 +1744,10 @@ window.startDayZeroPrologue = function() {
     if (!ov) return;
     ov.style.display = 'flex';
     dayZeroStep = 0;
+    
+    // Sincronizar el nombre guardado previamente si existe
+    if (p && p.playerName) dayZeroPlayerName = p.playerName;
+    
     renderDayZeroStep();
 };
 
@@ -1812,11 +1817,14 @@ window.renderDayZeroStep = function() {
         </div>
     `;
 
-    if (stepData.type === "input") {
+        if (stepData.type === "input") {
         setTimeout(() => {
             let inp = document.getElementById('dz-name-input');
             if (inp) { inp.focus(); inp.select(); }
         }, 150);
+    } else if (stepData.type === "finish") {
+        let nameDisp = document.getElementById('dz-final-name-disp');
+        if (nameDisp) nameDisp.innerText = dayZeroPlayerName.toUpperCase();
     }
 };
 
