@@ -1,7 +1,7 @@
 /* ==========================================================================
-   SW.JS - SERVICE WORKER V5.2 COMPATIBLE CON VERCEL Y WEBAPK ANDROID
+   SW.JS - SERVICE WORKER V8.2 COMPATIBLE CON VERCEL Y WEBAPK ANDROID
    ========================================================================== */
-const CACHE_NAME = 'monarch-domain-v7.5';
+const CACHE_NAME = 'monarch-domain-v8.2';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -9,6 +9,14 @@ const ASSETS_TO_CACHE = [
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
+  '/comandantes/igris-svg.js',
+  '/comandantes/tank-svg.js',
+  '/comandantes/iron-svg.js',
+  '/comandantes/tusk-svg.js',
+  '/comandantes/min-svg.js',
+  '/comandantes/beru-svg.js',
+  '/models.js',
+  '/js/models.js',
   '/js/database.js',
   '/js/dialogues.js',
   '/js/core.js',
@@ -32,8 +40,8 @@ async function cleanResponse(res) {
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return Promise.allSettled(
+    caches.open(CACHE_NAME).then((cache) =>
+      Promise.allSettled(
         ASSETS_TO_CACHE.map((url) =>
           fetch(url, { cache: 'reload' })
             .then(async (res) => {
@@ -43,8 +51,8 @@ self.addEventListener('install', (event) => {
             })
             .catch(() => {})
         )
-      );
-    })
+      )
+    )
   );
 });
 
@@ -64,30 +72,45 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     (async () => {
       const cache = await caches.open(CACHE_NAME);
+      try {
+        const netRes = await fetch(event.request, { cache: 'no-store' });
+        if (netRes && netRes.status === 200) {
+          const clean = await cleanResponse(netRes);
+          cache.put(event.request, clean.clone());
+          return clean;
+        }
+      } catch (e) {}
+
       const cached = await cache.match(event.request, { ignoreSearch: true });
-
-      const networkFetch = fetch(event.request)
-        .then(async (res) => {
-          if (res && res.status === 200) {
-            const clean = await cleanResponse(res);
-            cache.put(event.request, clean.clone());
-            return clean;
-          }
-          return res;
-        })
-        .catch(() => null);
-
-      if (cached) {
-        return cached;
-      }
-
-      const netRes = await networkFetch;
-      if (netRes) return netRes;
+      if (cached) return cached;
 
       if (event.request.mode === 'navigate') {
         return (await cache.match('/index.html')) || (await cache.match('/'));
       }
       return new Response('Offline', { status: 503 });
     })()
+  );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SL_POMODORO_NOTIFY') {
+    self.registration.showNotification(event.data.title || 'SISTEMA DEL MONARCA', {
+      body: event.data.body || 'Directiva del Sistema actualizada.',
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
+      vibrate: [200, 100, 250, 100, 300],
+      tag: event.data.tag || 'sl-pomodoro-' + Date.now(),
+      renotify: true
+    });
+  }
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      if (clientList.length > 0) return clientList[0].focus();
+      return clients.openWindow('/');
+    })
   );
 });

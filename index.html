@@ -18,7 +18,14 @@
     <div class="damage-overlay" id="damage-overlay"></div>
     
     <!-- NIVEL 1: MENSAJES RÁPIDOS (TOASTS) -->
+        <!-- NIVEL 1: MENSAJES RÁPIDOS (TOASTS) -->
     <div id="toast-container"></div>
+
+    <!-- PRÓLOGO CINEMATOGRÁFICO: DÍA CERO (TEMPLO DE CARTENON) -->
+    <div id="sl-day-zero-overlay" style="display:none; position:fixed; inset:0; background:#02040a; z-index:14000; justify-content:center; align-items:center; padding:18px;">
+        <div id="sl-day-zero-content" style="width:100%; max-width:410px; display:flex; flex-direction:column; gap:16px;"></div>
+    </div>
+
 
     <!-- CINEMÁTICA ÚNICA: GRIMORIO HOLOGRÁFICO VERDE 3D DE MIN BYUNG-GYU -->
     <div id="min-grimoire-overlay" style="display: none;">
@@ -131,28 +138,45 @@
                 </div>
             </div>
 
-            <div class="raid-vitals-box raid-dimmable">
-                <div class="raid-vital-row">
-                    <span>HP</span>
-                    <div class="bar-wrap"><div class="bar-fill hp-bar" id="raid-hp-bar"></div></div>
-                    <span id="raid-hp-text">100.0/100</span>
+<div class="raid-vitals-box raid-dimmable sl-anime-vitals-box">
+    <div class="sl-bars-row">
+        <div class="sl-vital-col hp-col">
+            <div class="sl-vital-top">
+                <div class="sl-vital-icon-wrap">
+                    <svg viewBox="0 0 24 24" class="sl-anime-icon"><path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6V3z" fill="#ffffff"/></svg>
+                    <span class="sl-vital-lbl">HP</span>
                 </div>
-                <div class="raid-vital-row">
-                    <span style="color:var(--stamina);">SP</span>
-                    <div class="bar-wrap"><div class="bar-fill sp-bar" id="raid-sp-bar"></div></div>
-                    <span id="raid-sp-text">100/100</span>
+                <div class="sl-capsule-track">
+                    <div class="sl-capsule-fill hp-bar" id="raid-hp-bar" style="width:100%;"></div>
+                    <div class="sl-capsule-shield" id="raid-shield-bar" style="width:0%;"></div>
                 </div>
-                <div class="raid-vital-row">
-                    <span style="color:var(--neon-blue);">MP</span>
-                    <div class="bar-wrap"><div class="bar-fill mp-bar" id="raid-mp-bar"></div></div>
-                    <span id="raid-mp-text">1000.0</span>
+                <div class="sl-fatigue-widget">
+                    <svg viewBox="0 0 44 44" class="sl-fatigue-ring-svg" id="raid-fatigue-ring"></svg>
+                    <div class="sl-fatigue-label">FATIGA: <b id="raid-fatigue-val">0</b></div>
                 </div>
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px; font-size:0.78em;">
-                    <span id="raid-mp-rate" style="color:var(--text-lore); font-family:'Share Tech Mono', monospace;">FLUJO MP: ESTABLE</span>
-                    <button class="btn btn-purple" style="padding:4px 10px; font-size:0.85em;" onclick="recallAllShadows()">🌑 Guardar Sombras (0 MP/m)</button>
+            </div>
+            <div class="sl-vital-Bottom-num"><span id="raid-hp-text">100/100</span></div>
+        </div>
+        <div class="sl-vital-col mp-col">
+            <div class="sl-vital-top">
+                <div class="sl-vital-icon-wrap">
+                    <svg viewBox="0 0 24 24" class="sl-anime-icon"><path d="M9 2h6v3l4 6v9a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-9l4-6V2zm2 5l-3 4.5V19h8v-7.5L13 7h-2z" fill="#ffffff"/></svg>
+                    <span class="sl-vital-lbl">MP</span>
                 </div>
-            </div>            
-            
+                <div class="sl-capsule-track">
+                    <div class="sl-capsule-fill mp-bar" id="raid-mp-bar" style="width:0%;"></div>
+                </div>
+            </div>
+            <div class="sl-vital-Bottom-num"><span id="raid-mp-text">1000</span></div>
+        </div>
+    </div>
+    <span id="raid-sp-text" style="display:none;">100/100</span>
+    <div id="raid-sp-bar" style="display:none;"></div>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px; font-size:0.78em;">
+        <span id="raid-mp-rate" style="color:var(--text-lore); font-family:'Share Tech Mono', monospace;">FLUJO MP: ESTABLE</span>
+        <button class="btn btn-purple" style="padding:4px 10px; font-size:0.85em;" onclick="recallAllShadows()">Guardar Sombras (0 MP/m)</button>
+    </div>
+</div>
             <div class="raid-actions raid-dimmable">
                 <button class="btn btn-gold" id="btn-raid-validate" style="display:none; width:100%; margin-bottom:12px; padding:16px;" onclick="manualPhaseValidation()">⚔️ ASESTAR GOLPE FINAL (30s)</button>
                 <div style="display:flex; gap:10px; margin-bottom:10px;">
@@ -193,46 +217,86 @@
             <div class="bar-fill xp-bar" id="xp-bar"></div>
         </div>
         
-        <div class="vitals-grid">
-            <div class="vital-tile">
-                <div class="vital-meta"><span>HP</span><span id="hp-text">100/100</span></div>
-                <div class="bar-wrap" id="hp-wrap">
-                    <div class="bar-fill hp-bar" id="hp-bar"></div>
-                </div>
-            </div>
-            <div class="vital-tile">
-                <div class="vital-meta"><span style="color:var(--stamina);">SP</span><span id="sp-text">100/100</span></div>
-                <div class="bar-wrap">
-                    <div class="bar-fill sp-bar" id="sp-bar"></div>
-                </div>
-            </div>
-        </div>
+                <!-- HUD DE ESTADO ESTILO ANIME (CÁPSULAS HP/MP + ESCUDO + ANILLO DE FATIGA) -->
+        <!-- HUD DE ESTADO ESTILO ANIME (DOBLE PISO VERTICAL OPTIMIZADO) -->
+        <div class="sl-anime-vitals-box" id="sl-anime-vitals-box">
+            <div class="sl-vitals-grid-vertical">
+                <!-- FILA SUPERIOR: HP Y MP DISTRIBUIDAS EN 2 COLUMNAS SIMÉTRICAS -->
+                <div class="sl-bars-row" id="sl-bars-row">
+                    <!-- COLUMNA HP -->
+                    <div class="sl-vital-col hp-col" id="sl-hp-col">
+                        <div class="sl-vital-top">
+                            <div class="sl-vital-icon-wrap">
+                                <svg viewBox="0 0 24 24" class="sl-anime-icon"><path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6V3z" fill="#ffffff"/></svg>
+                                <span class="sl-vital-lbl">HP</span>
+                            </div>
+                            
+<div class="sl-capsule-track" id="hp-wrap">
+    <div class="sl-capsule-fill hp-bar" id="hp-bar" style="width: 100%;"></div>
+    <div class="sl-capsule-shield" id="shield-bar" style="width: 0%;"></div>
+</div>
 
-        <div class="vital-tile" style="margin-top: 10px; padding: 8px 12px;">
-            <div class="vital-meta" style="font-size: 0.95em;">
-                <span style="color:var(--neon-blue); text-shadow:0 0 10px rgba(0,210,255,0.4 );">MANÁ (MP) <small id="mp-drain-rate" style="color:var(--text-muted); font-size:0.8em;"></small></span>             
-                <span id="mp-text">1000.00/1000</span>
-            </div>
-            <div class="bar-wrap" style="height: 6px;">
-                <div class="bar-fill mp-bar" id="mp-bar"></div>
-            </div>
-        </div>
-        
+<div class="sl-fatigue-widget" id="sl-fatigue-widget">
+    <svg viewBox="0 0 44 44" class="sl-fatigue-ring-svg" id="fatigue-ring-svg">
+        <g transform="translate(22,22)">
+            <path class="fat-seg" id="fat-seg-0" d="M -2.5 -17 L 2.5 -17 L 2 -12 L -2 -12 Z" transform="rotate(0)"/>
+            <path class="fat-seg" id="fat-seg-1" d="M -2.5 -17 L 2.5 -17 L 2 -12 L -2 -12 Z" transform="rotate(30)"/>
+            <path class="fat-seg" id="fat-seg-2" d="M -2.5 -17 L 2.5 -17 L 2 -12 L -2 -12 Z" transform="rotate(60)"/>
+            <path class="fat-seg" id="fat-seg-3" d="M -2.5 -17 L 2.5 -17 L 2 -12 L -2 -12 Z" transform="rotate(90)"/>
+            <path class="fat-seg" id="fat-seg-4" d="M -2.5 -17 L 2.5 -17 L 2 -12 L -2 -12 Z" transform="rotate(120)"/>
+            <path class="fat-seg" id="fat-seg-5" d="M -2.5 -17 L 2.5 -17 L 2 -12 L -2 -12 Z" transform="rotate(150)"/>
+            <path class="fat-seg" id="fat-seg-6" d="M -2.5 -17 L 2.5 -17 L 2 -12 L -2 -12 Z" transform="rotate(180)"/>
+            <path class="fat-seg" id="fat-seg-7" d="M -2.5 -17 L 2.5 -17 L 2 -12 L -2 -12 Z" transform="rotate(210)"/>
+            <path class="fat-seg" id="fat-seg-8" d="M -2.5 -17 L 2.5 -17 L 2 -12 L -2 -12 Z" transform="rotate(240)"/>
+            <path class="fat-seg" id="fat-seg-9" d="M -2.5 -17 L 2.5 -17 L 2 -12 L -2 -12 Z" transform="rotate(270)"/>
+            <path class="fat-seg" id="fat-seg-10" d="M -2.5 -17 L 2.5 -17 L 2 -12 L -2 -12 Z" transform="rotate(300)"/>
+            <path class="fat-seg" id="fat-seg-11" d="M -2.5 -17 L 2.5 -17 L 2 -12 L -2 -12 Z" transform="rotate(330)"/>
+        </g>
+    </svg>
+    <div class="sl-fatigue-label">FATIGA: <b id="fatigue-val">0</b></div>
+    <span id="sp-text" style="display:none;">100/100</span>
+    <div id="sp-bar" style="display:none;"></div>
+</div>
+
+</div>
+<div class="sl-vital-Bottom-num">
+    <span id="hp-text">100/100</span>
+    <span id="hud-shield-text" class="sl-shield-tag"></span>
+</div>
+                    </div>
+
+                    <!-- COLUMNA MP -->
+                    <div class="sl-vital-col mp-col mp-locked-hidden" id="sl-mp-col">
+                        <div class="sl-vital-top">
+                            <div class="sl-vital-icon-wrap">
+                                <svg viewBox="0 0 24 24" class="sl-anime-icon"><path d="M9 2h6v3l4 6v9a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-9l4-6V2zm2 5l-3 4.5V19h8v-7.5L13 7h-2z" fill="#ffffff"/></svg>
+                                <span class="sl-vital-lbl">MP</span>
+                            </div>
+                            <div class="sl-capsule-track" id="mp-wrap">
+                                <div class="sl-capsule-fill mp-bar" id="mp-bar" style="width: 0%;"></div>
+                            </div>
+                        </div>
+                        <div class="sl-vital-Bottom-num">
+                            <small id="mp-drain-rate" style="margin-right:4px; font-size:0.82em;"></small>
+                            <span id="mp-text">0/1000</span>
+                        </div>
+                    </div>
+                </div>                
         <div class="economy-bar">
-            <div class="gold-txt" style="display:flex; align-items:center; gap:6px;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="12" cy="12" r="9" fill="rgba(243,208,120,0.18)" stroke="#f3d078" stroke-width="2"/>
-                    <polygon points="12,6 16,12 12,18 8,12" fill="#f3d078" stroke="#ffffff" stroke-width="1.2"/>
+            <div class="gold-txt" style="display:flex; align-items:center; gap:7px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 0 6px #00e5ff);">
+                    <polygon points="12,2 21,7 21,17 12,22 3,17 3,7" fill="#ffffff" stroke="#bae6fd" stroke-width="1.5"/>
                 </svg>
                 <span id="gold-display">0</span> G
             </div>
             <div class="crystal-txt" style="display:flex; align-items:center; gap:6px;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><polygon points="12,2 20,9 17,21 7,21 4,9" fill="rgba(168,85,247,0.22)" stroke="#c084fc" stroke-width="2"/><circle cx="12" cy="12" r="2.5" fill="#ffffff"/></svg>
+<svg width="18" height="18" viewBox="-4 -4 32 32" fill="none" style="overflow:visible;"><polygon points="12,2 20,9 17,21 7,21 4,9" fill="rgba(0,229,255,0.22)" stroke="#e0f2fe" stroke-width="1.8"/><circle cx="12" cy="12" r="2.5" fill="#ffffff"/></svg>
                 <span id="crystal-display">0</span> CM
             </div>
         </div>
     </div>
-
+    </div>
+    </div>
     <!-- PESTAÑA 0: MISIONES Y RUTINA -->
     <div class="container" id="tab-routine">
         <div id="penalty-container"></div>
@@ -502,49 +566,68 @@
         </div>
     </div>
 
-    <!-- MODAL 4: ESCÁNER DE CALABOZO PERSONAL -->
+    <!-- MODAL 4: ESCÁNER DE CALABOZO PERSONAL (ESTILO ANIME) -->
     <div class="modal" id="boss-modal">
         <div class="modal-content">
-            <h2 class="modal-title danger-title">Escanear Amenaza</h2>
-            <input type="text" class="input-dark" id="boss-name" placeholder="Objetivo (Ej: Parcial, Proyecto, Limpiar...)">
+            <div class="sl-anime-box-header">
+                <div class="sl-anime-excl-box"><div class="sl-anime-excl-circle">!</div></div>
+                <div class="sl-anime-title-box">ESCANEAR AMENAZA</div>
+            </div>
+            <p class="modal-desc" style="color:#bae6fd; font-size:0.84em; margin-bottom:12px;">Registra un objetivo crítico o sesión de estudio:</p>
+            <input type="text" class="input-dark" id="boss-name" placeholder="Objetivo (Ej: Parcial, Proyecto, Tarea...)">
             <div class="modal-btn-row">
-                <button class="btn btn-blue" style="flex: 1;" onclick="closeModal('boss-modal')">Cerrar</button>
-                <button class="btn btn-red" style="flex: 1;" onclick="addSmartBoss()">Escanear</button>
+                <button class="btn" style="flex: 1;" onclick="closeModal('boss-modal')">CANCELAR</button>
+                <button class="btn" style="flex: 1;" onclick="addSmartBoss()">ESCANEAR</button>
             </div>
         </div>
     </div>
 
-    <!-- MODAL 5: CÁMARA DE FOCUS -->
+    <!-- MODAL 5: CÁMARA DE FOCUS (DISEÑO HOLOGRÁFICO ANIME) -->
     <div class="modal" id="study-modal">
         <div class="modal-content" style="text-align: center;">
-            <h2 class="modal-title">Cámara de Focus</h2>
-            <div class="timer-display" id="study-timer-text">00:00</div>
-            <div id="study-options">
-                <button class="btn btn-blue" style="width:100%; margin-bottom:15px; padding: 15px;" onclick="startStudy(5)">Repaso Rápido (5 Min)</button>
-                <button class="btn btn-purple" style="width:100%; padding: 15px;" onclick="startStudy(25)">Inmersión Profunda (25 Min)</button>
+            <div class="sl-anime-box-header">
+                <div class="sl-anime-excl-box"><div class="sl-anime-excl-circle">!</div></div>
+                <div class="sl-anime-title-box">CÁMARA DE FOCUS</div>
             </div>
-            <button class="btn btn-gold" style="width: 100%; display: none; margin-top:15px; padding: 15px;" id="btn-study-stop" onclick="stopStudy()">Validar o Interrumpir Sesión</button>
-            <button class="btn btn-red" style="width: 100%; margin-top: 20px;" id="btn-study-close" onclick="closeModal('study-modal')">Salir de la Cámara</button>
+            <div style="font-size:0.78em; color:#bae6fd; margin-bottom:6px;">[Sincronización de Inmersión Mental]</div>
+            <div class="timer-display" id="study-timer-text" style="font-family:'Exo 2', sans-serif; font-weight:700; font-size:2.6em; color:#ffffff; text-shadow:0 0 14px #00e5ff; letter-spacing:3px; margin:12px 0;">00:00</div>
+            <div id="study-options" style="display:flex; flex-direction:column; gap:10px; margin-top:14px;">
+                <button class="btn" style="width:100%;" onclick="startStudy(5)">[ REPASO RÁPIDO • 5 MIN ]</button>
+                <button class="btn" style="width:100%;" onclick="startStudy(25)">[ INMERSIÓN PROFUNDA • 25 MIN ]</button>
+            </div>
+            <button class="btn" style="width: 100%; display: none; margin-top:14px;" id="btn-study-stop" onclick="stopStudy()">INTERRUMPIR SESIÓN</button>
+            <button class="btn btn-red" style="width: 100%; margin-top: 12px;" id="btn-study-close" onclick="closeModal('study-modal')">CERRAR VENTANA</button>
         </div>
     </div>
-
-    <!-- MÓDULOS DEL SISTEMA (ORDEN DE CARGA ESTRICTO) -->
-    <script src="js/database.js"></script>
-    <script src="js/dialogues.js"></script>
-    <script src="js/core.js"></script>
-    <script src="js/combat.js"></script>
-    <script src="js/events.js"></script>
-    <script src="js/inventory.js"></script>
-    <script src="js/missions.js"></script>
-    <script src="js/ui.js"></script>
-    
-    <!-- REGISTRO DEL SERVICE WORKER (APP NATIVA) -->
-    <script>
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('./sw.js')
-          .then(() => console.log("SINCRO-LOG:: Service Worker Registrado."))
-          .catch(err => console.log("Error de Sistema:", err));
-      }
-    </script>
+<!-- MÓDULOS DEL SISTEMA (ORDEN DE CARGA ESTRICTO CON BYPASS DE CACHÉ) -->
+    <script src="js/database.js?v=8.2"></script>
+    <script src="js/dialogues.js?v=8.2"></script>
+    <script src="comandantes/igris-svg.js?v=8.2" onerror="var s=document.createElement('script');s.src='igris-svg.js?v=8.2';document.head.appendChild(s);"></script>
+    <script src="comandantes/tank-svg.js?v=8.2" onerror="var s=document.createElement('script');s.src='tank-svg.js?v=8.2';document.head.appendChild(s);"></script>
+    <script src="comandantes/iron-svg.js?v=8.2" onerror="var s=document.createElement('script');s.src='iron-svg.js?v=8.2';document.head.appendChild(s);"></script>
+    <script src="comandantes/tusk-svg.js?v=8.2" onerror="var s=document.createElement('script');s.src='tusk-svg.js?v=8.2';document.head.appendChild(s);"></script>
+<script src="comandantes/min-svg.js?v=8.2" onerror="var s=document.createElement('script');s.src='min-svg.js?v=8.2';document.head.appendChild(s);"></script>
+    <script src="comandantes/beru-svg.js?v=8.2" onerror="var s=document.createElement('script');s.src='beru-svg.js?v=8.2';document.head.appendChild(s);"></script>
+    <script src="models.js?v=8.2" onerror="var s=document.createElement('script');s.src='js/models.js?v=8.2';document.head.appendChild(s);"></script>
+    <script src="js/core.js?v=8.2"></script>
+    <script src="js/combat.js?v=8.2"></script>
+    <script src="js/events.js?v=8.2"></script>
+    <script src="js/inventory.js?v=8.2"></script>
+    <script src="js/missions.js?v=8.2"></script>
+    <script src="js/ui.js?v=8.2"></script>
+    <!-- REGISTRO Y LIMPIEZA AUTOMÁTICA DEL SERVICE WORKER -->
+     <script>
+   if ('serviceWorker' in navigator) {
+     if (!localStorage.getItem('SL_CachePurged_V8_2')) {
+       caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).then(() => {
+         localStorage.setItem('SL_CachePurged_V8_2', '1');
+         window.location.reload();
+       });
+     }
+     navigator.serviceWorker.register('./sw.js?v=8.2')
+       .then(reg => { reg.update(); console.log("SINCRO-LOG:: Service Worker Actualizado."); })
+       .catch(err => console.log("Error de Sistema:", err));
+   }
+ </script>
 </body>
 </html>
