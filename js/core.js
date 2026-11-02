@@ -84,20 +84,31 @@ let currentNetMpPerMin = 0;
 /* ==========================================================================
    3. GUARDADO, CARGA Y MOTOR DE HABILIDADES DEL CAZADOR (TEMPORADAS 1 Y 2)
    ========================================================================== */
+window._isResettingSystem = false;
+
 function saveData() {
+    if (window._isResettingSystem) return;
     _safeSetStorage('SL_Player_' + VERSION, JSON.stringify(p));
 }
 
-window.resetSistema = window.resetMonarchSystem = function() {
+window.resetSistema = window.resetMonarchSystem = async function() {
+    window._isResettingSystem = true;
     try {
-        Object.keys(localStorage).forEach(k => {
-            if (k.startsWith('SL_')) localStorage.removeItem(k);
-        });
+        localStorage.clear();
+        sessionStorage.clear();
+        if ('caches' in window) {
+            const keys = await caches.keys();
+            await Promise.all(keys.map(k => caches.delete(k)));
+        }
+        if ('serviceWorker' in navigator) {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(regs.map(r => r.unregister()));
+        }
     } catch (e) {}
-    console.log("⚡ SISTEMA DEL MONARCA REINICIADO DESDE CERO (NIVEL 1).");
-    window.location.reload();
-    return "Reiniciando...";
+    window.location.replace(window.location.pathname + '?reset=' + Date.now());
+    return "Reiniciando desde Día 0...";
 };
+
 
 window.advanceNonTelemetryMissions = function(minsToAdvance) {
     if (!p || !p.activeMissions) return 0;
@@ -1087,6 +1098,11 @@ function animateHPFastDrop(targetHP, maxHealth, onZeroCallback) {
 function restoreMonarchV1Compensation() {
     if (!p || p.monarchV1Restored) return;
     p.monarchV1Restored = true;
+    // Si es una cuenta nueva (Nivel 1 sin muertes previas), iniciar en 0 G limpios
+    if ((p.level || 1) <= 1 && (!p.history || !p.history.deaths)) {
+        saveData();
+        return;
+    }
     if (p.economyScaledX100 && !p.economyRevertedTo1x) {
         p.economyRevertedTo1x = true;
         p.gold = Math.max(50, Math.round((p.gold || 0) / 100));
@@ -1107,6 +1123,7 @@ function restoreMonarchV1Compensation() {
     if (overlay) overlay.style.display = 'none';
     saveData();
 }
+
 
 function getWeekStampKey(d = new Date()) {
     let onejan = new Date(d.getFullYear(), 0, 1);
@@ -1524,6 +1541,17 @@ function systemTick() {
    11. INICIALIZACIÓN MAESTRA Y FORZADO DE CUARENTENA
    ========================================================================== */
 function initializeSystem() {
+    if (!p.dayZeroCompleted) {
+        if (typeof startDayZeroPrologue === "function") {
+            startDayZeroPrologue();
+        } else {
+            window.addEventListener('load', () => {
+                if (typeof startDayZeroPrologue === "function") startDayZeroPrologue();
+            }, { once: true });
+        }
+        return;
+    }
+
     if (!p.dayZeroCompleted) {
         if (typeof startDayZeroPrologue === "function") {
             startDayZeroPrologue();

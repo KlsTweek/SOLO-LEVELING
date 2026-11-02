@@ -520,7 +520,7 @@ statusCard.innerHTML = `
 
         <div class="sl-status-id-grid">
             <div class="sl-status-id-left">
-                <div>NOMBRE: <b>CRISTIAN</b></div>
+                <div>NOMBRE: <b>${(p.playerName || 'CRISTIAN').toUpperCase()}</b></div>
                 <div>NV: <b>${p.level}</b></div>
                 <div>CLASE: <b>${hunterClass}</b></div>
                 <div>TÍTULO: <b>${hunterTitle}</b></div>
@@ -912,7 +912,9 @@ function triggerAiMonarchComment(contextKey = null, forceManual = false) {
     typeWriterMessage(finalLine, 'sys-message', 18);
 }
 function initAiBootScreen() {
+    if (!p || !p.dayZeroCompleted) return;
     if (document.getElementById('ai-boot-overlay')) return;
+
 
     let todayBootKey = new Date().toDateString();
     if (localStorage.getItem('SL_BootShownDay') === todayBootKey) {
@@ -1859,7 +1861,11 @@ window.confirmDayZeroRegistration = function() {
     let inp = document.getElementById('dz-name-input');
     if (inp && inp.value.trim()) {
         dayZeroPlayerName = inp.value.trim();
-        if (p) p.playerName = dayZeroPlayerName;
+    }
+    if (p) {
+        p.playerName = dayZeroPlayerName;
+        if (typeof saveData === "function") saveData();
+        if (typeof renderStatusRadarProfile === "function") renderStatusRadarProfile();
     }
     advanceDayZeroStep();
 };
@@ -1899,15 +1905,11 @@ window.finishDayZeroPrologue = function() {
     ov.style.opacity = "0";
     setTimeout(() => {
         ov.remove();
+        let todayBootKey = new Date().toDateString();
+        localStorage.setItem('SL_BootShownDay', todayBootKey);
         if (typeof initializeSystem === "function") {
-            if (typeof updateHUD === "function") updateHUD();
-            if (typeof updateEquipmentUI === "function") updateEquipmentUI();
-            if (typeof renderRoutine === "function") renderRoutine();
-            if (typeof renderBosses === "function") renderBosses();
-            if (typeof renderShop === "function") renderShop();
-            if (typeof renderInventory === "function") renderInventory();
-            if (typeof renderSchedules === "function") renderSchedules();
-            if (typeof switchTab === "function") switchTab('routine', 0);
+            initializeSystem();
         }
+        if (typeof switchTab === "function") switchTab('routine', 0);
     }, 650);
 };
