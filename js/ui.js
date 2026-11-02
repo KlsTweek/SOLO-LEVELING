@@ -1696,7 +1696,7 @@ const DAY_ZERO_SEQUENCE = [
         frame: "sl-holo-frame",
         header: "NOTIFICACIÓN",
         sub: "",
-        body: "[ Felicitaciones por convertirte en un JUGADOR. ]",
+        body: "[ Felicitaciones por convertirte en un JUGADOR.\u00A0]",
         action: "Toca para continuar..."
     },
     {
@@ -1718,22 +1718,22 @@ const DAY_ZERO_SEQUENCE = [
         header: "RECOMPENSA",
         sub: "",
         body: `
-            <div style="width:58px; height:58px; margin:0 auto 12px auto;">
-                ${(typeof UNIQUE_ITEM_SVGS !== 'undefined') ? UNIQUE_ITEM_SVGS.box_start : '🎁'}
-            </div>
+            ${(typeof UNIQUE_ITEM_SVGS !== 'undefined' && UNIQUE_ITEM_SVGS.box_start)
+                ? `<div style="width:58px; height:58px; margin:0 auto 12px auto;"><svg viewBox="0 0 64 64" width="100%" height="100%">${UNIQUE_ITEM_SVGS.box_start}</svg></div>`
+                : ''}
             [ Has recibido suministros iniciales: Caja de Despertar y Cupón de Almuerzo han sido materializados en tu Bolsa Dimensional. ]
         `,
         action: "Toca para continuar...",
         sound: "gold"
     },
-        {
+            {
         frame: "sl-holo-frame",
         header: "NUEVO MENSAJE",
         sub: "",
         body: `
-            <div style="width:58px; height:58px; margin:0 auto 12px auto;">
-                ${(typeof UNIQUE_ITEM_SVGS !== 'undefined') ? UNIQUE_ITEM_SVGS.p_blood_contract : '✉️'}
-            </div>
+            ${(typeof UNIQUE_ITEM_SVGS !== 'undefined' && UNIQUE_ITEM_SVGS.box_start)
+                ? `<div style="width:58px; height:58px; margin:0 auto 12px auto;"><svg viewBox="0 0 64 64" width="100%" height="100%">${UNIQUE_ITEM_SVGS.box_start}</svg></div>`
+                : ''}
             <div style="margin-bottom:8px; color:#7dd3fc;">[ Jugador: <span id="dz-final-name-disp"></span> ]</div>
             [ Misión Diaria: «La preparación para volverse fuerte» ha sido asignada. <span style="color:#fb7185;">(NO LEÍDA)</span>. ]
         `,
