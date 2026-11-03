@@ -18,7 +18,8 @@ function renderMechanicalFlipMarkup(prevStr, nextStr) {
             let oldDisp = cOld === ' ' ? '0' : cOld;
             out += `<span class="sl-digit-slot"><span class="sl-digit-track"><span class="sl-digit-old">${oldDisp}</span><span class="sl-digit-new">${cNew}</span></span></span>`;
         } else {
-            out += `<span>${cNew === ' ' ? '' : cNew}</span>`;
+            let fixedChar = cNew === ' ' ? '&nbsp;' : cNew;
+            out += `<span class="sl-digit-slot sl-digit-static">${fixedChar}</span>`;
         }
     }
     return out;

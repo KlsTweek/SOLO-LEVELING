@@ -591,9 +591,16 @@ function getCartenonWireframeSVG(item) {
 }
 
 function formatCartenonDesc(text) {
-    return (text || "")
-        .replace(/(\+[0-9.%]+ [A-Z]+|100% [A-Z/]+|-[0-9]+ [A-Z]+|[0-9]+ Horas?|[0-9]+ min(?:utos)?)/gi, '<span class="ct-cyan-Runic">$1</span>')
-        .replace(/(Zona de Penalización|Penalización|Maldición[^\.,]*|Cero Absoluto|Isla de Jeju|Templo de Cartenon|Cartenon|Star Stream|Abismo|Ejecución[^\.,]*|Mazmorra o Medianoche|Muertes?|Castigo[^\.,]*)/gi, '<span class="ct-red-Runic">$1</span>');
+    if (!text) return "";
+    // 1. Sintagmas numéricos completos: Número/Porcentaje + (conector opcional: de, la, el, por...) + Palabra(s) completas sin cortar jamás a la mitad
+    const numPhraseRegex = /(?:[+\-x]?\d+(?:[\.,]\d+)?%?(?:\s+(?:de|del|la|el|los|las|al|en|por|para|a))?\s+[a-záéíóúñA-ZÁÉÍÓÚÑ/]+(?:\s+(?:Protector|Vital|Máximo|Máximos|Físico|Ártico|extra|adicionales))?|[+\-]?\d+(?:[\.,]\d+)?%)(?![a-záéíóúñA-ZÁÉÍÓÚÑ])/gi;
+
+    // 2. Conceptos críticos / peligro (siempre respetando fronteras de palabra completas)
+    const dangerRegex = /(?<![a-záéíóúñA-ZÁÉÍÓÚÑ])(Zona de Penalización|Penalización|Maldición(?:\s+de\s+[a-záéíóúñA-ZÁÉÍÓÚÑ]+)?|Cero Absoluto|Isla de Jeju|Templo de Cartenon|Cartenon|Star Stream|Abismo|Mazmorra o Medianoche|Muertes?|Castigo(?:\s+Crítico|\s+Físico)?)(?![a-záéíóúñA-ZÁÉÍÓÚÑ])/gi;
+
+    return text
+        .replace(numPhraseRegex, '<span class="ct-cyan-Runic">$&</span>')
+        .replace(dangerRegex, '<span class="ct-red-Runic">$1</span>');
 }
 
 function buildCartenonInspectorHTML(item, count = 1) {
