@@ -3398,28 +3398,39 @@ body.penalty-active .nav {
 
 /* 17. TAMBOR MECÁNICO DE DÍGITOS Y MODALES DE RITUALES / ARTEFACTOS */
 .sl-digit-slot {
-    display: inline-block;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
     position: relative;
     overflow: hidden;
-    vertical-align: bottom;
-    height: 1.2em;
-    line-height: 1.2em;
+    vertical-align: middle !important;
+    height: 1.15em !important;
+    line-height: 1.15em !important;
     letter-spacing: 0 !important;
+}
+
+.sl-digit-static {
+    display: inline-flex !important;
+    height: 1.15em !important;
+    line-height: 1.15em !important;
+    vertical-align: middle !important;
 }
 
 .sl-digit-track {
     display: flex;
     flex-direction: column;
-    height: 2.4em;
+    height: 2.3em;
     will-change: transform;
     animation: slMechanicalFlip 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .sl-digit-old,
 .sl-digit-new {
-    display: block;
-    height: 1.2em;
-    line-height: 1.2em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 1.15em;
+    line-height: 1.15em;
     flex-shrink: 0;
 }
 
@@ -3430,8 +3441,9 @@ body.penalty-active .nav {
 
 @keyframes slMechanicalFlip {
     0%   { transform: translateY(0); filter: brightness(1.8); }
-    100% { transform: translateY(-1.2em); filter: brightness(1); }
+    100% { transform: translateY(-1.15em); filter: brightness(1); }
 }
+
 
 /* HUD Táctico de 1.ª Persona cuando peleas sin sombras */
 .pov-first-person-rig {
