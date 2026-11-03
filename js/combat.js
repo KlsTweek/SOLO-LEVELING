@@ -750,24 +750,21 @@ let availOrcs = (typeof getAvailableInfantryCount === "function") ? getAvailable
     p.xp += finalXP;
     p.gold += finalGold;
 
-    let hasUnlockedShadow = p.shadowArmy && ['igris', 'tank', 'iron', 'tusk', 'beru'].some(k => p.shadowArmy[k] && p.shadowArmy[k].unlocked);
-    let mpGain = 0;
-    if (hasUnlockedShadow) {
-        mpGain = (pendingReward.type === 'study') ? ((pendingReward.mins === 25) ? 110 : 35) : 25;
-        if (pendingReward.type === 'study' && hasWolfTitle) mpGain = Math.floor(mpGain * 1.40);
-        if (isCrit) mpGain += 15;
-        if (hasEq("eq_w_scythe")) { mpGain += 250; p.hp = Math.min(maxHP, p.hp + 25); }
-        if (pendingReward.type === 'study' && hasEq("eq_acc_copper")) mpGain += 120;
-        if (pendingReward.type === 'study' && p.sageTeaFocusMp) {
-            mpGain += 180;
-            p.sageTeaFocusMp = false;
-            systemNotify("Infusión del Sabio asimilada: +180 MP extra canalizados.", "purple");
-        }
-        if (p.shadowArmy.min && p.shadowArmy.min.usedForever) mpGain = Math.floor(mpGain * 1.05);
-        p.mp = Math.min(maxMP, (p.mp || 0) + mpGain);
-    } else {
-        p.mp = 0;
+        let hasUnlockedShadow = p.shadowArmy && ['igris', 'tank', 'iron', 'tusk', 'beru'].some(k => p.shadowArmy[k] && p.shadowArmy[k].unlocked);
+    let mpGain = (pendingReward.type === 'study') ? ((pendingReward.mins === 25) ? 110 : 35) : 25;
+    if (pendingReward.type === 'study' && hasWolfTitle) mpGain = Math.floor(mpGain * 1.40);
+    if (isCrit) mpGain += 15;
+    if (hasEq("eq_w_scythe")) { mpGain += 250; p.hp = Math.min(maxHP, p.hp + 25); }
+    if (pendingReward.type === 'study' && hasEq("eq_acc_copper")) mpGain += 120;
+    if (pendingReward.type === 'study' && p.sageTeaFocusMp) {
+        mpGain += 180;
+        p.sageTeaFocusMp = false;
+        systemNotify("Infusión del Sabio asimilada: +180 MP extra canalizados.", "purple");
     }
+    if (p.shadowArmy && p.shadowArmy.min && p.shadowArmy.min.usedForever) mpGain = Math.floor(mpGain * 1.05);
+
+    p.mp = Math.min(maxMP, (p.mp || 0) + mpGain);
+
 
     if (pendingReward.type === 'routine' && p.whiteTigerBounty) {
         let taxRefund = Math.floor((pendingReward.gold || 0) * (1 - GOLD_NERF));
