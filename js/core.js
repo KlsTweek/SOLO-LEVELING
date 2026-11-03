@@ -10,7 +10,9 @@ const GOLD_NERF = 0.20;
 
 function getBiologicalDateObj(now = new Date()) {
     let d = new Date(now.getTime());
-    if (d.getHours() < 5) {
+    let currentMins = d.getHours() * 60 + d.getMinutes();
+    // Reseteo biológico oficial a las 4:30 AM (270 minutos)
+    if (currentMins < 270) {
         d.setDate(d.getDate() - 1);
     }
     return d;
