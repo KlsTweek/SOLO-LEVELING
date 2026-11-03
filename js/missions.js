@@ -222,7 +222,9 @@ let currentDayStr = (typeof getBiologicalDayStr === "function") ? getBiologicalD
     if (p.tankCurfewDelayDay === currentDayStr) deadlineMins += 45;
     if (p.nightPassActive === currentDayStr || p.movieNightCurfewDay === currentDayStr) deadlineMins = 23 * 60 + 20;
     if (isMercyActive()) deadlineMins = 26 * 60;
-    let isPastDeadline = (continuousMins >= deadlineMins && !isSleeping && !isVigilActiveTonight && (h >= 21 || h < 5));
+        let curMinRoutine = h * 60 + m;
+    let isPastDeadline = (continuousMins >= deadlineMins && !isSleeping && !isVigilActiveTonight && (curMinRoutine >= 1275 || curMinRoutine < 270));
+
 
     const svgCheckGreen = `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#00ffcc" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 5px #10b981);"><polyline points="20,6 9,17 4,12"/></svg>`;
     const svgCrossRed   = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#ff2a55" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 6px #ff2a55);"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
@@ -354,7 +356,9 @@ let currentDayStr = (typeof getBiologicalDayStr === "function") ? getBiologicalD
 
     // Controles Nocturnos en Misiones: SOLO visibles desde las 8:00 PM (h >= 20 || h < 5), invisibles de día
     let vigilLeft = (typeof ensureNightVigilQuota === "function") ? ensureNightVigilQuota() : 2;
-    let showNightControls = (h >= 20 || h < 5);
+        let curMinCtrls = h * 60 + m;
+    let showNightControls = (curMinCtrls >= 1200 || curMinCtrls < 270);
+
     let sleepSectionHtml = '';
 
     if (showNightControls) {
@@ -1383,7 +1387,9 @@ function syncDailyGoalFooterStatus() {
     if (p.nightPassActive === currentDayStr || p.movieNightCurfewDay === currentDayStr) deadlineMins = 23 * 60 + 20;
     if (typeof isMercyActive === "function" && isMercyActive()) deadlineMins = 26 * 60;
 
-    let isPastDeadline = (continuousMins >= deadlineMins && !isSleeping && !isVigil && (h >= 21 || h < 5));
+        let curMinFooter = h * 60 + m;
+    let isPastDeadline = (continuousMins >= deadlineMins && !isSleeping && !isVigil && (curMinFooter >= 1275 || curMinFooter < 270));
+
     let isBleedTriggered = (!allCompleted && isPastDeadline);
 
     let warningTextHtml = '';

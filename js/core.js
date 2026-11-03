@@ -1298,11 +1298,13 @@ function wakeUpFromSleepMode() {
     if (!p) return;
     let now = new Date();
     let h = now.getHours();
-    if (h < 5 || h >= 21) {
+        let curMinWake = h * 60 + now.getMinutes();
+    if (curMinWake < 270 || curMinWake >= 1260) {
         if (!confirm("ADVERTENCIA: Aún es horario nocturno. Si rompes tu Modo Hibernación ahora, perderás la protección nocturna y comenzará el desgaste. ¿Despertar de todos modos?")) {
             return;
         }
     }
+
     p.sleepingUntilMorning = null;
     p.sleepModeActivatedAt = null;
     p.sleepActiveUsageSecs = 0;
@@ -1353,7 +1355,9 @@ function evaluateNightCurfew(isClockJump = false) {
     let s = now.getSeconds();
     let bioDayStr = getBiologicalDayStr(now);
 
-    if (h >= 5 && h < 20) return;
+        let currentMinsDay = h * 60 + m;
+    if (currentMinsDay >= 270 && currentMinsDay < 1200) return;
+
 
     if (isSleepingNow(now)) {
         if (!document.hidden && (h >= 20 || h < 5)) {
@@ -1386,7 +1390,8 @@ function evaluateNightCurfew(isClockJump = false) {
     if (p.nightPassActive === bioDayStr || p.movieNightCurfewDay === bioDayStr) startBleedMins = 23 * 60 + 20;
     if (isMercyActive()) startBleedMins = 26 * 60;
 
-    if (continuousMins < startBleedMins || (h >= 5 && h < 21)) return;
+        if (continuousMins < startBleedMins || (continuousMins >= 1710 && continuousMins < 1260)) return;
+    if (h >= 5 || (h === 4 && m >= 30)) return;
 
     let cheatMult = (p.sleepCheatDoubleDay === bioDayStr) ? 2 : 1;
     let maxHealth = (typeof calculateHunterMaxHP === "function") ? calculateHunterMaxHP() : 100;
@@ -1515,7 +1520,8 @@ function systemTick() {
     evaluateNightCurfew(false);
 
     let maxHealth = (typeof calculateHunterMaxHP === "function") ? calculateHunterMaxHP() : 100;
-    let isNightBleed = ((h === 21 && m >= 15) || h >= 22 || h < 5) && !isNightVigilActiveNow(now) && !isSleepingNow(now);
+        let curTotalMins = h * 60 + m;
+    let isNightBleed = ((h === 21 && m >= 15) || h >= 22 || curTotalMins < 270) && !isNightVigilActiveNow(now) && !isSleepingNow(now);
 
     if (!p.penaltyActive && !isNightBleed && p.hp < maxHealth) {
         // Pasiva del Cazador: Voluntad de Recuperación (+2 HP/hora por nivel)

@@ -738,7 +738,8 @@ let availOrcs = (typeof getAvailableInfantryCount === "function") ? getAvailable
 
     let h = new Date().getHours();
     let m = new Date().getMinutes();
-    let isLate = (h === 21 && m >= 15) || h >= 22 || h < 5;
+        let curMinSeal = h * 60 + m;
+    let isLate = (h === 21 && m >= 15) || h >= 22 || curMinSeal < 270;
     let vigilOk = (typeof isNightVigilActiveNow === "function") ? isNightVigilActiveNow() : (p.nightPassActive === currentDayStr);
 
     if (isLate && !vigilOk && !(p.stealthModeUntil && now < p.stealthModeUntil) && !isMercyActive() && pendingReward.type !== 'penalty') {
