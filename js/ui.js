@@ -6,6 +6,7 @@ const _animatedNumCache = {};
 const _bracketFlipCache = {};
 
 function renderMechanicalFlipMarkup(prevStr, nextStr) {
+    // Si cambia la estructura (ej. pasa de 1 dígito a 2 dígitos en corchetes), animar solo los dígitos en la misma posición de derecha a izquierda
     let maxLen = Math.max(prevStr.length, nextStr.length);
     let pPad = prevStr.padStart(maxLen, ' ');
     let nPad = nextStr.padStart(maxLen, ' ');
@@ -14,18 +15,20 @@ function renderMechanicalFlipMarkup(prevStr, nextStr) {
     for (let i = 0; i < maxLen; i++) {
         let cOld = pPad[i];
         let cNew = nPad[i];
-        if (cOld !== cNew && /\d/.test(cNew)) {
-            let oldDisp = cOld === ' ' ? '0' : cOld;
-            out += `<span class="sl-digit-slot"><span class="sl-digit-track"><span class="sl-digit-old">${oldDisp}</span><span class="sl-digit-new">${cNew}</span></span></span>`;
+        if (cNew === ' ') continue;
+        if (cOld !== cNew && /\d/.test(cNew) && /\d/.test(cOld)) {
+            out += `<span class="sl-digit-slot"><span class="sl-digit-track"><span class="sl-digit-old">${cOld}</span><span class="sl-digit-new">${cNew}</span></span></span>`;
+        } else if (cOld === ' ' && /\d/.test(cNew)) {
+            out += `<span class="sl-digit-slot"><span class="sl-digit-track"><span class="sl-digit-old">0</span><span class="sl-digit-new">${cNew}</span></span></span>`;
         } else {
-            let fixedChar = cNew === ' ' ? '&nbsp;' : cNew;
-            out += `<span class="sl-digit-slot sl-digit-static">${fixedChar}</span>`;
+            out += `<span class="sl-digit-slot sl-digit-static">${cNew}</span>`;
         }
     }
     return out;
 }
 
 const _flipCleanTimers = {};
+const _bracketCleanTimers = {};
 
 function safeSetText(id, text) {
     let el = document.getElementById(id);
@@ -47,14 +50,15 @@ function safeSetText(id, text) {
         'fatigue-val', 'raid-fatigue-val'
     ];
 
-    if (flipIds.includes(id) && prevStr.length === nextStr.length) {
+    if (flipIds.includes(id)) {
         el.innerHTML = renderMechanicalFlipMarkup(prevStr, nextStr);
         if (_flipCleanTimers[id]) clearTimeout(_flipCleanTimers[id]);
         _flipCleanTimers[id] = setTimeout(() => {
-            if (el && _animatedNumCache[id] === nextStr) {
-                el.textContent = nextStr;
+            let currentEl = document.getElementById(id);
+            if (currentEl && _animatedNumCache[id] === nextStr) {
+                currentEl.textContent = nextStr;
             }
-        }, 220);
+        }, 240);
     } else {
         el.textContent = nextStr;
     }
@@ -65,12 +69,22 @@ function setBracketCounterFlip(el, idKey, newBracketStr) {
     let prev = _bracketFlipCache[idKey];
     if (prev === undefined || prev === newBracketStr) {
         _bracketFlipCache[idKey] = newBracketStr;
-        if (prev === undefined) el.innerText = newBracketStr;
+        if (!el.querySelector('.sl-digit-track')) {
+            el.textContent = newBracketStr;
+        }
         return;
     }
     _bracketFlipCache[idKey] = newBracketStr;
     el.innerHTML = renderMechanicalFlipMarkup(prev, newBracketStr);
+
+    if (_bracketCleanTimers[idKey]) clearTimeout(_bracketCleanTimers[idKey]);
+    _bracketCleanTimers[idKey] = setTimeout(() => {
+        if (el && el.isConnected && _bracketFlipCache[idKey] === newBracketStr) {
+            el.textContent = newBracketStr;
+        }
+    }, 240);
 }
+
 
 document.addEventListener('pointerdown', (e) => {
     let interactive = e.target.closest('.btn, .nav-item, .sl-goal-check-box, .grid-slot, .sonar-blip, .sl-anatomy-node');

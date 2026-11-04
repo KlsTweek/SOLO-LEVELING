@@ -314,27 +314,41 @@ let currentDayStr = (typeof getBiologicalDayStr === "function") ? getBiologicalD
         } else {
             bracketText = `[0/${reqMins}m]`;
         }
-        let boxClass = isDone ? 'checked-green' : (isPastDeadline ? 'failed-red' : '');
+                let boxClass = isDone ? 'checked-green' : (isPastDeadline ? 'failed-red' : '');
         let boxIcon  = isDone ? svgCheckGreen : (isPastDeadline ? svgCrossRed : '');
-        let rowColor = isActive ? 'color:#7dd3fc;' : '';
         let quickCheckClick = '';
         if (!isDone) {
             quickCheckClick = isActive ? `finishRoutineMission('${m.id}')` : `deployRoutineMission('${m.id}')`;
+        }
+
+        if (typeof _bracketFlipCache !== 'undefined') {
+            _bracketFlipCache[`mission_${m.id}`] = bracketText;
         }
 
         let telemetryNote = isTelemetry
             ? `<div style="font-size:0.82em; color:#38bdf8; margin-bottom:6px;"><b>Modo Telemetría Real:</b> Cronómetro abierto sin límite fijo. Registra tu tiempo real al terminar (Promedio actual: <b>${reqMins} min</b>).</div>`
             : '';
 
+                let activeArrowSvg = isActive
+            ? `<svg viewBox="0 0 12 12" width="9" height="9" fill="none" stroke="currentColor" stroke-width="2.2" style="display:inline-block; vertical-align:0px; margin-right:6px; opacity:0.95;"><polyline points="3,2 9,6 3,10"/></svg>`
+            : '';
+
+                let activePulseIndicator = isActive
+            ? `<span class="sl-active-mission-dot"></span>`
+            : '';
+
         rowsHtml += `
-        <div class="sl-goal-row-item ${isSelected ? 'active-goal-row' : ''} ${isDone ? 'goal-row-completed' : ''}" onclick="toggleMissionCardSelect('${m.id}')">
+        <div class="sl-goal-row-item ${isSelected ? 'active-goal-row' : ''} ${isDone ? 'goal-row-completed' : ''} ${isActive ? 'is-running-row' : ''}" onclick="toggleMissionCardSelect('${m.id}')">
+            ${activePulseIndicator}
             <div class="sl-goal-main-line">
-                <span class="sl-goal-name" style="${rowColor}">${m.title}</span>
+                <span class="sl-goal-name">${m.title}</span>
                 <div class="sl-goal-right">
-                    <span id="mission-live-timer-${m.id}" style="${rowColor}">${bracketText}</span>
+                    <span id="mission-live-timer-${m.id}">${bracketText}</span>
                     <div class="sl-goal-check-box ${boxClass}" onclick="event.stopPropagation(); ${quickCheckClick}">${boxIcon}</div>
                 </div>
             </div>
+
+
             ${isSelected ? `
             <div class="sl-goal-drawer" onclick="event.stopPropagation()">
                 <div style="margin-bottom:6px;">${m.desc}</div>
@@ -366,30 +380,30 @@ let currentDayStr = (typeof getBiologicalDayStr === "function") ? getBiologicalD
         let vigilHtml = '';
         if (isVigilActiveTonight) {
             vigilHtml = `
-            <div style="margin-bottom:8px; padding:8px 10px; background:rgba(88,28,135,0.28); border:1px solid #c084fc; text-align:center; font-size:0.76em; color:#f3e8ff;">
-                <b>PASE DE VIGILIA ACTIVO (HASTA LAS 11:20 PM)</b><br>
+            <div style="margin-bottom:8px; padding:8px 10px; background:rgba(88,28,135,0.28); border:1px solid #bae6fd; text-align:center; font-size:0.76em; color:#bae6fd;">
+                <b>PASE DE DESVELO (11:20)</b><br>
                 <span style="color:#bae6fd;">Cero corrosión • Misiones al 100% (${vigilLeft}/2 restantes)</span>
             </div>`;
         } else if (vigilExpiredTonight) {
             vigilHtml = `
-            <div style="margin-bottom:8px; padding:7px 10px; background:rgba(45,6,20,0.45); border:1px solid #fb7185; text-align:center; font-size:0.74em; color:#ffe4e6;">
-                <b>PASE DE VIGILIA EXPIRADO (11:20 PM)</b> — Activa Hibernación para dormir
+            <div style="margin-bottom:8px; padding:7px 10px; background:rgba(45,6,20,0.45); border:1px solid #bae6fd; text-align:center; font-size:0.74em; color:#bae6fd;">
+                <b>PASE DE DESVELO EXPIRADO (11:20 PM)</b> — Activa Hibernación para dormir
             </div>`;
         } else if (continuousMins < (23 * 60 + 20)) {
             vigilHtml = `
-            <button class="btn btn-blue" style="width:100%; margin-bottom:8px; padding:9px !important; font-size:0.74em !important; border-color:#c084fc !important;" onclick="openNightVigilModal()">
-                PASE DE VIGILIA HASTA 11:20 PM (${vigilLeft}/2 ESTA SEMANA)
+            <button class="btn btn-blue" style="width:100%; margin-bottom:8px; padding:9px !important; font-size:0.74em !important; border-color:#bae6fd !important;" onclick="openNightVigilModal()">
+                PASE NOCTURNO 11:20 (${vigilLeft}/2)
             </button>`;
         }
 
         let hibernateHtml = isSleeping
-            ? `<div style="padding:10px; background:rgba(16, 185, 129, 0.12); border:1px solid #10b981; text-align:center;">
-                <div style="color:#00ffcc; font-weight:700; font-size:0.86em; margin-bottom:4px;">MODO HIBERNACIÓN ACTIVO</div>
-                <div style="color:#cbd5e1; font-size:0.74em; margin-bottom:8px;">Signos vitales y oro protegidos hasta las 5:00 AM.</div>
-                <button class="btn btn-blue" style="padding:5px 10px !important; font-size:0.68em !important;" onclick="wakeUpFromSleepMode()">Desbloquear antes de las 5:00 AM</button>
+            ? `<div style="padding:10px; background:rgba(16, 185, 129, 0.12); border:1px solid #bae6fd; text-align:center;">
+                <div style="color:#bae6fd; font-weight:700; font-size:0.86em; margin-bottom:4px;">MODO HIBERNACIÓN ACTIVO</div>
+                <div style="color:#bae6fd; font-size:0.74em; margin-bottom:8px;">Signos vitales y oro protegidos hasta las 4:30 AM.</div>
+                <button class="btn btn-blue" style="padding:5px 10px !important; font-size:0.68em !important;" onclick="wakeUpFromSleepMode()">Desbloquear antes de las 4:30 AM</button>
                </div>`
-            : `<button class="btn btn-purple" style="width:100%; padding:11px !important; font-size:0.78em !important; border-color:#00ffcc !important;" onclick="activateNightSleepMode()">
-                TERMINAR DÍA Y DORMIR (MODO HIBERNACIÓN)
+            : `<button class="btn btn-purple" style="width:100%; padding:11px !important; font-size:0.78em !important; border-color:#bae6fd !important;" onclick="activateNightSleepMode()">
+                TERMINAR DÍA
                </button>`;
 
         sleepSectionHtml = `<div style="margin:18px 16px 0 18px;">${vigilHtml}${hibernateHtml}</div>`;
@@ -420,7 +434,8 @@ let currentDayStr = (typeof getBiologicalDayStr === "function") ? getBiologicalD
 }
 
 
-function updateActiveMissionTimersInPlace() { if (document.hidden || !p || p.penaltyActive || !p.activeMissions) return;
+function updateActiveMissionTimersInPlace() {
+    if (document.hidden || !p || p.penaltyActive || !p.activeMissions) return;
     let todayList = getTodayMissions();
     let agiFactor = p.stats ? Math.max(0.75, 0.90 - ((p.stats.agi - 1) * 0.02)) : 0.90;
 
@@ -433,18 +448,15 @@ function updateActiveMissionTimersInPlace() { if (document.hidden || !p || p.pen
         let minsPassed = Math.floor((Date.now() - p.activeMissions[id]) / 60000);
         let nextTxt = '';
         if (isTelemetryMission(m)) {
-            el.style.color = '#00e5ff';
             nextTxt = `[${minsPassed}m]`;
         } else {
             let reqMins = Math.ceil((m.mins || 30) * agiFactor);
-let isReady = minsPassed >= reqMins;
-            el.style.color = isReady ? '#e0f2fe' : '#7dd3fc';
             nextTxt = `[${minsPassed}/${reqMins}m]`;
         }
         if (typeof setBracketCounterFlip === "function") {
             setBracketCounterFlip(el, `mission_${id}`, nextTxt);
         } else {
-            el.innerText = nextTxt;
+            el.textContent = nextTxt;
         }
     });
 }
