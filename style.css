@@ -3151,9 +3151,9 @@ body.penalty-active .nav {
 }
 
 .sl-goal-check-box.checked-green {
-    border-color: #10b981 !important;
-    background: rgba(16, 185, 129, 0.22) !important;
-    box-shadow: 0 0 10px rgba(0, 255, 204, 0.7) !important;
+    border-color: #e0f2fe !important;
+    background: transparent !important;
+    box-shadow: none !important;
 }
 
 .sl-goal-check-box.failed-red {
@@ -3317,9 +3317,9 @@ body.penalty-active .nav {
 }
 
 .sl-anime-outer-check-frame.all-done .sl-goal-check-box {
-    border-color: #10b981 !important;
-    background: rgba(16, 185, 129, 0.24) !important;
-    box-shadow: 0 0 12px rgba(0, 255, 204, 0.75) !important;
+    border-color: #e0f2fe !important;
+    background: transparent !important;
+    box-shadow: 0 0 8px rgba(186, 230, 253, 0.5) !important;
 }
 
 .sl-anime-outer-check-frame.bleed-red .sl-goal-check-box {
@@ -3398,22 +3398,20 @@ body.penalty-active .nav {
 
 /* 17. TAMBOR MECÁNICO DE DÍGITOS Y MODALES DE RITUALES / ARTEFACTOS */
 .sl-digit-slot {
-    display: inline-flex !important;
-    align-items: center;
-    justify-content: center;
+    display: inline-block !important;
     position: relative;
     overflow: hidden;
-    vertical-align: middle !important;
+    vertical-align: -0.18em !important;
     height: 1.15em !important;
     line-height: 1.15em !important;
     letter-spacing: 0 !important;
 }
 
 .sl-digit-static {
-    display: inline-flex !important;
+    display: inline-block !important;
     height: 1.15em !important;
     line-height: 1.15em !important;
-    vertical-align: middle !important;
+    vertical-align: -0.18em !important;
 }
 
 .sl-digit-track {
@@ -3421,7 +3419,7 @@ body.penalty-active .nav {
     flex-direction: column;
     height: 2.3em;
     will-change: transform;
-    animation: slMechanicalFlip 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: slMechanicalFlipUp 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .sl-digit-old,
@@ -3435,15 +3433,14 @@ body.penalty-active .nav {
 }
 
 .sl-digit-new {
-    color: #ffffff;
-    text-shadow: 0 0 10px #00e5ff, 0 0 18px #38bdf8;
+    color: inherit;
+    text-shadow: 0 0 8px #00e5ff;
 }
 
-@keyframes slMechanicalFlip {
-    0%   { transform: translateY(0); filter: brightness(1.8); }
-    100% { transform: translateY(-1.15em); filter: brightness(1); }
+@keyframes slMechanicalFlipUp {
+    0%   { transform: translateY(0); }
+    100% { transform: translateY(-1.15em); }
 }
-
 
 /* HUD Táctico de 1.ª Persona cuando peleas sin sombras */
 .pov-first-person-rig {
@@ -3753,4 +3750,30 @@ body.ult-cinematic-playing .sonar-sweep-beam {
 }
 #sl-day-zero-overlay .sl-holo-rail {
     animation: none !important;
+}
+/* Margen exterior izquierdo para la lista de objetivos */
+.sl-goal-list {
+    padding-left: 12px !important; /* Deja espacio para el indicador sin tocar el texto */
+}
+
+.sl-goal-row-item.is-running-row {
+    position: relative;
+}
+
+.sl-active-mission-dot {
+    position: absolute;
+    left: -8px; /* Lo saca completamente al margen izquierdo fuera de la tarjeta */
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 10px;
+    background: #C7c8ca;
+    box-shadow: 0 0 6px #C7c8ca;
+    border-radius: 1px;
+    animation: activeDotPulse 1.2s infinite alternate;
+}
+
+@keyframes activeDotPulse {
+    0% { opacity: 0.4; }
+    100% { opacity: 1; filter: brightness(1.3); }
 }
