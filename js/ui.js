@@ -1050,6 +1050,7 @@ let maxHP = (typeof calculateHunterMaxHP === 'function') ? calculateHunterMaxHP(
             maxHP = (typeof calculateHunterMaxHP === 'function') ? calculateHunterMaxHP() : 100;
             p.hp = maxHP;
             p.sp = 100;
+            p.mp = maxMP;
             p.crystals = (p.crystals || 0) + 2;
         }
         saveData();

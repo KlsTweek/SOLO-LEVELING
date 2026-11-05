@@ -1258,11 +1258,13 @@ function activateNightSleepMode() {
     let h = now.getHours();
     let m = now.getMinutes();
     let bioDayStr = getBiologicalDayStr(now);
+    let curMinAct = h * 60 + m;
 
-    if (h >= 5 && h < 20) {
-        systemNotify("El Modo Hibernación Nocturna solo puede activarse a partir de las 8:00 PM.", "info");
+    if (curMinAct >= 270 && curMinAct < 1200) {
+        systemNotify("El Modo Hibernación Nocturna solo puede activarse a partir de las 8:00 PM y hasta las 4:30 AM.", "info");
         return;
     }
+
 
     p.sleepingUntilMorning = bioDayStr;
     p.sleepModeActivatedAt = Date.now();
@@ -1298,8 +1300,8 @@ function wakeUpFromSleepMode() {
     if (!p) return;
     let now = new Date();
     let h = now.getHours();
-        let curMinWake = h * 60 + now.getMinutes();
-    if (curMinWake < 270 || curMinWake >= 1260) {
+    let curMinWake = h * 60 + now.getMinutes();
+    if (curMinWake < 270 && curMinWake >= 1260) {
         if (!confirm("ADVERTENCIA: Aún es horario nocturno. Si rompes tu Modo Hibernación ahora, perderás la protección nocturna y comenzará el desgaste. ¿Despertar de todos modos?")) {
             return;
         }
@@ -1360,7 +1362,7 @@ function evaluateNightCurfew(isClockJump = false) {
 
 
     if (isSleepingNow(now)) {
-        if (!document.hidden && (h >= 20 || h < 5)) {
+        if (!document.hidden && (currentMinsDay >= 1200 || currentMinsDay < 270)) {
             let elapsedSinceActivated = p.sleepModeActivatedAt ? (Date.now() - p.sleepModeActivatedAt) : 0;
             if (elapsedSinceActivated > 600000) {
                 p.sleepActiveUsageSecs = (p.sleepActiveUsageSecs || 0) + 2;

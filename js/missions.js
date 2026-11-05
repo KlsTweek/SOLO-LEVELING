@@ -264,7 +264,7 @@ let currentDayStr = (typeof getBiologicalDayStr === "function") ? getBiologicalD
             ${evSelected ? `
             <div class="sl-goal-drawer" onclick="event.stopPropagation()">
                 <div style="margin-bottom:8px; color:#fff;">${p.activeEvent.desc}</div>
-                <button class="btn btn-green" style="width:100%; padding:10px;" onclick="claimDailyEvent()">SELLAR ANOMALÍA (+60 XP)</button>
+                                <button class="btn btn-main" style="width:100%; padding:10px;" onclick="claimDailyEvent()">SELLAR ANOMALÍA (+60 XP)</button>
             </div>` : ''}
         </div>`;
     }
