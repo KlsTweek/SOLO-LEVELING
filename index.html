@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -615,17 +615,17 @@
     <script src="js/inventory.js?v=8.6"></script>
     <script src="js/missions.js?v=8.6"></script>
     <script src="js/ui.js?v=8.6"></script>
-    <!-- REGISTRO Y LIMPIEZA AUTOMÁTICA DEL SERVICE WORKER V8.6 -->
+<!-- REGISTRO UNIFICADO DEL SERVICE WORKER V9.5 -->
     <script>
       if ('serviceWorker' in navigator) {
-        if (!localStorage.getItem('SL_CachePurged_V8_6')) {
+        if (!localStorage.getItem('SL_CachePurged_V9_5')) {
           caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).then(() => {
-            localStorage.setItem('SL_CachePurged_V8_6', '1');
+            localStorage.setItem('SL_CachePurged_V9_5', '1');
             window.location.reload();
           });
         }
-        navigator.serviceWorker.register('./sw.js?v=8.3')
-          .then(reg => { reg.update(); console.log("SINCRO-LOG:: Service Worker V8.6 Actualizado."); })
+        navigator.serviceWorker.register('./sw.js?v=9.5')
+          .then(reg => { reg.update(); console.log("SINCRO-LOG:: Service Worker V9.5 Activo."); })
           .catch(err => console.log("Error de Sistema:", err));
       }
     </script>

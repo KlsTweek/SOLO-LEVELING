@@ -1,7 +1,7 @@
 /* ==========================================================================
    SW.JS - SERVICE WORKER V9 COMPATIBLE CON VERCEL Y WEBAPK ANDROID
    ========================================================================== */
-const CACHE_NAME = 'monarch-domain-v9.3';
+const CACHE_NAME = 'monarch-domain-v9.6';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -9,6 +9,9 @@ const ASSETS_TO_CACHE = [
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png',
+  '/sounds/system-notification.mp3',
+  '/sounds/system-levelup.mp3',
+  '/sounds/notification-clic.mp3',
   '/comandantes/igris-svg.js',
   '/comandantes/tank-svg.js',
   '/comandantes/iron-svg.js',
@@ -72,16 +75,20 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     (async () => {
       const cache = await caches.open(CACHE_NAME);
+      const urlObj = new URL(event.request.url);
+      const isSameOrigin = urlObj.origin === self.location.origin;
+      const cleanKey = isSameOrigin ? urlObj.pathname : event.request;
+
       try {
         const netRes = await fetch(event.request, { cache: 'no-store' });
         if (netRes && netRes.status === 200) {
           const clean = await cleanResponse(netRes);
-          cache.put(event.request, clean.clone());
+          cache.put(cleanKey, clean.clone());
           return clean;
         }
       } catch (e) {}
 
-      const cached = await cache.match(event.request, { ignoreSearch: true });
+      const cached = (await cache.match(cleanKey)) || (await cache.match(event.request, { ignoreSearch: true }));
       if (cached) return cached;
 
       if (event.request.mode === 'navigate') {
@@ -92,8 +99,41 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
+let _swScheduledTimers = {};
+let _swMissingMissionsTimers = [];
+
+function scheduleMissingNotification(title, body, delayMs, tag) {
+  const targetTime = Date.now() + delayMs;
+  if ('TimestampTrigger' in self && self.registration && self.registration.showNotification) {
+    try {
+      self.registration.showNotification(title, {
+        body: body,
+        icon: '/icon-192.png',
+        badge: '/icon-192.png',
+        tag: tag,
+        renotify: true,
+        vibrate: [200, 100, 250],
+        showTrigger: new self.TimestampTrigger(targetTime)
+      }).catch(() => {});
+    } catch (e) {}
+  }
+  const tid = setTimeout(() => {
+    self.registration.showNotification(title, {
+      body: body,
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
+      vibrate: [220, 100, 280],
+      tag: tag,
+      renotify: true
+    });
+  }, Math.max(1000, delayMs));
+  _swMissingMissionsTimers.push(tid);
+}
+
 self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SL_POMODORO_NOTIFY') {
+  if (!event.data) return;
+
+  if (event.data.type === 'SL_POMODORO_NOTIFY') {
     self.registration.showNotification(event.data.title || 'SISTEMA DEL MONARCA', {
       body: event.data.body || 'Directiva del Sistema actualizada.',
       icon: '/icon-192.png',
@@ -102,6 +142,89 @@ self.addEventListener('message', (event) => {
       tag: event.data.tag || 'sl-pomodoro-' + Date.now(),
       renotify: true
     });
+  } else if (event.data.type === 'SL_SCHEDULE_REMINDERS') {
+    const idKey = event.data.missionId || 'default';
+    if (_swScheduledTimers[idKey]) {
+      _swScheduledTimers[idKey].forEach((t) => clearTimeout(t));
+    }
+    _swScheduledTimers[idKey] = [];
+    const alerts = Array.isArray(event.data.alerts) ? event.data.alerts : [];
+    alerts.forEach((al) => {
+      const tid = setTimeout(() => {
+        self.registration.showNotification(al.title || 'SISTEMA DEL MONARCA', {
+          body: al.body || 'Verifica el estado de tu misión en curso.',
+          icon: '/icon-192.png',
+          badge: '/icon-192.png',
+          vibrate: [250, 120, 250, 120, 350],
+          tag: al.tag || 'sl-remind-' + idKey,
+          renotify: true
+        });
+      }, Math.max(1000, al.delayMs || 60000));
+      _swScheduledTimers[idKey].push(tid);
+    });
+  } else if (event.data.type === 'SL_CANCEL_REMINDERS') {
+    const idKey = event.data.missionId || 'default';
+    if (_swScheduledTimers[idKey]) {
+      _swScheduledTimers[idKey].forEach((t) => clearTimeout(t));
+      delete _swScheduledTimers[idKey];
+    }
+  } else if (event.data.type === 'SL_SYNC_MISSING_MISSIONS') {
+    _swMissingMissionsTimers.forEach((t) => clearTimeout(t));
+    _swMissingMissionsTimers = [];
+    const missing = Array.isArray(event.data.missing) ? event.data.missing : [];
+    if (missing.length === 0) return;
+
+    const previewList = missing.slice(0, 3).join(', ') + (missing.length > 3 ? ` (+${missing.length - 3} más)` : '');
+    const intervalsMins = [40, 85, 135, 190, 250];
+    intervalsMins.forEach((mins, idx) => {
+      scheduleMissingNotification(
+        `INFO DE MISIÓN // FALTAN ${missing.length} OBJETIVOS`,
+        `Pendientes hoy: ${previewList}. No completar la misión diaria resultará en una penalización apropiada.`,
+        mins * 60000,
+        'sl-missing-ping-' + idx
+      );
+    });
+  }
+});
+
+self.addEventListener('message', (event) => {
+  if (!event.data) return;
+
+  if (event.data.type === 'SL_POMODORO_NOTIFY') {
+    self.registration.showNotification(event.data.title || 'SISTEMA DEL MONARCA', {
+      body: event.data.body || 'Directiva del Sistema actualizada.',
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
+      vibrate: [200, 100, 250, 100, 300],
+      tag: event.data.tag || 'sl-pomodoro-' + Date.now(),
+      renotify: true
+    });
+  } else if (event.data.type === 'SL_SCHEDULE_REMINDERS') {
+    const idKey = event.data.missionId || 'default';
+    if (_swScheduledTimers[idKey]) {
+      _swScheduledTimers[idKey].forEach((t) => clearTimeout(t));
+    }
+    _swScheduledTimers[idKey] = [];
+    const alerts = Array.isArray(event.data.alerts) ? event.data.alerts : [];
+    alerts.forEach((al) => {
+      const tid = setTimeout(() => {
+        self.registration.showNotification(al.title || 'SISTEMA DEL MONARCA', {
+          body: al.body || 'Verifica el estado de tu misión en curso.',
+          icon: '/icon-192.png',
+          badge: '/icon-192.png',
+          vibrate: [250, 120, 250, 120, 350],
+          tag: al.tag || 'sl-remind-' + idKey,
+          renotify: true
+        });
+      }, Math.max(1000, al.delayMs || 60000));
+      _swScheduledTimers[idKey].push(tid);
+    });
+  } else if (event.data.type === 'SL_CANCEL_REMINDERS') {
+    const idKey = event.data.missionId || 'default';
+    if (_swScheduledTimers[idKey]) {
+      _swScheduledTimers[idKey].forEach((t) => clearTimeout(t));
+      delete _swScheduledTimers[idKey];
+    }
   }
 });
 

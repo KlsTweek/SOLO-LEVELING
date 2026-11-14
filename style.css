@@ -3,7 +3,7 @@
    ========================================================================== */
 
 /* 1. FUENTES Y VARIABLES GLOBALES DEL SISTEMA */
-@import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700&family=Rajdhani:wght@600;700&family=Roboto+Slab:wght@500;600;700;800&family=Share+Tech+Mono&family=Zilla+Slab:ital,wght@0,500;0,600;0,700;1,600;1,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700&family=Rajdhani:wght@600;700&family=Share+Tech+Mono&display=swap');
 
 :root {
     /* CONTROLES DE INTENSIDAD DEL GLOW DE ÍTEMS (0.10 = débil | 0.85 = muy fuerte) */
@@ -91,7 +91,7 @@ body.stealth-camouflage-active {
     top: 16px;
     left: 50%;
     transform: translateX(-50%);
-    z-index: 10000;
+    z-index: 15000;
     width: 94%;
     max-width: 415px;
     pointer-events: none;
@@ -1169,9 +1169,15 @@ body.stealth-camouflage-active .sl-anime-vitals-box {
 
 .minecraft-grid {
     display: grid;
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: 4px;
     padding: 2px;
+}
+
+@media (max-width: 355px) {
+    .minecraft-grid {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
 }
 
 .grid-slot {
@@ -1411,7 +1417,10 @@ body.stealth-camouflage-active .sl-anime-vitals-box {
 
 .sl-anatomy-node {
     display: flex;
+    flex-direction: row-reverse;
+    justify-content: flex-start;
     align-items: center;
+    text-align: right;
     gap: 6px;
     cursor: pointer;
     transition: transform 0.18s ease;
@@ -1422,8 +1431,9 @@ body.stealth-camouflage-active .sl-anime-vitals-box {
 }
 
 .sl-anatomy-node.right-node {
-    flex-direction: row-reverse;
-    text-align: right;
+    flex-direction: row;
+    justify-content: flex-start;
+    text-align: left;
 }
 
 .sl-node-box {
@@ -2670,7 +2680,7 @@ body.stealth-camouflage-active .sl-anime-vitals-box {
 .nav {
     position: fixed; bottom: 0; width: 100%; background: #040814;
     border-top: 2px solid rgba(0, 210, 255, 0.2); display: flex;
-    justify-content: space-around; padding: 12px 0 25px 0; z-index: 950;
+    justify-content: space-around; padding: 12px 0 calc(18px + env(safe-area-inset-bottom, 8px)) 0; z-index: 950;
     box-shadow: 0 -8px 30px rgba(0,0,0,0.85);
 }
 
@@ -3151,9 +3161,24 @@ body.penalty-active .nav {
 }
 
 .sl-goal-check-box.checked-green {
-    border-color: #e0f2fe !important;
-    background: transparent !important;
-    box-shadow: none !important;
+    border-color: #ffffff !important;
+    background: rgba(0, 229, 255, 0.12) !important;
+    box-shadow: 0 0 8px rgba(0, 229, 255, 0.65), inset 0 0 4px rgba(255, 255, 255, 0.4) !important;
+}
+
+.sl-goal-window.high-fatigue-glitch {
+    animation: slGoalFatiguePulse 2.6s infinite;
+}
+
+@keyframes slGoalFatiguePulse {
+    0%, 92%, 96%, 100% {
+        border-color: rgba(224, 242, 254, 0.92);
+        box-shadow: 0 0 18px rgba(0, 229, 255, 0.42), inset 0 0 24px rgba(56, 189, 248, 0.22);
+    }
+    94% {
+        border-color: rgba(255, 42, 85, 0.85);
+        box-shadow: -2px 0 14px rgba(255, 42, 85, 0.55), 2px 0 14px rgba(0, 229, 255, 0.65), inset 0 0 20px rgba(255, 42, 85, 0.2);
+    }
 }
 
 .sl-goal-check-box.failed-red {
