@@ -5,26 +5,126 @@
 /* ==========================================================================
    1. OBTENER MISIONES DEL DÍA (FILTRADAS POR HORARIO, RUTA Y ACADEMIA)
    ========================================================================== */
+let showAllProgressiveMissions = false;
+
+window.toggleProgressiveViewMode = function() {
+    showAllProgressiveMissions = !showAllProgressiveMissions;
+    renderRoutine();
+};
+
+const ROTATABLE_SUB_IDS = ['m_phys', 'm_creative', 'm_gf'];
+const ROTATABLE_SUB_NAMES = {
+    'm_phys': 'Mecánica Serpento',
+    'm_creative': 'Práctica Creativa',
+    'm_gf': 'Vínculo Amoroso'
+};
+
+window.cycleTodayParallelMission = function(currentId) {
+    if (!p) return;
+    let todayKey = (typeof getBiologicalDayStr === 'function') ? getBiologicalDayStr() : new Date().toDateString();
+    let idx = ROTATABLE_SUB_IDS.indexOf(currentId);
+    let nextId = ROTATABLE_SUB_IDS[(idx + 1) % ROTATABLE_SUB_IDS.length];
+    p.customSubOverrideDay = todayKey;
+    p.customSubOverrideId = nextId;
+    selectedRoutineMissionId = nextId;
+    saveData();
+    renderRoutine();
+    if (typeof systemNotify === 'function') {
+        systemNotify(`[DIRECTIVA PARALELA REASIGNADA]: Hoy tu objetivo rotativo es [${ROTATABLE_SUB_NAMES[nextId]}].`, "info");
+    }
+};
+
+window.incrementHydrationGlass = function() {
+    if (!p || p.penaltyActive) return;
+    let todayKey = (typeof getBiologicalDayStr === 'function') ? getBiologicalDayStr() : new Date().toDateString();
+    if (p.hydrationDay !== todayKey) {
+        p.hydrationDay = todayKey;
+        p.hydrationGlasses = 0;
+    }
+    if (p.completedToday && p.completedToday.includes('m_hydration')) return;
+
+    p.hydrationGlasses = Math.min(8, (p.hydrationGlasses || 0) + 1);
+    p.sp = Math.min(100, (p.sp || 0) + 2);
+    if (typeof playSystemSound === 'function') playSystemSound('step_arrow');
+
+    if (p.hydrationGlasses >= 8) {
+        if (!p.completedToday) p.completedToday = [];
+        if (!p.completedToday.includes('m_hydration')) {
+            p.completedToday.push('m_hydration');
+        }
+        p.totalMissions = (p.totalMissions || 0) + 1;
+        p.xp += 25;
+        p.gold += Math.max(3, Math.floor(15 * (typeof GOLD_NERF !== 'undefined' ? GOLD_NERF : 0.20)));
+        let maxMP = p.stats ? Math.floor(1000 + ((p.stats.int - 1) * 1000)) : 1000;
+        p.mp = Math.min(maxMP, (p.mp || 0) + 25);
+        if (p.stats) p.stats.str = +(p.stats.str + 0.05).toFixed(2);
+        if (!p.missionTimestampsToday || p.missionTimestampsDay !== todayKey) {
+            p.missionTimestampsDay = todayKey;
+            p.missionTimestampsToday = {};
+        }
+        p.missionTimestampsToday['m_hydration'] = Date.now();
+        systemNotify("[RECARGA BIOLÓGICA COMPLETADA: 8/8 VASOS]: +25 XP, +0.05 STR y +25 MP asimilados.", "gold");
+    }
+
+    saveData();
+    if (typeof updateHUD === 'function') updateHUD();
+    renderRoutine();
+};
+
+function syncMissingMissionsWithSW() {
+    if (!p || !('serviceWorker' in navigator)) return;
+    let list = getTodayMissions();
+    let done = Array.isArray(p.completedToday) ? p.completedToday : [];
+    let missingTitles = list.filter(m => !done.includes(m.id)).map(m => m.title);
+    if (!p.studyCompletedToday) missingTitles.unshift('Repaso Cognitivo');
+
+    navigator.serviceWorker.ready.then(reg => {
+        if (reg.active) {
+            reg.active.postMessage({
+                type: 'SL_SYNC_MISSING_MISSIONS',
+                missing: missingTitles
+            });
+        }
+    }).catch(() => {});
+}
+
 function getTodayMissions(forcedDay = null) {
     let rawList = typeof baseMissions !== 'undefined' ? [...baseMissions] : [];
     let now = new Date();
     let nowMs = now.getTime();
-let todayKey = (typeof getBiologicalDayStr === 'function') ? getBiologicalDayStr(now) : now.toDateString();
+    let todayKey = (typeof getBiologicalDayStr === 'function') ? getBiologicalDayStr(now) : now.toDateString();
     let currentDay = forcedDay !== null ? forcedDay : ((typeof getBiologicalDateObj === 'function') ? getBiologicalDateObj(now).getDay() : now.getDay());
     let currentHour = now.getHours();
 
     let list = [];
     let hasExtraPass = p && p.extraChorrosUnlockedDay === todayKey;
     let idaCompleted = p && Array.isArray(p.completedToday) && p.completedToday.includes('m_traffic_ida');
-    let idaReadyAfter30s = idaCompleted && (!p.chorrosIdaFinishedAt || (nowMs -  p.chorrosIdaFinishedAt >= 30000));
+    let idaReadyAfter30s = idaCompleted && (!p.chorrosIdaFinishedAt || (nowMs - p.chorrosIdaFinishedAt >= 30000));
+
+    let isWeekday = (currentDay >= 1 && currentDay <= 5);
+    const weekdaySubRotation = {
+        1: 'm_phys',
+        2: 'm_creative',
+        3: 'm_gf',
+        4: 'm_phys',
+        5: 'm_creative'
+    };
+    let todayRotatedSub = (p && p.customSubOverrideDay === todayKey && p.customSubOverrideId)
+        ? p.customSubOverrideId
+        : (weekdaySubRotation[currentDay] || 'm_phys');
 
     rawList.forEach(m => {
         if (forcedDay === null && !hasExtraPass) {
-            if (m.id === 'm_traffic_ida' && currentHour >= 14 && ! (p.activeMissions && p.activeMissions['m_traffic_ida'])) return;
-            // El Retorno aparece desde las 14:00 PM O 30 segundos después de haber sellado la Ida
+            if (m.id === 'm_traffic_ida' && currentHour >= 14 && !(p.activeMissions && p.activeMissions['m_traffic_ida']) && !idaCompleted) return;
             if (m.id === 'm_traffic_vuelta' && currentHour < 14 && !idaReadyAfter30s) return;
         }
         if ((currentDay === 0 || currentDay === 6) && m.id === 'm_work') return;
+
+        if (isWeekday && ROTATABLE_SUB_IDS.includes(m.id)) {
+            let alreadyDoneOrActive = (p && Array.isArray(p.completedToday) && p.completedToday.includes(m.id)) || (p && p.activeMissions && p.activeMissions[m.id]);
+            if (m.id !== todayRotatedSub && !alreadyDoneOrActive) return;
+        }
+
         list.push(m);
     });
 
@@ -41,7 +141,7 @@ let todayKey = (typeof getBiologicalDayStr === 'function') ? getBiologicalDayStr
                 if (showByShift) {
                     list.push({
                         id: `sched_${idx}_${sched.name}`,
-                        title: `${sched.type === 'tutor' ? '📐 Tutoría:' : '🎓 Academia:'} ${sched.name}`,
+                        title: `${sched.type === 'tutor' ? 'Tutoría:' : 'Academia:'} ${sched.name}`,
                         desc: `Sesión programada del turno ${sched.shift}. Mantén atención absoluta.`,
                         type: "main",
                         rank: "A",
@@ -59,6 +159,7 @@ let todayKey = (typeof getBiologicalDayStr === 'function') ? getBiologicalDayStr
 
     return list;
 }
+
 function getEffectiveMissionSpCost(m) {
     let spCost = m.spCost || 10;
     if (!p) return spCost;
@@ -148,7 +249,7 @@ window.toggleMissionCardSelect = function(id) {
 
 window.claimEmergencySurvivalHeal = function() {
     if (!p) return;
-    let currentDayStr = new Date().toDateString();
+    let currentDayStr = (typeof getBiologicalDayStr === "function") ? getBiologicalDayStr() : new Date().toDateString();
     if (p.emergencySurvivalDay === currentDayStr) return;
     p.emergencySurvivalDay = currentDayStr;
     let maxH = (typeof calculateHunterMaxHP === "function") ? calculateHunterMaxHP() : 100;
@@ -218,7 +319,7 @@ let currentDayStr = (typeof getBiologicalDayStr === "function") ? getBiologicalD
     let isVigilActiveTonight = (typeof isNightVigilActiveNow === "function") ? isNightVigilActiveNow(now) : (p.nightPassActive === currentDayStr);
 
     let continuousMins = (h < 5 ? h + 24 : h) * 60 + m;
-    let deadlineMins = 21 * 60 + 15; // 9:15 PM
+    let deadlineMins = 21 * 60 + 35; // 9:15 PM
     if (p.tankCurfewDelayDay === currentDayStr) deadlineMins += 45;
     if (p.nightPassActive === currentDayStr || p.movieNightCurfewDay === currentDayStr) deadlineMins = 23 * 60 + 20;
     if (isMercyActive()) deadlineMins = 26 * 60;
@@ -226,7 +327,7 @@ let currentDayStr = (typeof getBiologicalDayStr === "function") ? getBiologicalD
     let isPastDeadline = (continuousMins >= deadlineMins && !isSleeping && !isVigilActiveTonight && (curMinRoutine >= 1275 || curMinRoutine < 270));
 
 
-    const svgCheckGreen = `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#00ffcc" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 5px #10b981);"><polyline points="20,6 9,17 4,12"/></svg>`;
+    const svgCheckGreen = `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 6px #00e5ff);"><polyline points="20,6 9,17 4,12"/></svg>`;
     const svgCrossRed   = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#ff2a55" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 6px #ff2a55);"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
 
     let rowsHtml = '';
@@ -255,7 +356,7 @@ let currentDayStr = (typeof getBiologicalDayStr === "function") ? getBiologicalD
         rowsHtml += `
         <div class="sl-goal-row-item ${evSelected ? 'active-goal-row' : ''}" onclick="toggleMissionCardSelect('daily_anomaly')">
             <div class="sl-goal-main-line">
-                <span class="sl-goal-name">${p.activeEvent.title || 'Anomalía Detectada'}</span>
+                <span class="sl-goal-name">${p.activeEvent.title || 'Incursión Sorpresa'}</span>
                 <div class="sl-goal-right">
                     <span>[???]</span>
                     <div class="sl-goal-check-box" onclick="event.stopPropagation(); claimDailyEvent()"></div>
@@ -264,7 +365,7 @@ let currentDayStr = (typeof getBiologicalDayStr === "function") ? getBiologicalD
             ${evSelected ? `
             <div class="sl-goal-drawer" onclick="event.stopPropagation()">
                 <div style="margin-bottom:8px; color:#fff;">${p.activeEvent.desc}</div>
-                                <button class="btn btn-main" style="width:100%; padding:10px;" onclick="claimDailyEvent()">SELLAR ANOMALÍA (+60 XP)</button>
+                <button class="btn btn-main" style="width:100%; padding:10px;" onclick="claimDailyEvent()">SELLAR ANOMALÍA (+60 XP)</button>
             </div>` : ''}
         </div>`;
     }
@@ -286,7 +387,7 @@ let currentDayStr = (typeof getBiologicalDayStr === "function") ? getBiologicalD
         <div class="sl-goal-drawer" onclick="event.stopPropagation()">
             <div style="margin-bottom:8px;">Aísla tu mente por 5 o 25 minutos de inmersión total (+MP e Inteligencia).</div>
             ${studyDone
-                ? `<div style="color:#00ffcc; font-weight:700; text-align:center;">✔ Sesión cognitiva completada hoy.</div>`
+                ? `<div class="sl-mission-sealed-msg" style="color:#e0f2fe;">[Sesión cognitiva completada hoy]</div>`
                 : `<button class="btn btn-main" style="width:100%; padding:10px;" onclick="openModal('study-modal')">ENTRAR A CÁMARA DE FOCUS</button>`}
         </div>` : ''}
     </div>`;
@@ -294,19 +395,28 @@ let currentDayStr = (typeof getBiologicalDayStr === "function") ? getBiologicalD
     let todayMissions = getTodayMissions();
     if (!p.completedToday) p.completedToday = [];
     if (!p.activeMissions) p.activeMissions = {};
+    if (p.hydrationDay !== currentDayStr) {
+        p.hydrationDay = currentDayStr;
+        p.hydrationGlasses = 0;
+    }
 
     todayMissions.forEach(m => {
         let isDone = p.completedToday.includes(m.id);
         let isActive = !!p.activeMissions[m.id];
         let isSelected = (selectedRoutineMissionId === m.id);
         let isTelemetry = isTelemetryMission(m);
+        let isHydration = (m.id === 'm_hydration');
+        let isRotatableSub = ROTATABLE_SUB_IDS.includes(m.id);
 
         let agiFactor = p.stats ? Math.max(0.75, 0.90 - ((p.stats.agi - 1) * 0.02)) : 0.90;
         let reqMins = isTelemetry ? getTelemetryAverageMins(m.id, m.mins || 30) : Math.ceil((m.mins || 30) * agiFactor);
-        let minsPassed = isActive ? Math.floor((Date.now() - p.activeMissions[m.id]) / 60000) : 0;
+        let minsPassed = isActive ? Math.max(0, Math.floor((Date.now() - p.activeMissions[m.id]) / 60000)) : 0;
 
         let bracketText = '';
-        if (isDone) {
+        if (isHydration) {
+            let gCount = isDone ? 8 : (p.hydrationGlasses || 0);
+            bracketText = `[${gCount}/8]`;
+        } else if (isDone) {
             let lastRec = (p.telemetryLastToday && p.telemetryLastToday[m.id]) ? p.telemetryLastToday[m.id] : reqMins;
             bracketText = `[${lastRec}/${reqMins}m]`;
         } else if (isActive) {
@@ -314,11 +424,16 @@ let currentDayStr = (typeof getBiologicalDayStr === "function") ? getBiologicalD
         } else {
             bracketText = `[0/${reqMins}m]`;
         }
-                let boxClass = isDone ? 'checked-green' : (isPastDeadline ? 'failed-red' : '');
+
+        let boxClass = isDone ? 'checked-green' : (isPastDeadline ? 'failed-red' : '');
         let boxIcon  = isDone ? svgCheckGreen : (isPastDeadline ? svgCrossRed : '');
         let quickCheckClick = '';
         if (!isDone) {
-            quickCheckClick = isActive ? `finishRoutineMission('${m.id}')` : `deployRoutineMission('${m.id}')`;
+            if (isHydration) {
+                quickCheckClick = `incrementHydrationGlass()`;
+            } else {
+                quickCheckClick = isActive ? `finishRoutineMission('${m.id}')` : `deployRoutineMission('${m.id}')`;
+            }
         }
 
         if (typeof _bracketFlipCache !== 'undefined') {
@@ -326,16 +441,20 @@ let currentDayStr = (typeof getBiologicalDayStr === "function") ? getBiologicalD
         }
 
         let telemetryNote = isTelemetry
-            ? `<div style="font-size:0.82em; color:#38bdf8; margin-bottom:6px;"><b>Modo Telemetría Real:</b> Cronómetro abierto sin límite fijo. Registra tu tiempo real al terminar (Promedio actual: <b>${reqMins} min</b>).</div>`
+            ? `<div class="sl-telemetry-note" style="color:#bae6fd; margin-bottom:6px;">[Modo Telemetría: Promedio actual ${reqMins}m]</div>`
             : '';
 
-                let activeArrowSvg = isActive
-            ? `<svg viewBox="0 0 12 12" width="9" height="9" fill="none" stroke="currentColor" stroke-width="2.2" style="display:inline-block; vertical-align:0px; margin-right:6px; opacity:0.95;"><polyline points="3,2 9,6 3,10"/></svg>`
+        let swapNextName = '';
+        if (isRotatableSub && !isDone && !isActive) {
+            let nextSubId = ROTATABLE_SUB_IDS[(ROTATABLE_SUB_IDS.indexOf(m.id) + 1) % ROTATABLE_SUB_IDS.length];
+            swapNextName = ROTATABLE_SUB_NAMES[nextSubId];
+        }
+
+        let swapBtnHtml = swapNextName
+            ? `<button class="btn" style="margin-bottom:8px; opacity:0.85;" onclick="cycleTodayParallelMission('${m.id}')">[ ⇄ CAMBIAR HOY POR: ${swapNextName.toUpperCase()} ]</button>`
             : '';
 
-                let activePulseIndicator = isActive
-            ? `<span class="sl-active-mission-dot"></span>`
-            : '';
+        let activePulseIndicator = isActive ? `<span class="sl-active-mission-dot"></span>` : '';
 
         rowsHtml += `
         <div class="sl-goal-row-item ${isSelected ? 'active-goal-row' : ''} ${isDone ? 'goal-row-completed' : ''} ${isActive ? 'is-running-row' : ''}" onclick="toggleMissionCardSelect('${m.id}')">
@@ -348,25 +467,29 @@ let currentDayStr = (typeof getBiologicalDayStr === "function") ? getBiologicalD
                 </div>
             </div>
 
-
             ${isSelected ? `
             <div class="sl-goal-drawer" onclick="event.stopPropagation()">
-                <div style="margin-bottom:6px;">${m.desc}</div>
+                <div>${m.desc}</div>
                 ${telemetryNote}
-                <div class="card-rewards" style="margin-bottom:10px; width:100%; justify-content:space-around;">
+                <div class="card-rewards" style="width:100%; justify-content:space-around;">
                     <span class="r-xp">+${m.xp} XP</span>
                     <span class="r-gold">+${getEffectiveMissionGoldReward(m)} G</span>
                     <span class="r-sp">+${getEffectiveMissionSpCost(m)} FATIGA</span>
                     <span class="r-stat">+${(m.mins && m.mins >= 40) ? 65 : 45} MP</span>
                 </div>
+                ${swapBtnHtml}
                 ${isDone
-                    ? `<div style="color:#00ffcc; font-weight:700; text-align:center;">✔ Misión sellada en el registro de hoy.</div>`
-                    : (isActive
-                        ? `<button class="btn btn-gold" style="width:100%; padding:10px;" onclick="finishRoutineMission('${m.id}')">${isTelemetry ? 'FINALIZAR Y REGISTRAR TIEMPO REAL' : 'SELLAR MISIÓN (' + minsPassed + '/' + reqMins + 'm)'}</button>`
-                        : `<button class="btn btn-main" style="width:100%; padding:10px;" onclick="selectedRoutineMissionId=null; deployRoutineMission('${m.id}')">▶ ${isTelemetry ? 'INICIAR CRONÓMETRO REAL' : 'DESPLEGAR MISIÓN (' + reqMins + 'm)'}</button>`)}
+                    ? `<div class="sl-mission-sealed-msg" style="color:#e0f2fe;">[Misión sellada en el registro de hoy]</div>`
+                    : (isHydration
+                        ? `<button class="btn" onclick="incrementHydrationGlass()">REGISTRAR VASO DE AGUA (${p.hydrationGlasses || 0}/8)</button>`
+                        : (isActive
+                            ? `<button class="btn" onclick="finishRoutineMission('${m.id}')">${isTelemetry ? 'FINALIZAR Y REGISTRAR TIEMPO REAL' : 'SELLAR MISIÓN (' + minsPassed + '/' + reqMins + 'm)'}</button>`
+                            : `<button class="btn" onclick="selectedRoutineMissionId=null; deployRoutineMission('${m.id}')">${isTelemetry ? 'INICIAR CRONÓMETRO REAL' : 'DESPLEGAR MISIÓN (' + reqMins + 'm)'}</button>`))}
             </div>` : ''}
         </div>`;
     });
+
+    syncMissingMissionsWithSW();
 
     // Controles Nocturnos en Misiones: SOLO visibles desde las 8:00 PM (h >= 20 || h < 5), invisibles de día
     let vigilLeft = (typeof ensureNightVigilQuota === "function") ? ensureNightVigilQuota() : 2;
@@ -412,7 +535,7 @@ let currentDayStr = (typeof getBiologicalDayStr === "function") ? getBiologicalD
     routContainer.innerHTML = `
     <div class="sl-goal-frame-outer">
         <div class="sl-mech-rail top"></div>
-        <div class="sl-goal-window">
+        <div class="sl-goal-window ${(100 - (p.sp !== undefined ? p.sp : 100)) >= 80 ? 'high-fatigue-glitch' : ''}">
             <div class="sl-goal-inner-border">
                 <div class="sl-anime-box-header">
                     <div class="sl-anime-excl-box"><div class="sl-anime-excl-circle">!</div></div>
@@ -464,6 +587,181 @@ function updateActiveMissionTimersInPlace() {
 if (window.routineLiveTimerInterval) clearInterval(window.routineLiveTimerInterval);
 window.routineLiveTimerInterval = setInterval(updateActiveMissionTimersInPlace, 15000);
 
+function scheduleMissionNativeReminders(m) {
+    if (!m || !('serviceWorker' in navigator)) return;
+    let alerts = [];
+    if (m.id === 'm_traffic_ida') {
+        alerts = [
+            { delayMs: 45 * 60000, title: 'SISTEMA DEL MONARCA // RUTA', body: 'Llevas 45m en Ruta de Ida. ¿Ya llegaste al trabajo? Sella tu ruta y despliega Jornada Laboral.', tag: 'sl-rem-ida-1' },
+            { delayMs: 65 * 60000, title: 'ALERTA DE MEMORIA // CAZADOR', body: '65m en Ruta de Ida. No olvides sellar tu viaje e iniciar Jornada Laboral.', tag: 'sl-rem-ida-2' },
+            { delayMs: 85 * 60000, title: 'RELEVO AUTOMÁTICO EN ESPERA', body: 'Tu cronómetro de Ruta superó los 85m. Abre el Sistema para transferir el tiempo excedente a tu Jornada Laboral.', tag: 'sl-rem-ida-3' }
+        ];
+    } else if (m.id === 'm_work') {
+        alerts = [
+            { delayMs: 120 * 60000, title: 'TELEMETRÍA DE JORNADA (2H)', body: 'Mitad del bloque matutino completada. Hidrátate y mantén el enfoque.', tag: 'sl-rem-work-1' },
+            { delayMs: 240 * 60000, title: 'META DE JORNADA ALCANZADA (4H)', body: 'Ya puedes sellar tu Jornada Laboral o seguir acumulando tiempo real.', tag: 'sl-rem-work-2' }
+        ];
+    } else if (m.id.startsWith('sched_')) {
+        alerts = [
+            { delayMs: 45 * 60000, title: 'VIGÍA DE ACADEMIA (45M)', body: 'Mitad de clase. Prohibido abrir juegos externos; el Ojo de Kandiaru vigila tu INT.', tag: 'sl-rem-sched-1' },
+            { delayMs: 90 * 60000, title: 'CLASE COMPLETADA (90M)', body: 'Sella tu sesión académica en el Tablón y dirígete a cerrar tus misiones nocturnas.', tag: 'sl-rem-sched-2' }
+        ];
+    } else {
+        let reqM = m.mins || 15;
+        alerts = [
+            { delayMs: reqM * 60000, title: 'OBJETIVO COMPLETADO: ' + m.title.toUpperCase(), body: 'El tiempo requerido ha concluido. Regresa al Sistema para ejecutar el Corte Dimensional.', tag: 'sl-rem-' + m.id }
+        ];
+    }
+
+    navigator.serviceWorker.ready.then(reg => {
+        if (reg.active) {
+            reg.active.postMessage({ type: 'SL_SCHEDULE_REMINDERS', missionId: m.id, alerts: alerts });
+        }
+    }).catch(() => {});
+}
+
+function cancelMissionNativeReminders(missionId) {
+    if (!('serviceWorker' in navigator)) return;
+    navigator.serviceWorker.ready.then(reg => {
+        if (reg.active) {
+            reg.active.postMessage({ type: 'SL_CANCEL_REMINDERS', missionId: missionId });
+        }
+    }).catch(() => {});
+}
+
+function checkForgottenRouteHandover() {
+    if (!p || !p.activeMissions || !p.activeMissions['m_traffic_ida']) return false;
+    let startTs = p.activeMissions['m_traffic_ida'];
+    let elapsedMins = Math.floor((Date.now() - startTs) / 60000);
+    if (elapsedMins < 95) return false;
+
+    let avgRouteMins = getTelemetryAverageMins('m_traffic_ida', 50);
+    let clampedRouteMins = Math.min(80, Math.max(35, avgRouteMins));
+    let workStartTs = startTs + (clampedRouteMins * 60000);
+    let workAccumMins = Math.max(1, elapsedMins - clampedRouteMins);
+
+    if (document.getElementById('sl-handover-modal')) return true;
+
+    let cornerSVG = (typeof getBaroqueCornerSVG === "function") ? getBaroqueCornerSVG() : '';
+    let ov = document.createElement('div');
+    ov.id = 'sl-handover-modal';
+    ov.style.cssText = 'position:fixed; inset:0; background:rgba(2,6,18,0.94); z-index:13600; display:flex; justify-content:center; align-items:center; padding:18px;';
+    ov.innerHTML = `
+        <div class="sl-holo-frame" style="width:100%; max-width:410px; cursor:default;">
+            <div class="sl-holo-rail top"><span class="rail-core"></span></div>
+            <div class="sl-holo-glass">
+                <div class="sl-holo-inner-box" style="padding:20px 16px; text-align:center;">
+                    <span class="sl-baroque-corner tl">${cornerSVG}</span>
+                    <span class="sl-baroque-corner tr">${cornerSVG}</span>
+                    <span class="sl-baroque-corner bl">${cornerSVG}</span>
+                    <span class="sl-baroque-corner br">${cornerSVG}</span>
+                    <div class="sl-holo-header-row" style="margin-bottom:8px;">
+                        <div class="sl-excl-square">!</div>
+                        <div class="sl-title-rect">RELEVO DE MEMORIA</div>
+                    </div>
+                    <div class="sl-holo-subbracket">[ ASISTENCIA COGNITIVA DEL ARQUITECTO ]</div>
+                    <div style="color:#e0f2fe; font-size:0.9em; line-height:1.5; margin:12px 0;">
+                        Tu cronómetro de <b>[Ruta de Ida]</b> lleva <b>${elapsedMins} min</b> corriendo.<br><br>
+                        ¿Olvidaste desactivarlo al llegar al trabajo? El Sistema puede sellar tu Ruta en <b>${clampedRouteMins} min</b> y transferir los <b>${workAccumMins} min restantes</b> directamente a tu <b>[Jornada Laboral]</b>.
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:8px;">
+                        <button class="btn btn-main" style="width:100%; padding:11px;" onclick="confirmRouteToWorkHandover(${clampedRouteMins}, ${workStartTs})">
+                            TRANSFERIR ${workAccumMins}M A JORNADA Y SELLAR RUTA
+                        </button>
+                        <button class="btn btn-blue" style="width:100%; padding:9px;" onclick="document.getElementById('sl-handover-modal').remove()">
+                            NO, SIGO EN TRÁFICO (${elapsedMins}M REALES)
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="sl-holo-rail bottom"><span class="rail-core"></span></div>
+        </div>
+    `;
+    document.body.appendChild(ov);
+    return true;
+}
+
+window.confirmRouteToWorkHandover = function(routeMins, workStartTs) {
+    let modal = document.getElementById('sl-handover-modal');
+    if (modal) modal.remove();
+
+    let mIda = getTodayMissions().find(x => x.id === 'm_traffic_ida');
+    if (!mIda) return;
+
+    if (!p.telemetryStats) p.telemetryStats = {};
+    if (!p.telemetryStats['m_traffic_ida']) p.telemetryStats['m_traffic_ida'] = { totalMins: 0, count: 0, bestMins: routeMins };
+    p.telemetryStats['m_traffic_ida'].totalMins += routeMins;
+    p.telemetryStats['m_traffic_ida'].count += 1;
+
+    if (!p.telemetryLastToday) p.telemetryLastToday = {};
+    p.telemetryLastToday['m_traffic_ida'] = routeMins;
+
+    delete p.activeMissions['m_traffic_ida'];
+    cancelMissionNativeReminders('m_traffic_ida');
+
+    if (!p.completedToday.includes('m_work')) {
+        p.activeMissions['m_work'] = workStartTs;
+        let mWork = getTodayMissions().find(x => x.id === 'm_work');
+        if (mWork) scheduleMissionNativeReminders(mWork);
+    }
+
+    if (!p.synergiesClaimedList) p.synergiesClaimedList = [];
+    if (!p.synergiesClaimedList.includes('syn_relay_work')) {
+        p.synergiesClaimedList.push('syn_relay_work');
+        p.mp = Math.min(1000 + ((p.stats.int - 1) * 1000), (p.mp || 0) + 80);
+        systemNotify("[SINERGIA DE RELEVO]: Transición Ruta ➔ Jornada Laboral sincronizada (+80 MP).", "info");
+    }
+
+    saveData();
+    renderRoutine();
+    updateHUD();
+
+    openSealModal({
+        type: 'routine',
+        id: 'm_traffic_ida',
+        xp: mIda.xp,
+        gold: mIda.gold,
+        stat: mIda.stat,
+        timeCat: 'traffic',
+        mins: routeMins,
+        realMins: routeMins,
+        honorNote: 'Relevo automático hacia Jornada Laboral'
+    });
+};
+
+let _classFocusLeftAt = null;
+function initAcademicAntiClashGuard() {
+    if (window._antiClashBound) return;
+    window._antiClashBound = true;
+
+    document.addEventListener('visibilitychange', () => {
+        if (!p || !p.activeMissions) return;
+        let activeClassId = Object.keys(p.activeMissions).find(id => id.startsWith('sched_'));
+        if (!activeClassId) {
+            _classFocusLeftAt = null;
+            return;
+        }
+
+        if (document.hidden) {
+            _classFocusLeftAt = Date.now();
+        } else if (_classFocusLeftAt) {
+            let awaySecs = Math.floor((Date.now() - _classFocusLeftAt) / 1000);
+            _classFocusLeftAt = null;
+            if (awaySecs >= 28 && awaySecs <= 900) {
+                p.classDeserterToday = true;
+                p.hp = Math.max(5, +(p.hp - 20).toFixed(1));
+                p.gold = Math.max(0, p.gold - 35);
+                p.activeMissions[activeClassId] += (awaySecs * 1000);
+                saveData();
+                updateHUD();
+                renderRoutine();
+                systemNotify(`[DESERCIÓN EN CLASE DETECTADA: ${awaySecs}s FUERA DEL SISTEMA]: Saliste a otra aplicación durante tu horario académico. Penalización: -20 HP, -35 G y esos segundos fueron descontados de tu clase.`, "danger");
+            }
+        }
+    });
+}
+initAcademicAntiClashGuard();
+
 function deployRoutineMission(id) {
     if (p.penaltyActive) {
         systemNotify("SISTEMA BLOQUEADO. Cumple tu supervivencia primero.", "danger");
@@ -481,8 +779,11 @@ function deployRoutineMission(id) {
             return actObj && actObj.type === 'main';
         });
         if (activeMainId) {
+            if (activeMainId === 'm_traffic_ida' && checkForgottenRouteHandover()) {
+                return;
+            }
             let activeMainObj = todayList.find(x => x.id === activeMainId);
-            systemNotify(`⚠️ Ubicación Física Ocupada: Ya estás ejecutando [${activeMainObj.title}]. Séllala antes de iniciar otra principal.`, "danger");
+            systemNotify(`Ubicación Física Ocupada: Ya estás ejecutando [${activeMainObj ? activeMainObj.title : activeMainId}]. Séllala antes de iniciar otra principal.`, "danger");
             return;
         }
     }
@@ -490,10 +791,21 @@ function deployRoutineMission(id) {
     let now = Date.now();
     let spCost = getEffectiveMissionSpCost(m);
 
+    if (m.id === 'm_work' && p.chorrosIdaFinishedAt && (now - p.chorrosIdaFinishedAt <= 20 * 60000)) {
+        spCost = 0;
+        if (!p.synergiesClaimedList) p.synergiesClaimedList = [];
+        if (!p.synergiesClaimedList.includes('syn_relay_work')) {
+            p.synergiesClaimedList.push('syn_relay_work');
+            let maxMP = p.stats ? Math.floor(1000 + ((p.stats.int - 1) * 1000)) : 1000;
+            p.mp = Math.min(maxMP, (p.mp || 0) + 90);
+            systemNotify("[SINERGIA DE RELEVO PERFECTO]: Iniciaste Jornada Laboral justo al llegar de Ruta de Ida (0 Fatiga inicial y +90 MP).", "gold");
+        }
+    }
+
     if (p.bypassFatigue) {
         spCost = 0;
         p.bypassFatigue = false;
-        systemNotify("🧠 Bypass de Fatiga consumido: 0 Fatiga acumulada.", "purple");
+        systemNotify("Bypass de Fatiga consumido: 0 Fatiga acumulada.", "purple");
     } else if (p.entropyBuffUntil && now < p.entropyBuffUntil) {
         spCost = -8;
     }
@@ -516,17 +828,20 @@ function deployRoutineMission(id) {
     }
 
     p.activeMissions[id] = now;
+    scheduleMissionNativeReminders(m);
     if (typeof _evalArcDeployHook === "function") _evalArcDeployHook(m);
 
     saveData();
     updateHUD();
     renderRoutine();
-    if (isTelemetryMission(m)) {
+    if (m.id.startsWith('sched_')) {
+        systemNotify(`Vigía de Academia activo: [${m.title}]. Mantén el Sistema abierto o la pantalla bloqueada; salir a juegos externos por +28s restará HP y Oro.`, "info");
+    } else if (isTelemetryMission(m)) {
         let avgM = getTelemetryAverageMins(m.id, m.mins || 30);
-        systemNotify(`⏱️ Cronómetro de Telemetría iniciado: [${m.title}]. Sella cuando termines en la vida real (Promedio: ${avgM} min).`, "info");
+        systemNotify(`Cronómetro de Telemetría iniciado: [${m.title}]. Sella cuando termines en la vida real (Promedio: ${avgM} min).`, "info");
     } else {
         let agiFactor = p.stats ? Math.max(0.75, 0.90 - ((p.stats.agi - 1) * 0.02)) : 0.90;
-        systemNotify(`⚡ Misión iniciada: [${m.title}]. Meta: ${Math.ceil((m.mins || 30) * agiFactor)} min.`, "info");
+        systemNotify(`Misión iniciada: [${m.title}]. Meta: ${Math.ceil((m.mins || 30) * agiFactor)} min.`, "info");
     }
 }
 
@@ -534,13 +849,22 @@ function finishRoutineMission(id) {
     let m = getTodayMissions().find(x => x.id === id);
     if (!m || !p.activeMissions || !p.activeMissions[id]) return;
 
+    if (id === 'm_traffic_ida' && checkForgottenRouteHandover()) {
+        return;
+    }
+
     let now = Date.now();
-    let elapsedMins = (now - p.activeMissions[id]) / 60000;
+    let rawElapsedMs = now - p.activeMissions[id];
+    if (rawElapsedMs < 0) {
+        p.activeMissions[id] = now - 60000;
+        rawElapsedMs = 60000;
+    }
+    let elapsedMins = rawElapsedMs / 60000;
     let isTelemetry = isTelemetryMission(m);
 
     if (isTelemetry) {
         if (elapsedMins < 1) {
-            systemNotify("⏱️ El cronómetro de telemetría lleva menos de 1 minuto. Registra tu tiempo real al finalizar la actividad.", "info");
+            systemNotify("El cronómetro de telemetría lleva menos de 1 minuto. Registra tu tiempo real al finalizar la actividad.", "info");
             return;
         }
         let realMins = Math.max(1, Math.round(elapsedMins));
@@ -556,7 +880,7 @@ function finishRoutineMission(id) {
         if (!p.telemetryLastToday) p.telemetryLastToday = {};
         p.telemetryLastToday[m.id] = realMins;
 
-        systemNotify(`📊 Telemetría registrada [${m.title}]: ${realMins} min reales (Promedio histórico: ${newAvg} min | Anterior: ${prevAvg} min).`, "info");
+        systemNotify(`Telemetría registrada [${m.title}]: ${realMins} min reales (Promedio histórico: ${newAvg} min | Anterior: ${prevAvg} min).`, "info");
 
         openSealModal({
             type: 'routine',
@@ -591,7 +915,7 @@ function finishRoutineMission(id) {
 
     if (p.ambrosiaHalfTimeUses && p.ambrosiaHalfTimeUses > 0) {
         p.ambrosiaHalfTimeUses--;
-        systemNotify(`🍯 Néctar de los Gobernantes aplicado: Misión validada al 50% del tiempo (${p.ambrosiaHalfTimeUses} usos restantes).`, "gold");
+        systemNotify(`Néctar de los Gobernantes aplicado: Misión validada al 50% del tiempo (${p.ambrosiaHalfTimeUses} usos restantes).`, "gold");
     }
 
     let realMinsWorked = Math.max(m.mins || 30, Math.floor(elapsedMins));
@@ -613,6 +937,7 @@ function finishRoutineMission(id) {
         realMins: realMinsWorked
     });
 }
+
 /* ==========================================================================
    4. SONAR RADAR CIRCULAR DE LA ASOCIACIÓN Y TERMINAL DE GREMIO ÚNICA
    ========================================================================== */
@@ -920,9 +1245,22 @@ function startPersonalBoss(idx, asQuickTask = false) {
     b.warned30s = false;
 
     togglePomodoroKeepAliveAudio(true);
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.ready.then(reg => {
+            if (reg.active) {
+                reg.active.postMessage({
+                    type: 'SL_SCHEDULE_REMINDERS',
+                    missionId: 'pomo_' + b.id,
+                    alerts: [
+                        { delayMs: firstBlock.mins * 60000, title: 'BLOQUE POMODORO COMPLETADO', body: `Inicia tu receso táctico en [${b.title}].`, tag: 'pomo-end-' + b.id }
+                    ]
+                });
+            }
+        }).catch(() => {});
+    }
     saveData();
     renderBosses();
-    systemNotify(`🧠 Asedio Pomodoro iniciado [${b.title}]: 40 minutos de estudio. Te llegará una notificación nativa al iniciar tu receso.`, "info");
+    systemNotify(`Asedio Pomodoro iniciado [${b.title}]: 40 minutos de estudio. Notificación programada al iniciar tu receso.`, "info");
 }
 
 window.togglePausePersonalBoss = function(idx) {
@@ -1375,6 +1713,89 @@ function renderSchedules() {
 /* ==========================================================================
    9. SINCRONIZADOR DEL PIE DE MISIÓN DIARIA Y DESANGRADO NOCTURNO (9:15 PM)
    ========================================================================== */
+window.openDailyQuestClearRewardModal = function() {
+    if (!p) return;
+    let currentDayStr = (typeof getBiologicalDayStr === "function") ? getBiologicalDayStr() : new Date().toDateString();
+    if (p.dailyClearRewardClaimedDay === currentDayStr) {
+        return systemNotify("[Misión Diaria]: Ya reclamaste la recompensa de finalización de hoy.", "info");
+    }
+
+    let cornerSVG = (typeof getBaroqueCornerSVG === "function") ? getBaroqueCornerSVG() : '';
+    let ov = document.createElement('div');
+    ov.id = 'sl-daily-clear-reward-modal';
+    ov.style.cssText = 'position:fixed; inset:0; background:rgba(2,6,18,0.94); z-index:14200; display:flex; justify-content:center; align-items:center; padding:18px;';
+    ov.innerHTML = `
+        <div class="sl-holo-frame" style="width:100%; max-width:410px; cursor:default;">
+            <div class="sl-holo-rail top"><span class="rail-core"></span></div>
+            <div class="sl-holo-glass">
+                <div class="sl-holo-inner-box" style="padding:20px 16px; text-align:center;">
+                    <span class="sl-baroque-corner tl">${cornerSVG}</span>
+                    <span class="sl-baroque-corner tr">${cornerSVG}</span>
+                    <span class="sl-baroque-corner bl">${cornerSVG}</span>
+                    <span class="sl-baroque-corner br">${cornerSVG}</span>
+                    <div class="sl-holo-header-row" style="margin-bottom:8px;">
+                        <div class="sl-excl-square">!</div>
+                        <div class="sl-title-rect">RECOMPENSA DE MISIÓN</div>
+                    </div>
+                    <div class="sl-holo-subbracket">[ MISIÓN DIARIA COMPLETADA AL 100% ]</div>
+                    <div style="color:#e0f2fe; font-size:0.88em; margin:12px 0;">
+                        Has cumplido todos los objetivos de hoy. Selecciona una de las siguientes recompensas del Sistema:
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:8px;">
+                        <button class="btn" style="width:100%; padding:11px;" onclick="claimDailyClearChoice(1)">
+                            [ 1. RECUPERACIÓN DE ESTADO (100% HP / 0 FATIGA) ]
+                        </button>
+                        <button class="btn" style="width:100%; padding:11px;" onclick="claimDailyClearChoice(2)">
+                            [ 2. PUNTOS DE ESTADO (+0.05 FUE / INT / AGI) ]
+                        </button>
+                        <button class="btn" style="width:100%; padding:11px;" onclick="claimDailyClearChoice(3)">
+                            [ 3. CAJA ALEATORIA BENDITA (+1 SUMINISTRO) ]
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="sl-holo-rail bottom"><span class="rail-core"></span></div>
+        </div>
+    `;
+    document.body.appendChild(ov);
+    if (typeof playSystemSound === 'function') playSystemSound('gold');
+};
+
+window.claimDailyClearChoice = function(choiceNum) {
+    let modal = document.getElementById('sl-daily-clear-reward-modal');
+    if (modal) modal.remove();
+    if (!p) return;
+
+    let currentDayStr = (typeof getBiologicalDayStr === "function") ? getBiologicalDayStr() : new Date().toDateString();
+    p.dailyClearRewardClaimedDay = currentDayStr;
+    let maxH = (typeof calculateHunterMaxHP === 'function') ? calculateHunterMaxHP() : 100;
+    let maxM = p.stats ? Math.floor(1000 + ((p.stats.int - 1) * 1000)) : 1000;
+
+    if (choiceNum === 1) {
+        p.hp = maxH;
+        p.sp = 100;
+        p.mp = Math.min(maxM, (p.mp || 0) + 250);
+        systemNotify("[Recompensa de Misión Diaria]: Estado restaurado al 100% (HP lleno, 0 Fatiga y +250 MP).", "gold");
+    } else if (choiceNum === 2) {
+        if (p.stats) {
+            p.stats.str = +(p.stats.str + 0.05).toFixed(2);
+            p.stats.int = +(p.stats.int + 0.05).toFixed(2);
+            p.stats.agi = +(p.stats.agi + 0.05).toFixed(2);
+        }
+        systemNotify("[Recompensa de Misión Diaria]: Puntos de Estado asimilados (+0.05 STR, +0.05 INT, +0.05 AGI).", "gold");
+    } else {
+        let boxObj = (typeof shopDB !== 'undefined') ? shopDB.find(x => x.id === 'p_box_s' || x.id === 'p_box_b') : null;
+        if (boxObj) p.inventory.push({...boxObj, type: 'box'});
+        p.crystals = (p.crystals || 0) + 1;
+        systemNotify("[Recompensa de Misión Diaria]: Caja Aleatoria Bendita y +1 Cristal de Maná enviados a tu Bolsa.", "gold");
+    }
+
+    saveData();
+    if (typeof updateHUD === 'function') updateHUD();
+    renderRoutine();
+    syncDailyGoalFooterStatus();
+};
+
 function syncDailyGoalFooterStatus() {
     if (document.hidden) return;
     const footerEl = document.querySelector('.sl-goal-warning-footer');
@@ -1394,25 +1815,33 @@ function syncDailyGoalFooterStatus() {
     let isVigil = (typeof isNightVigilActiveNow === "function") ? isNightVigilActiveNow(now) : (p.nightPassActive === currentDayStr);
 
     let continuousMins = (h < 5 ? h + 24 : h) * 60 + m;
-    let deadlineMins = 21 * 60 + 15; // 9:15 PM
+    let deadlineMins = 21 * 60 + 35; // 9:35 PM
     if (p.tankCurfewDelayDay === currentDayStr) deadlineMins += 45;
     if (p.nightPassActive === currentDayStr || p.movieNightCurfewDay === currentDayStr) deadlineMins = 23 * 60 + 20;
     if (typeof isMercyActive === "function" && isMercyActive()) deadlineMins = 26 * 60;
 
-        let curMinFooter = h * 60 + m;
-    let isPastDeadline = (continuousMins >= deadlineMins && !isSleeping && !isVigil && (curMinFooter >= 1275 || curMinFooter < 270));
-
+    let curMinFooter = h * 60 + m;
+    let isPastDeadline = (continuousMins >= deadlineMins && !isSleeping && !isVigil && (curMinFooter >= 1295 || curMinFooter < 270));
     let isBleedTriggered = (!allCompleted && isPastDeadline);
+    let rewardPending = (allCompleted && p.dailyClearRewardClaimedDay !== currentDayStr);
 
     let warningTextHtml = '';
     let frameStateClass = '';
     let checkSvgHtml = '';
+    let clickAttr = '';
+    let pulseStyle = '';
 
     if (allCompleted) {
         footerEl.classList.remove('bleed-active');
-        warningTextHtml = `[Misión diaria: Todos los objetivos de hoy han sido completados.]`;
+        warningTextHtml = rewardPending
+            ? `[Misión diaria completada: Toca el sello inferior para reclamar tu recompensa.]`
+            : `[Misión diaria: Todos los objetivos de hoy han sido completados.]`;
         frameStateClass = 'all-done';
-        checkSvgHtml = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#00ffcc" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 6px #10b981);"><polyline points="20 6 9 17 4 12"/></svg>`;
+        checkSvgHtml = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 6px #00e5ff);"><polyline points="20 6 9 17 4 12"/></svg>`;
+        if (rewardPending) {
+            clickAttr = `onclick="openDailyQuestClearRewardModal()"`;
+            pulseStyle = `cursor:pointer; box-shadow:0 0 14px #00e5ff !important;`;
+        }
     } else if (isBleedTriggered) {
         footerEl.classList.add('bleed-active');
         warningTextHtml = `Misión diaria: <b>Ha llegado el desangrado nocturno.</b>`;
@@ -1420,7 +1849,7 @@ function syncDailyGoalFooterStatus() {
         checkSvgHtml = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#ff2a55" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 6px #ff2a55);"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
     } else {
         footerEl.classList.remove('bleed-active');
-        warningTextHtml = `ADVERTENCIA: No completar la misión diaria<br>resultará en una penalización apropiada.`;
+        warningTextHtml = `ADVERTENCIA: No completar la misión diaria<br>resultará en una <span style="color:#ff2a55; text-shadow:0 0 8px rgba(255,42,85,0.85);">penalización</span> apropiada.`;
         frameStateClass = '';
         checkSvgHtml = '';
     }
@@ -1428,17 +1857,30 @@ function syncDailyGoalFooterStatus() {
     const nextHTML = `
         <div>${warningTextHtml}</div>
         <div class="sl-goal-footer-box-center">
-            <div class="sl-anime-outer-check-frame ${frameStateClass}">
-                <div class="sl-goal-check-box">${checkSvgHtml}</div>
+            <div class="sl-anime-outer-check-frame ${frameStateClass}" ${clickAttr}>
+                <div class="sl-goal-check-box" style="${pulseStyle}">${checkSvgHtml}</div>
             </div>
         </div>
     `;
 
-    if (footerEl.getAttribute('data-sync-state') !== `${allCompleted}_${isBleedTriggered}`) {
-        footerEl.setAttribute('data-sync-state', `${allCompleted}_${isBleedTriggered}`);
+    if (footerEl.getAttribute('data-sync-state') !== `${allCompleted}_${isBleedTriggered}_${rewardPending}`) {
+        footerEl.setAttribute('data-sync-state', `${allCompleted}_${isBleedTriggered}_${rewardPending}`);
         footerEl.innerHTML = nextHTML;
     }
 }
+
+window.addEventListener('load', () => {
+    const params = new URLSearchParams(window.location.search);
+    const sc = params.get('shortcut');
+    if (sc && typeof deployRoutineMission === 'function') {
+        setTimeout(() => {
+            if (p && (!p.activeMissions || !p.activeMissions[sc])) {
+                deployRoutineMission(sc);
+            }
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }, 500);
+    }
+});
 
 // Ejecutar al cargar, al actualizar misiones y vigilar el reloj cada 5 segundos
 document.addEventListener('DOMContentLoaded', () => {

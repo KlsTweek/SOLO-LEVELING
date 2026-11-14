@@ -143,6 +143,7 @@ function startEmojiVectorizer() {
         if (document.hidden) return;
         for (let i = 0; i < muts.length; i++) {
             const m = muts[i];
+            if (m.target && m.target.closest && m.target.closest('.sl-digit-slot, #mp-text, #raid-mp-text, #raid-timer, #study-timer-text')) continue;
             if (m.type === 'characterData') {
                 const t = m.target;
                 if (t && t.nodeValue && _EMO_TEST.test(t.nodeValue)) {
@@ -153,6 +154,7 @@ function startEmojiVectorizer() {
                 for (let j = 0; j < added.length; j++) {
                     const n = added[j];
                     if (n.nodeType === 1) {
+                        if (n.classList && n.classList.contains('sl-digit-slot')) continue;
                         if (n.textContent && _EMO_TEST.test(n.textContent)) vectorizeEmojisIn(n);
                     } else if (n.nodeType === 3 && n.nodeValue && _EMO_TEST.test(n.nodeValue)) {
                         n.nodeValue = n.nodeValue.replace(_EMO_RE, '');
@@ -160,7 +162,7 @@ function startEmojiVectorizer() {
                 }
             }
         }
-    }).observe(document.body, { childList: true, subtree: true, characterData: true });
+    }).observe(document.body, { childList: true, subtree: true });
 }
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', startEmojiVectorizer);
@@ -174,12 +176,16 @@ function scrubAllDOMVectors(root = document.body) {
 
 function highlightAnimeKeywords(text) {
     let base = stripAllSystemEmojis(text || "");
-    return base
-        .replace(/(\[[^\]]+\])/g, '<span style="color:#7dd3fc; font-weight:700; text-shadow:0 0 8px rgba(0,210,255,0.65);">$1</span>')
-        .replace(/(\+[0-9,]+ (?:G|XP|EXP|MP|CM|HP|SP|FATIGA)|[0-9]+% [A-ZÁÉÍÓÚÑ]+|\+[0-9.]+ (?:STR|INT|AGI|FUE|VIT|PER))/gi, '<span style="color:#00e5ff; font-weight:700; text-shadow:0 0 10px rgba(0,229,255,0.8);">$1</span>')
-        .replace(/(JUGADOR 1|CAZADOR|ÉXITO|NIVEL \d+|ASCENSIÓN AL NIVEL \d+|¡SURGE!|MILAGRO CONSUMADO)/g, '<span style="color:#ffffff; font-weight:700; text-shadow:0 0 10px #00d2ff;">$1</span>')
-        .replace(/(PENALIZACIÓN|CASTIGO|COLAPSO|ALERTA|PELIGRO|FALLIDA|-[0-9.]+ HP|-[0-9]+ SP)/g, '<span style="color:#fb7185; font-weight:700; text-shadow:0 0 8px rgba(255,42,85,0.85);">$1</span>');
-}
+    const negStatRegex = /(?<![a-záéíóúñA-ZÁÉÍÓÚÑ])(PENALIZACIÓN|CASTIGO|COLAPSO|ALERTA|PELIGRO|FALLIDA|-[0-9.]+(?:\s+)?(?:HP|SP|MP|G))(?![a-záéíóúñA-ZÁÉÍÓÚÑ])/gi;
+    const posStatRegex = /(?:[+\-]?\d+(?:[\.,]\d+)?%?(?:\s+(?:de|del|la|el))?\s+(?:G|XP|EXP|MP|CM|HP|SP|FATIGA|STR|INT|AGI|FUE|VIT|PER|Escudo|Oro|Evasión)(?:\s+[a-záéíóúñA-ZÁÉÍÓÚÑ]+)?)(?![a-záéíóúñA-ZÁÉÍÓÚÑ])/gi;
+    const rankRegex = /(?<![a-záéíóúñA-ZÁÉÍÓÚÑ])(JUGADOR 1|CAZADORES|CAZADOR|ÉXITO|NIVEL \d+|ASCENSIÓN AL NIVEL \d+|¡SURGE!|MILAGRO CONSUMADO)(?![a-záéíóúñA-ZÁÉÍÓÚÑ])/g;
+
+        return base
+        .replace(negStatRegex, '<span style="color:#fb7185; font-weight:700; text-shadow:0 0 8px rgba(255,42,85,0.85);">$1</span>')
+        .replace(posStatRegex, '<span style="color:#00e5ff; font-weight:700; text-shadow:0 0 10px rgba(0,229,255,0.8);">$&</span>')
+        .replace(rankRegex, '<span style="color:#ffffff; font-weight:700; text-shadow:0 0 10px #00d2ff;">$1</span>')
+        .replace(/(\[[^\]]+\])/g, '<span style="color:#7dd3fc; font-weight:700; text-shadow:0 0 8px rgba(0,210,255,0.65);">$1</span>');
+} 
 
 function getBaroqueCornerSVG() {
     return `<svg viewBox="0 0 28 28" width="100%" height="100%" fill="none" stroke="#e0f2fe" stroke-width="1.6"><path d="M2 26V2h24"/><path d="M6 18V6h12"/><circle cx="6" cy="6" r="2" fill="#00d2ff"/></svg>`;
@@ -326,6 +332,38 @@ const frame = document.createElement('div');
         dismissActiveHoloToast();
     }, 4200);
 }
+window.openHonorLogModal = function() {
+    let modal = document.getElementById('honor-log-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'honor-log-modal';
+        modal.className = 'modal';
+        document.body.appendChild(modal);
+    }
+    let logs = (p && Array.isArray(p.honorLogs)) ? p.honorLogs : [];
+    let listHtml = logs.length === 0
+        ? `<p style="color:var(--text-muted); text-align:center; padding:20px 0;">Aún no hay registros en tu Bitácora de Honor.</p>`
+        : logs.map(item => `
+            <div style="background:rgba(3, 10, 24, 0.92); border:1px solid rgba(125, 211, 252, 0.45); border-left:3px solid #7dd3fc; padding:9px 12px; margin-bottom:8px;">
+                <div style="font-family:'Share Tech Mono', monospace; font-size:0.7em; color:#7dd3fc; margin-bottom:3px;">[${item.date} • ${item.time}] // ${String(item.id || '').toUpperCase()}</div>
+                <div style="font-size:0.88em; color:#ffffff; line-height:1.35;">${item.note}</div>
+            </div>`).join('');
+
+    modal.innerHTML = `
+        <div class="modal-content sl-system-window" style="max-width:410px;">
+            <div class="sl-anime-box-header" style="margin-bottom:10px;">
+                <div class="sl-anime-excl-box"><div class="sl-anime-excl-circle">!</div></div>
+                <div class="sl-anime-title-box">BITÁCORA DE HONOR</div>
+            </div>
+            <div style="max-height:58vh; overflow-y:auto; margin:12px 0; text-align:left;">
+                ${listHtml}
+            </div>
+            <button class="btn btn-main" style="width:100%;" onclick="closeModal('honor-log-modal')">CERRAR BITÁCORA</button>
+        </div>
+    `;
+    modal.style.display = 'flex';
+};
+
 function openNotifHistoryModal() {
     let modal = document.getElementById('notif-history-modal');
     if (!modal) {
@@ -341,7 +379,6 @@ function openNotifHistoryModal() {
             let isDanger = item.type === 'danger';
             let borderCol = isDanger ? 'rgba(225, 29, 72, 0.75)' : 'rgba(56, 189, 248, 0.55)';
             let tagCol = isDanger ? '#fb7185' : '#38bdf8';
-            // Forzar tamaño 20x20px directamente en cualquier SVG guardado en el historial
             let safeMsg = highlightAnimeKeywords(item.msg).replace(/<svg /g, '<svg width="20" height="20" style="width:20px !important; height:20px !important; display:inline-block; vertical-align:-4px; margin-right:6px;" ');
             return `
             <div style="background:rgba(3, 10, 24, 0.92); border:1px solid rgba(30, 58, 95, 0.65); border-left:3px solid ${borderCol}; padding:10px 12px; margin-bottom:8px; border-radius:2px;">
@@ -446,6 +483,9 @@ function switchTab(tab, idx) {
     if (typeof triggerAiMonarchComment === 'function') triggerAiMonarchComment('tab_' + tab);
 
     if (tab === 'routine' && typeof renderRoutine === 'function') renderRoutine();
+    if (tab === 'inventory' && typeof syncAnatomyPointerLines === 'function') {
+        requestAnimationFrame(syncAnatomyPointerLines);
+    }
     if (tab === 'bosses' && typeof renderBosses === 'function') renderBosses();
 if (tab === 'gacha' && typeof renderShadowSanctuary === 'function') {
         renderShadowSanctuary();
@@ -568,31 +608,12 @@ statusCard.innerHTML = `
         </div>
 
         <div class="sl-status-divider"></div>
-
-        <!-- PENTÁGONO RADAR DINÁMICO EN ESPAÑOL -->
-        <div class="sl-radar-chart-wrap">
-            <svg viewBox="0 0 220 205" width="100%" height="205">
-                <polygon points="${getPolyPoints(1.0)}" fill="rgba(2, 8, 24, 0.7)" stroke="rgba(148, 163, 184, 0.55)" stroke-width="1.2"/>
-                <polygon points="${getPolyPoints(0.75)}" fill="none" stroke="rgba(148, 163, 184, 0.25)" stroke-width="0.9"/>
-                <polygon points="${getPolyPoints(0.50)}" fill="none" stroke="rgba(148, 163, 184, 0.25)" stroke-width="0.9"/>
-                <polygon points="${getPolyPoints(0.25)}" fill="none" stroke="rgba(148, 163, 184, 0.25)" stroke-width="0.9"/>
-                ${angles.map(ang => `<line x1="${cx}" y1="${cy}" x2="${(cx + Math.cos(ang) * maxR).toFixed(1)}" y2="${(cy + Math.sin(ang) * maxR).toFixed(1)}" stroke="rgba(148, 163, 184, 0.3)" stroke-width="0.9"/>`).join('')}
-
-                <polygon points="${statPoints}" fill="rgba(0, 170, 255, 0.38)" stroke="#00d2ff" stroke-width="2" filter="drop-shadow(0 0 8px rgba(0,210,255,0.6))"/>
-                ${statDots}
-
-                <text x="110" y="25" text-anchor="middle" fill="#ffffff" font-size="11" font-weight="700">FUE</text>
-                <text x="192" y="84" text-anchor="start" fill="#ffffff" font-size="11" font-weight="700">INT</text>
-                <text x="162" y="182" text-anchor="middle" fill="#ffffff" font-size="11" font-weight="700">ESP</text>
-                <text x="58" y="182" text-anchor="middle" fill="#ffffff" font-size="11" font-weight="700">DIS</text>
-                <text x="28" y="84" text-anchor="end" fill="#ffffff" font-size="11" font-weight="700">AGI</text>
-            </svg>
-        </div>
-
-<div class="sl-status-divider"></div>
         <div style="display:flex; flex-direction:column; gap:8px; margin-top:6px;">
             <button class="btn btn-main" style="width:100%; padding:10px; font-size:0.8em;" onclick="openHunterSkillsModal()">
-                [ HABILIDADES DEL CAZADOR (PASIVAS Y ACTIVAS) ]
+[ HABILIDADES DEL CAZADOR (PASIVAS Y ACTIVAS) ]
+            </button>
+            <button class="btn btn-blue" style="width:100%; padding:9px; font-size:0.76em;" onclick="openHonorLogModal()">
+                [ BITÁCORA DE HONOR DEL CAZADOR (${Array.isArray(p.honorLogs) ? p.honorLogs.length : 0}) ]
             </button>
             ${isVigilActiveTonight
                 ? `<div style="padding:9px 12px; background:rgba(30,41,59,0.55); border:1px solid #818cf8; text-align:center; font-size:0.78em; color:#e0f2fe;">
@@ -848,206 +869,74 @@ function typeWriterMessage(text, elementId = 'sys-message', speed = 20) {
 }
 
 function formatAiTemplate(rawStr) {
-    if (!p) return rawStr;
-    let now = new Date();
-    let timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    let maxHP = (typeof calculateHunterMaxHP === "function") ? calculateHunterMaxHP() : 100;
-
+    if (!p || !rawStr) return rawStr || "";
+    let maxH = (typeof calculateHunterMaxHP === 'function') ? calculateHunterMaxHP() : 100;
+    let timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     return rawStr
-        .replace(/\{time\}/g, timeStr)
-        .replace(/\{hp\}/g, p.hp.toFixed(1))
-        .replace(/\{maxHp\}/g, maxHP)
-        .replace(/\{sp\}/g, Math.floor(p.sp))
+        .replace(/\{time\}/g, timeNow)
+        .replace(/\{hp\}/g, Math.floor(p.hp || 0))
+        .replace(/\{maxHp\}/g, maxH)
+        .replace(/\{sp\}/g, Math.floor(p.sp || 0))
         .replace(/\{mp\}/g, Math.floor(p.mp || 0))
-        .replace(/\{level\}/g, p.level)
-        .replace(/\{gold\}/g, Math.floor(p.gold))
+        .replace(/\{gold\}/g, Math.floor(p.gold || 0))
         .replace(/\{crystals\}/g, Math.floor(p.crystals || 0))
+        .replace(/\{level\}/g, p.level || 1)
         .replace(/\{streak\}/g, p.perfectDays || 0)
         .replace(/\{missions\}/g, p.totalMissions || 0)
-        .replace(/\{str\}/g, p.stats.str.toFixed(2))
-        .replace(/\{int\}/g, p.stats.int.toFixed(2))
-        .replace(/\{agi\}/g, p.stats.agi.toFixed(2));
+        .replace(/\{str\}/g, p.stats ? p.stats.str.toFixed(2) : '1.00')
+        .replace(/\{int\}/g, p.stats ? p.stats.int.toFixed(2) : '1.00')
+        .replace(/\{agi\}/g, p.stats ? p.stats.agi.toFixed(2) : '1.00');
 }
 
-let recentAiLinesHistory = [];
+function triggerAiMonarchComment(forcedCategory = null) {
+    if (!p || typeof SYSTEM_AI_LINES === 'undefined') return;
+    let nowMs = Date.now();
+    if (!forcedCategory && (nowMs - lastAiCommentTime < AI_COOLDOWN_MS)) return;
+    lastAiCommentTime = nowMs;
 
-function triggerAiMonarchComment(contextKey = null, forceManual = false) {
-    if (typeof SYSTEM_AI_LINES === 'undefined') return;
-
-    let now = Date.now();
-    if (!forceManual && (now - lastAiCommentTime < AI_COOLDOWN_MS)) {
-        return;
-    }
-    lastAiCommentTime = now;
-
-    let maxHP = (typeof calculateHunterMaxHP === "function") ? calculateHunterMaxHP() : 100;
-    let activeMissionsCount = (p && p.activeMissions) ? Object.keys(p.activeMissions).length : 0;
-    let isIdleFull = p && !p.penaltyActive && p.hp >= (maxHP * 0.95) && p.sp >= 95 && activeMissionsCount === 0;
-
-    let pool = [];
-    if (p && p.penaltyActive) {
-        pool = SYSTEM_AI_LINES.penalty;
-    } else if (p && p.hp <= 35 && Math.random() < 0.65) {
-        pool = SYSTEM_AI_LINES.critical_hp;
-    } else if (contextKey && SYSTEM_AI_LINES[contextKey] && contextKey !== 'ai_thoughts') {
-        // Si cambiaste a la pestaña de rutina y no has iniciado nada con todo al 100%, mezclar con frases de calma
-        if (contextKey === 'tab_routine' && isIdleFull && SYSTEM_AI_LINES.idle_calm) {
-            pool = [...SYSTEM_AI_LINES.tab_routine, ...SYSTEM_AI_LINES.idle_calm];
+    let maxH = (typeof calculateHunterMaxHP === 'function') ? calculateHunterMaxHP() : 100;
+    let cat = forcedCategory;
+    if (!cat) {
+        if (p.penaltyActive) cat = 'penalty';
+        else if (p.hp <= maxH * 0.28) cat = 'critical_hp';
+        else if (p.sp <= 25) cat = 'stamina_status';
+        else if (p.hp >= maxH * 0.95 && p.sp >= 90 && (!p.activeMissions || Object.keys(p.activeMissions).length === 0) && SYSTEM_AI_LINES.idle_calm) {
+            cat = 'idle_calm';
         } else {
-            pool = SYSTEM_AI_LINES[contextKey];
-        }
-    } else {
-        // Rotación automática o toque en la barra superior: combina Hora + Pensamientos + Estado Calma
-        let h = new Date().getHours();
-        let timePool = (h >= 5 && h < 12) ? SYSTEM_AI_LINES.morning : ((h >= 12 && h < 19) ? SYSTEM_AI_LINES.afternoon : SYSTEM_AI_LINES.night);
-        pool = [...(SYSTEM_AI_LINES.ai_thoughts || []), ...(timePool || [])];
-
-        if (isIdleFull && SYSTEM_AI_LINES.idle_calm) {
-            pool.push(...SYSTEM_AI_LINES.idle_calm);
-        }
-        if (p && p.sp <= 40 && SYSTEM_AI_LINES.stamina_status) {
-            pool.push(...SYSTEM_AI_LINES.stamina_status);
+            let h = new Date().getHours();
+            cat = (h >= 5 && h < 12) ? 'morning' : ((h >= 12 && h < 19) ? 'afternoon' : 'night');
         }
     }
 
-    if (!pool || pool.length === 0) pool = SYSTEM_AI_LINES.ai_thoughts;
-
-    // Filtro anti-repetición de las últimas 25 frases
-    let available = pool.filter(line => !recentAiLinesHistory.includes(line));
-    if (available.length === 0) {
-        recentAiLinesHistory = [];
-        available = pool;
-    }
-
-    let rawLine = available[Math.floor(Math.random() * available.length)];
-    recentAiLinesHistory.push(rawLine);
-    if (recentAiLinesHistory.length > 25) recentAiLinesHistory.shift();
-
-    let finalLine = formatAiTemplate(rawLine);
-    typeWriterMessage(finalLine, 'sys-message', 18);
+    let pool = SYSTEM_AI_LINES[cat] || SYSTEM_AI_LINES.ai_thoughts || ["SISTEMA DEL MONARCA EN LÍNEA."];
+    let rawLine = pool[Math.floor(Math.random() * pool.length)];
+    let cleanMsg = stripAllSystemEmojis(formatAiTemplate(rawLine));
+    typeWriterMessage(cleanMsg, 'sys-message', 18);
 }
+
 function initAiBootScreen() {
     if (!p || !p.dayZeroCompleted) return;
-    if (document.getElementById('ai-boot-overlay')) return;
-
-
-    let todayBootKey = new Date().toDateString();
-    if (localStorage.getItem('SL_BootShownDay') === todayBootKey) {
-        return; // Ya se mostró hoy: entra directo a la app sin molestar
-    }
-    localStorage.setItem('SL_BootShownDay', todayBootKey);
-
-    let h = new Date().getHours();
-    let greetingCategory = 'morning';
-    if (h >= 12 && h < 19) greetingCategory = 'afternoon';
-    else if (h >= 19 || h < 5) greetingCategory = 'night';
-
-    let greetPool = (p && p.hp <= 35) ? SYSTEM_AI_LINES.critical_hp : (SYSTEM_AI_LINES[greetingCategory] || SYSTEM_AI_LINES.morning);
-    let rawGreeting = greetPool[Math.floor(Math.random() * greetPool.length)];
-    let bootText = formatAiTemplate(rawGreeting);
-
-    const overlay = document.createElement('div');
-    overlay.id = 'ai-boot-overlay';
-      overlay.innerHTML = `
-        <div class="sl-holo-frame boot-holo-modal" style="width:100%; max-width:395px;">
-            <div class="sl-holo-rail top">
-                <span class="rail-cap left"></span><span class="rail-core"></span><span class="rail-cap right"></span>
-            </div>
-            <div class="sl-holo-glass" style="padding:18px 16px;">
-                <span class="sl-corner tl"></span><span class="sl-corner tr"></span>
-                <span class="sl-corner bl"></span><span class="sl-corner br"></span>
-                <div class="sl-holo-inner-box" style="padding:22px 16px;">
-                    <div class="sl-holo-header-row" style="margin-bottom:18px;">
-                        <div class="sl-excl-square">!</div>
-                        <div class="sl-title-rect">NOTIFICACIÓN</div>
-                    </div>
-                    <div class="ai-boot-message" id="ai-boot-text" style="text-align:center; font-family:'Rajdhani', sans-serif; font-size:1.12em; color:#f8fafc; min-height:75px;"></div>
-                    <button class="btn btn-main" style="width:100%; padding:12px; font-size:0.95em; margin-top:14px;" onclick="dismissAiBootScreen()">⚡ ACEPTAR DIRECTIVA</button>
-                </div>
-            </div>
-            <div class="sl-holo-rail bottom">
-                <span class="rail-cap left"></span><span class="rail-core"></span><span class="rail-cap right"></span>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(overlay);
-    const textEl = document.getElementById('ai-boot-text');
-    if (textEl) {
-        let idx = 0;
-        function typeBoot() {
-            if (idx < bootText.length) {
-                idx++;
-                textEl.innerHTML = bootText.slice(0, idx) + '<span class="ai-cursor"></span>';
-                setTimeout(typeBoot, 18);
-            }
-        }
-        setTimeout(typeBoot, 250);
-    }
+    let bioDay = (typeof getBiologicalDayStr === 'function') ? getBiologicalDayStr() : new Date().toDateString();
+    if (localStorage.getItem('SL_BootShownDay') === bioDay) return;
+    localStorage.setItem('SL_BootShownDay', bioDay);
+    triggerAiMonarchComment();
 }
 
-function dismissAiBootScreen() {
-    const ov = document.getElementById('ai-boot-overlay');
-    if (ov) {
-        ov.classList.add('boot-fade-out');
-        setTimeout(() => ov.remove(), 650);
-    }
-}
-
-/* ==========================================================================
-   4. ACTUALIZACIÓN DEL HUD Y SEGURO DE MUERTE EN 0 HP
-   ========================================================================== */
 function updateHUD() {
     if (!p) return;
-
-    if (p.hp <= 0 && !p.penaltyActive) {
-        p.hp = 0;
-        if (typeof triggerDeath === "function") {
-            triggerDeath("Colapso vital absoluto detectado por el Sistema.", "routine");
-        }
-        return;
-    }
-
-    document.body.classList.toggle('penalty-active', !!p.penaltyActive);
-     let _mH = (typeof calculateHunterMaxHP === 'function') ? calculateHunterMaxHP() : 100;
-     document.body.classList.toggle('tenacity-glitch-active', !!(p.hp > 0 && p.hp <= _mH * 0.30));
-    let isStealthNow = !!(p.stealthModeUntil && Date.now() < p.stealthModeUntil);
-    document.body.classList.toggle('stealth-camouflage-active', isStealthNow);
-    let stealthBadge = document.getElementById('sl-stealth-hud-badge');
-    if (isStealthNow) {
-        let minsRem = Math.max(1, Math.ceil((p.stealthModeUntil - Date.now()) / 60000));
-        if (!stealthBadge) {
-            let hdr = document.querySelector('.header');
-            if (hdr) {
-                stealthBadge = document.createElement('div');
-                stealthBadge.id = 'sl-stealth-hud-badge';
-                stealthBadge.className = 'sl-stealth-hud-banner';
-                hdr.insertBefore(stealthBadge, hdr.firstChild);
-            }
-        }
-        if (stealthBadge) {
-            stealthBadge.innerHTML = `<span>[ HABILIDAD: SIGILO ACTIVO • ${minsRem}M RESTANTES ]</span><span>EMBOSCADA x3 LISTA</span>`;
-        }
-    } else if (stealthBadge) {
-        stealthBadge.remove();
-    }
-
-    let navItems = document.querySelectorAll('.nav-item');
-    [1, 4, 5].forEach(i => {
-        if (navItems[i]) navItems[i].classList.toggle('locked-nav', !!p.penaltyActive);
-    });
-    
     let now = Date.now();
-    let currentDayStr = new Date().toDateString();
-let maxHP = (typeof calculateHunterMaxHP === 'function') ? calculateHunterMaxHP() : 100;
+    let currentDayStr = (typeof getBiologicalDayStr === "function") ? getBiologicalDayStr() : new Date().toDateString();
+    let maxHP = (typeof calculateHunterMaxHP === 'function') ? calculateHunterMaxHP() : 100;
+    let maxMP = p.stats ? Math.floor(1000 + ((p.stats.int - 1) * 1000)) : 1000;
     if (p.hp <= maxHP) p.magmaOverheal = false;
 
-    // Comprobador universal de Ascensión de Nivel (por si ganas EXP con habilidades activas o pergaminos)
     if (p.xp >= p.maxXp) {
         while (p.xp >= p.maxXp) {
             p.level++;
             p.xp -= p.maxXp;
             p.maxXp = (typeof getRequiredXpForLevel === "function") ? getRequiredXpForLevel(p.level) : Math.floor(100 + (p.level - 1) * 18);
             maxHP = (typeof calculateHunterMaxHP === 'function') ? calculateHunterMaxHP() : 100;
+            maxMP = p.stats ? Math.floor(1000 + ((p.stats.int - 1) * 1000)) : 1000;
             p.hp = maxHP;
             p.sp = 100;
             p.mp = maxMP;
@@ -1057,7 +946,6 @@ let maxHP = (typeof calculateHunterMaxHP === 'function') ? calculateHunterMaxHP(
         systemNotify(`¡ASCENSIÓN AL NIVEL ${p.level}! Vitalidad restaurada al 100% (+2 CM).`, "gold");
     }
 
-    // Límite real y visual de Escudo = 800 (ej. 80 de escudo = 10% de la barra, sin sobrepasar la barra blanca de HP)
     p.arcticShield = Math.min(800, Math.max(0, Math.floor(p.arcticShield || 0)));
     let shieldVal = p.arcticShield;
     let displayHp = (p.hp % 1 === 0) ? p.hp : p.hp.toFixed(1);
@@ -1070,7 +958,7 @@ let maxHP = (typeof calculateHunterMaxHP === 'function') ? calculateHunterMaxHP(
     safeSetText('gold-display', Math.floor(p.gold));
     safeSetText('crystal-display', Math.floor(p.crystals || 0));
 
- let shieldTagEl = document.getElementById('hud-shield-text');
+    let shieldTagEl = document.getElementById('hud-shield-text');
     let shieldBarEl = document.getElementById('shield-bar');
     if (shieldTagEl) {
         shieldTagEl.innerText = shieldVal > 0 ? `[+${shieldVal}/800]` : '';
@@ -1078,7 +966,7 @@ let maxHP = (typeof calculateHunterMaxHP === 'function') ? calculateHunterMaxHP(
     if (shieldBarEl) {
         shieldBarEl.style.width = '0%';
     }
-    // Actualizar Anillo de 12 Segmentos de FATIGA (Fatiga = 100 - SP)
+
     let fatigueNum = Math.max(0, Math.min(100, Math.round(100 - (p.sp !== undefined ? p.sp : 100))));
     safeSetText('fatigue-val', fatigueNum);
     let activeSegments = Math.round((fatigueNum / 100) * 12);
@@ -1093,7 +981,6 @@ let maxHP = (typeof calculateHunterMaxHP === 'function') ? calculateHunterMaxHP(
             segEl.classList.toggle('danger-seg', sIdx < activeSegments && fatigueNum >= 80);
         }
     }
-
 
     let goldTxtEl = document.querySelector('.gold-txt');
     if (goldTxtEl) {
@@ -1113,13 +1000,12 @@ let maxHP = (typeof calculateHunterMaxHP === 'function') ? calculateHunterMaxHP(
     if (hpWrapEl) {
         hpWrapEl.classList.toggle('mercy-emerald-halo', isMercyActive());
         hpWrapEl.classList.toggle('pulse-danger', p.hp <= 30);
-  }
+    }
     if (hpBar) {
         hpBar.style.width = `${Math.max(0, Math.min(100, (p.hp / maxHP) * 100))}%`;
         hpBar.classList.toggle('arc-st-02', !!(p._arcEclipseActive && now < p._arcEclipseActive));
     }
 
-let maxMP = p.stats ? Math.floor(1000 + ((p.stats.int - 1) * 1000)) : 1000; 
     let currentMP = p.mp !== undefined ? p.mp : 0;
     let hasUnlockedAnyShadow = p.shadowArmy && ['igris', 'tank', 'iron', 'tusk', 'beru'].some(k => p.shadowArmy[k] && p.shadowArmy[k].unlocked);
 
@@ -1263,6 +1149,28 @@ function addSmartBoss() {
 let studyStartedAt = 0;
 let studySessionCompleted = false;
 
+let _focusTabLeftAt = null;
+function _bindFocusChamberGuard() {
+    if (window._focusGuardBound) return;
+    window._focusGuardBound = true;
+    document.addEventListener('visibilitychange', () => {
+        if (!studyStartedAt || studySessionCompleted) return;
+        let studyModal = document.getElementById('study-modal');
+        if (!studyModal || studyModal.style.display === 'none') return;
+        if (document.hidden) {
+            _focusTabLeftAt = Date.now();
+        } else if (_focusTabLeftAt) {
+            let awayS = Math.floor((Date.now() - _focusTabLeftAt) / 1000);
+            _focusTabLeftAt = null;
+            if (awayS >= 20 && awayS <= 600) {
+                studyStartedAt += (awayS + 60) * 1000;
+                systemNotify(`[OJO DE KANDIARU]: Saliste ${awayS}s durante la Cámara de Focus. Tiempo descontado + 1 min de penalización.`, "danger");
+            }
+        }
+    });
+}
+_bindFocusChamberGuard();
+
 function startStudy(mins) {
     if (p.penaltyActive) {
         systemNotify("SISTEMA BLOQUEADO. Cumple tu castigo primero.", "danger");
@@ -1285,7 +1193,7 @@ function startStudy(mins) {
     if (p.bypassFatigue) {
         spCost = 0;
         p.bypassFatigue = false;
-        systemNotify("🧠 Bypass de Fatiga consumido: 0 SP gastados.", "purple");
+        systemNotify("Bypass de Fatiga consumido: 0 SP gastados.", "purple");
     } else if (p.entropyBuffUntil && Date.now() < p.entropyBuffUntil) {
         spCost = -10;
     } else if (p.spDiscountUntil && Date.now() < p.spDiscountUntil) {
@@ -1313,33 +1221,33 @@ function startStudy(mins) {
     if (stopBtn) {
         stopBtn.style.display = 'block';
         stopBtn.className = 'btn btn-red';
-        stopBtn.innerText = '⚠️ INTERRUMPIR SESIÓN (-10 HP)';
+        stopBtn.innerText = 'INTERRUMPIR SESIÓN (-10 HP)';
     }
     
     let timerText = document.getElementById('study-timer-text');
     if (timerText) {
-        timerText.style.color = "var(--neon-main)"; 
-        timerText.style.textShadow = "0 0 20px rgba(0, 210, 255, 0.4)";
+        timerText.style.color = "#ffffff"; 
+        timerText.style.textShadow = "0 0 14px #00e5ff";
     }
     
     studyStartedAt = Date.now();
     
     studyTimer = setInterval(() => {
-        let sec = Math.floor((Date.now() - studyStartedAt) / 1000);
+        let sec = Math.max(0, Math.floor((Date.now() - studyStartedAt) / 1000));
         
         if (sec >= totalStudyTime * 60) { 
             sec = totalStudyTime * 60; 
             studySessionCompleted = true;
             if (timerText) {
-                timerText.style.color = "var(--success)"; 
-                timerText.style.textShadow = "0 0 20px rgba(0, 255, 204, 0.6)"; 
+                timerText.style.color = "#e0f2fe"; 
+                timerText.style.textShadow = "0 0 18px #00e5ff"; 
             }
             if (stopBtn) {
-                stopBtn.className = 'btn btn-gold';
-                stopBtn.innerText = '⚔️ SELLAR NÚCLEO DE ENFOQUE (+MP)';
+                stopBtn.className = 'btn btn-main';
+                stopBtn.innerText = 'SELLAR NÚCLEO DE ENFOQUE (+MP)';
             }
             clearInterval(studyTimer); 
-            systemNotify("Inmersión Cognitiva completada. Toca el botón dorado para sellar.", "gold"); 
+            systemNotify("Inmersión Cognitiva completada. Sella tu núcleo para absorber el maná.", "gold"); 
         }
         
         let m = String(Math.floor(sec / 60)).padStart(2, '0'); 
@@ -1347,7 +1255,6 @@ function startStudy(mins) {
         if (timerText) timerText.innerText = `${m}:${s}`;
     }, 1000); 
 }
-
 function stopStudy() {
     clearInterval(studyTimer); 
     
@@ -1553,7 +1460,7 @@ function playJobChangeCinematic(leadText = "TU CLASE HA CAMBIADO", oldName = "NI
     const _once = (id) => {
         if (!p) return false;
         if (!p._kmLog) p._kmLog = {};
-        let d = new Date().toDateString();
+        let d = (typeof getBiologicalDayStr === 'function') ? getBiologicalDayStr() : new Date().toDateString();
         if (p._kmLog[id] === d) return false;
         p._kmLog[id] = d;
         if (typeof saveData === 'function') saveData();

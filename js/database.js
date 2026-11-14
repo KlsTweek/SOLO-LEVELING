@@ -7,14 +7,14 @@ const baseMissions = [
     {
         id: "m_clean",
         title: "Zona Limpia",
-        desc: "Mantenimiento táctico del cuarto y área personal.",
+        desc: "Orden táctico de cuarto, cama y mochila lista para mañana.",
         type: "main",
         rank: "B",
         xp: 30,
         gold: 25,
         spCost: 10,
         stat: "str",
-        mins: 30
+        mins: 15
     },
     {
         id: "m_traffic_ida",
@@ -27,7 +27,7 @@ const baseMissions = [
         spCost: 20,
         stat: "agi",
         timeCat: "traffic",
-        mins: 40
+        mins: 45
     },
     {
         id: "m_traffic_vuelta",
@@ -58,50 +58,50 @@ const baseMissions = [
     {
         id: "m_workout",
         title: "Up Físico",
-        desc: "Entrenamiento de fuerza y resistencia para fortalecer el receptáculo.",
+        desc: "Entrenamiento de fuerza y resistencia a las 4:45 AM para fortalecer el receptáculo.",
         type: "main",
         rank: "A",
         xp: 60,
         gold: 40,
         spCost: 25,
         stat: "str",
-        mins: 40
+        mins: 20
     },
     {
         id: "m_gf",
         title: "Vínculo Amoroso",
-        desc: "Tiempo exclusivo, atención y calidad con tu pareja.",
+        desc: "Tiempo exclusivo, mensajes de calidad y atención con tu pareja.",
         type: "sub",
         rank: "B",
         xp: 25,
         gold: 15,
         spCost: 5,
         stat: "int",
-        mins: 120
+        mins: 15
     },
     {
         id: "m_phys",
         title: "Mecánica Serpento",
-        desc: "Mantenimiento físico, limpieza y ajustes de la Naga Serpento 200R.",
+        desc: "Inspección táctica diaria (cadena, frenos, luces y aceite) o mantenimiento de la Naga Serpento 200R.",
         type: "sub",
         rank: "A",
         xp: 40,
         gold: 25,
         spCost: 15,
         stat: "str",
-        mins: 45
+        mins: 10
     },
     {
         id: "m_creative",
         title: "Práctica Creativa",
-        desc: "Dedica tiempo a grabar fandubs, editar en CapCut o ilustrar en Ibis Paint.",
+        desc: "Avance diario en guion, fandubs, edición en CapCut o trazo en Ibis Paint.",
         type: "sub",
         rank: "B",
         xp: 50,
         gold: 35,
         spCost: 15,
         stat: "int",
-        mins: 30
+        mins: 15
     },
     {
         id: "m_hydration",
@@ -116,7 +116,6 @@ const baseMissions = [
         mins: 5
     }
 ];
-
 /* ==========================================================================
    2. LOS 60 EVENTOS INESPERADOS (ANOMALÍAS DIARIAS)
    ========================================================================== */
@@ -260,8 +259,8 @@ const shopDB = [
         cat: "Consumibles",
         icon: "🌟",
         title: "Estrella Fugaz del Star Stream",
-        desc: "Patrocinio de Constelación: Tu próxima misión o incursión sellada pagará el DOBLE de Oro neto (x2) libre del impuesto del Sistema.",
-        cost: 490,
+        desc: "Patrocinio de Constelación (2 Cargas): Tus próximas 2 misiones o incursiones pagarán el TRIPLE de Oro neto (x3) libre de impuestos + 90 G extra.",
+        cost: 220,
         rank: "A",
         type: "item"
     },
@@ -320,7 +319,7 @@ const shopDB = [
         cat: "Consumibles",
         icon: "💧",
         title: "Lágrima de Maná Puro",
-        desc: "Condensación líquida de calabozo: Recarga +400 MP directamente en tu núcleo mágico.",
+        desc: "Condensación líquida de calabozo: Recarga +600 MP (+35% de tu núcleo) y reduce el drenaje sombrío a la mitad por 15 minutos.",
         cost: 110,
         rank: "C",
         type: "item"
@@ -541,8 +540,8 @@ const shopDB = [
         cat: "Consumibles",
         icon: "🖤",
         title: "Esencia de Sombra Líquida",
-        desc: "Alquimia abisal: Tus Comandantes entran en resonancia con el vacío y consumen 0 MP/min durante los próximos 45 minutos.",
-        cost: 360,
+        desc: "Alquimia abisal: Tus Comandantes entran en resonancia con el vacío y consumen 0 MP/min durante los próximos 60 minutos.",
+        cost: 240,
         rank: "A",
         type: "item"
     },

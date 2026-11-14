@@ -284,7 +284,6 @@ function ensureShadowStructure() {
     if (!p.shadowArmy.beru)  p.shadowArmy.beru  = { unlocked: false, level: 1, active: false };
     if (!p.shadowArmy.min)   p.shadowArmy.min   = { unlocked: false, usedForever: false };
 
-    // Migración Canon: Igris ya NO se regala al inicio; requiere Nivel 40 (Cambio de Clase) o haberlo extraído con cristales en rango alto
     if (!p.canonShadowLockV6) {
         p.canonShadowLockV6 = true;
         if ((p.level || 1) < 40 && !p.igrisExtractedCanon) {
@@ -310,18 +309,22 @@ function ensureShadowStructure() {
     }
     if (!Array.isArray(p.titles)) p.titles = [];
 
-    // Desbloqueos automáticos por Historia Canon del Manhwa
     if (p.stats) {
         if (p.level >= 40) p.shadowArmy.igris.unlocked = true;
         if (p.level >= 48 || p.stats.str >= 3.8) p.shadowArmy.tank.unlocked = true;
         if (p.level >= 52 || p.stats.str >= 4.0) p.shadowArmy.iron.unlocked = true;
-if (p.level >= 72 || p.stats.int >= 4.5 || (typeof hasEquippedItem === "function" && hasEquippedItem('eq_w_kargalgan'))) {
+        if (p.level >= 72 || p.stats.int >= 4.5 || (typeof hasEquippedItem === "function" && hasEquippedItem('eq_w_kargalgan'))) {
             p.shadowArmy.tusk.unlocked = true;
         }
         if (p.jejuCleared || p.level >= 90) p.shadowArmy.beru.unlocked = true;
     }
-}
 
+    Object.keys(COMMANDERS_META).forEach(k => {
+        if (p.shadowArmy[k] && p.shadowArmy[k].customName) {
+            COMMANDERS_META[k].name = p.shadowArmy[k].customName;
+        }
+    });
+}
 function getEffectiveActiveCost(cmdId) {
     let meta = COMMANDERS_META[cmdId];
     if (!meta) return 300;
@@ -476,13 +479,67 @@ function resetSealModalToPhase1() {
     if (lbl) lbl.innerText = 'SINCRONIZACIÓN: 0%';
     if (fx) fx.style.display = 'none';
 
+    let honorWrap = document.getElementById('sl-honor-proof-wrap');
+    if (!honorWrap && p1) {
+        honorWrap = document.createElement('div');
+        honorWrap.id = 'sl-honor-proof-wrap';
+        honorWrap.style.cssText = 'margin: 10px 0;';
+        p1.insertBefore(honorWrap, p1.firstChild);
+    }
+
+    if (honorWrap) {
+        let needsHonor = pendingReward && (pendingReward.type === 'routine' || pendingReward.type === 'study' || pendingReward.type === 'penalty');
+        if (needsHonor) {
+            let promptLabel = 'BITÁCORA DE HONOR (Describe en 2+ palabras qué hiciste hoy):';
+            if (pendingReward.id && pendingReward.id.startsWith('sched_')) {
+                promptLabel = 'BITÁCORA DE ACADEMIA (Escribe el tema visto hoy en clase):';
+            } else if (pendingReward.id === 'm_workout') {
+                promptLabel = 'BITÁCORA FÍSICA (Ejercicios o series completadas hoy):';
+            } else if (pendingReward.id === 'm_phys') {
+                promptLabel = 'BITÁCORA SERPENTO (Qué revisaste o ajustaste en la moto):';
+            }
+            honorWrap.style.display = 'block';
+            honorWrap.innerHTML = `
+                <div style="font-family:'Share Tech Mono', monospace; font-size:0.74em; color:#bae6fd; margin-bottom:5px; text-align:left;">[${promptLabel}]</div>
+                <input type="text" id="sl-honor-proof-input" class="input-dark" style="margin:0; padding:10px; font-size:0.88em; border-color:#7dd3fc; text-align:left;" placeholder="Registro obligatorio ante el Sistema..." autocomplete="off">
+            `;
+        } else {
+            honorWrap.style.display = 'none';
+            honorWrap.innerHTML = '';
+        }
+    }
+
+    let holdBtn = document.getElementById('btn-hold-channel');
+    if (holdBtn && !holdBtn._touchCancelBound) {
+        holdBtn._touchCancelBound = true;
+        holdBtn.addEventListener('touchcancel', stopSealChannel, { passive: true });
+    }
+
     let igrisBtn = document.getElementById('btn-igris-slash');
     if (igrisBtn) {
         let igrisEquipped = p.equippedShadows && p.equippedShadows.includes('igris');
         let cost = getEffectiveActiveCost('igris');
-        igrisBtn.innerText = `⚔️ ORDENAR A IGRIS: TAJO CARMESÍ (-${cost} MP)`;
+        igrisBtn.innerText = `ORDENAR A ${COMMANDERS_META.igris.name.toUpperCase()}: TAJO CARMESÍ (-${cost} MP)`;
         igrisBtn.style.display = igrisEquipped ? 'block' : 'none';
     }
+}
+
+function validateHonorProofInput() {
+    let wrap = document.getElementById('sl-honor-proof-wrap');
+    if (!wrap || wrap.style.display === 'none') return true;
+    let inp = document.getElementById('sl-honor-proof-input');
+    if (!inp) return true;
+    let val = (inp.value || '').trim();
+    let words = val.split(/\s+/).filter(w => w.length >= 2);
+    if (val.length < 5 || words.length < 2 || /^(asdf|qwerty|1234|aaaa|xxxx)/i.test(val)) {
+        systemNotify("[OJO DE KANDIARU]: Debes registrar con honestidad qué realizaste (mínimo 2 palabras reales) antes de canalizar el sello.", "danger");
+        inp.focus();
+        return false;
+    }
+    if (pendingReward) {
+        pendingReward.honorNote = val;
+    }
+    return true;
 }
 
 function openSealModal(rewardData) {
@@ -510,9 +567,9 @@ function claimDailyEvent() {
         gold: p.activeEvent.gold || 30 
     });
 }
-
 function startSealChannel(e) {
     if (e && e.cancelable) e.preventDefault();
+    if (!validateHonorProofInput()) return;
     clearInterval(channelInterval);
 
     channelInterval = setInterval(() => {
@@ -530,7 +587,6 @@ function startSealChannel(e) {
         }
     }, 45);
 }
-
 function stopSealChannel(e) {
     if (e && e.cancelable) e.preventDefault();
     clearInterval(channelInterval);
@@ -543,11 +599,20 @@ function stopSealChannel(e) {
     }
 }
 
-function startSlashPhase() {
+let _slashComboStage = 1;
+let _slashComboRequired = 1;
+
+function startSlashPhase(keepComboStage = false) {
     let p1 = document.getElementById('seal-phase-1');
     let p2 = document.getElementById('seal-phase-2');
     if (p1) p1.style.display = 'none';
     if (p2) p2.style.display = 'block';
+
+    if (!keepComboStage) {
+        let isHighRankMission = pendingReward && (pendingReward.id === 'm_work' || pendingReward.id === 'm_traffic_vuelta' || (pendingReward.xp && pendingReward.xp >= 90));
+        _slashComboRequired = isHighRankMission ? 2 : 1;
+        _slashComboStage = 1;
+    }
 
     let agiVal = (p && p.stats) ? p.stats.agi : 1.0;
     let hasEq = (id) => (typeof hasEquippedItem === "function") ? hasEquippedItem(id) : false;
@@ -567,6 +632,7 @@ function startSlashPhase() {
     targetStart = Math.floor(Math.random() * (85 - targetWidth - 15)) + 15;
 
     let baseSpd = tuskEquipped ? 1.3 : 1.75;
+    if (_slashComboStage === 2) baseSpd *= 1.18;
     if (hasEq("eq_w_baruka")) baseSpd *= 0.80;
     slashSpeed = Math.max(0.85, baseSpd - ((agiVal - 1) * 0.08));
 
@@ -581,6 +647,13 @@ function startSlashPhase() {
 
     slashPos = 0;
     slashDir = 1;
+
+    let titleEl = document.getElementById('slash-modal-title');
+    if (titleEl) {
+        titleEl.innerText = _slashComboRequired > 1
+            ? `CORTE DIMENSIONAL (${_slashComboStage}/${_slashComboRequired})`
+            : `EJECUCIÓN DE SELLO`;
+    }
 
     let zoneEl = document.getElementById('slash-target-zone');
     if (zoneEl) {
@@ -602,10 +675,11 @@ function startSlashPhase() {
 }
 
 function triggerIgrisInstantSeal() {
+    if (!validateHonorProofInput()) return;
     let cost = getEffectiveActiveCost('igris');
 
     if (!p || (p.mp || 0) < cost) {
-        systemNotify(`Maná insuficiente para ordenar el Tajo Carmesí de Igris (Requiere ${cost} MP).`, "danger");
+        systemNotify(`Maná insuficiente para ordenar el Tajo Carmesí (Requiere ${cost} MP).`, "danger");
         return;
     }
     clearInterval(channelInterval);
@@ -615,7 +689,7 @@ function triggerIgrisInstantSeal() {
     p.sovereignCritDiscount = false;
     consumeMPFast(cost, () => {
         playCommanderUltCinematic('igris', () => {
-            systemNotify("¡TAJO CARMESÍ DE IGRIS! Núcleo partido en dos con precisión absoluta.", "purple");
+            systemNotify(`¡TAJO CARMESÍ DE ${COMMANDERS_META.igris.name.toUpperCase()}! Núcleo partido en dos con precisión absoluta.`, "purple");
             executeSealSuccess(true);
         });
     });
@@ -635,10 +709,23 @@ function validateAndSeal() {
     let critEnd = critStart + critMargin;
 
     if (slashPos >= targetStart && slashPos <= hitEnd) {
+        if (_slashComboStage < _slashComboRequired) {
+            _slashComboStage++;
+            if (typeof playSystemSound === "function") playSystemSound('step_arrow');
+            if (navigator.vibrate) navigator.vibrate(45);
+            startSlashPhase(true);
+            return;
+        }
+        let currentDayStr = (typeof getBiologicalDayStr === "function") ? getBiologicalDayStr() : new Date().toDateString();
+        if (p.sealComboDay !== currentDayStr) {
+            p.sealComboDay = currentDayStr;
+            p.sealComboChain = 0;
+        }
+        p.sealComboChain = (p.sealComboChain || 0) + 1;
         let isCrit = hasEq("eq_w_kamish") || (slashPos >= critStart && slashPos <= critEnd);
         executeSealSuccess(isCrit);
     } else {
-        p._arcCritChain = 0;
+        p._arcCritChain = 0; p.sealComboChain = 0;
         let ironEquipped = p && p.equippedShadows && p.equippedShadows.includes('iron');
         let dmg = (p.cryoBuffUntil && Date.now() < p.cryoBuffUntil) ? 2.5 : 5;
         if (ironEquipped) dmg = +(dmg * 0.25).toFixed(1);
@@ -646,9 +733,10 @@ function validateAndSeal() {
         if (hasEq("eq_acc_gate")) dmg *= 0.5;
         if (p.ironImmunityUntil && Date.now() < p.ironImmunityUntil) dmg = 0;
 
-        if (ironEquipped && Math.random() < 0.40) {
+        if (ironEquipped && dmg > 0 && !p._slashRetryGoldClaimed && Math.random() < 0.40) {
+            p._slashRetryGoldClaimed = true;
             p.gold += 10;
-            systemNotify(`¡REBOTE DE BASTIÓN! Iron desvió el contraataque con su escudo y extrajo +10 G (Daño: -${dmg} HP).`, "gold");
+            systemNotify(`¡REBOTE DE BASTIÓN! ${COMMANDERS_META.iron.name} desvió el contraataque con su escudo y extrajo +10 G (Daño: -${dmg} HP).`, "gold");
         } else {
             systemNotify(`Corte desviado. La anomalía contraatacó tu apertura: -${dmg} HP`, "danger");
         }
@@ -669,6 +757,7 @@ function validateAndSeal() {
 function executeSealSuccess(isCrit = false) {
     closeModal('confirm-modal');
     ensureShadowStructure();
+    p._slashRetryGoldClaimed = false;
 
     let now = Date.now();
     let currentDayStr = (typeof getBiologicalDayStr === "function") ? getBiologicalDayStr() : new Date().toDateString();
@@ -678,6 +767,18 @@ function executeSealSuccess(isCrit = false) {
     let maxMP = p.stats ? Math.floor(1000 + ((p.stats.int - 1) * 1000)) : 1000;
 
     if (!pendingReward || !p) return;
+
+    if (pendingReward.honorNote) {
+        if (!Array.isArray(p.honorLogs)) p.honorLogs = [];
+        let tStamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        p.honorLogs.unshift({
+            date: currentDayStr,
+            time: tStamp,
+            id: pendingReward.id || pendingReward.type,
+            note: pendingReward.honorNote
+        });
+        if (p.honorLogs.length > 35) p.honorLogs = p.honorLogs.slice(0, 35);
+    }
 
     let igrisActive = p.equippedShadows && p.equippedShadows.includes('igris');
     let igrisBuff = igrisActive ? 1 + ((p.shadowArmy.igris.level || 1) * 0.03) : 1;
@@ -689,14 +790,14 @@ function executeSealSuccess(isCrit = false) {
 
     if (p.demonBloodUntil && now < p.demonBloodUntil) {
         voidMult *= 1.25;
-        p.hp = Math.min(maxHP, p.hp + 25);
+        p.hp = Math.max(p.hp, Math.min(maxHP, p.hp + 25));
         p.mp = Math.min(maxMP, (p.mp || 0) + 200);
         systemNotify("Frenesí de Sangre de Demonio Noble: +25 HP y +200 MP absorbidos.", "danger");
     }
 
     let beruLvl = (p.shadowArmy && p.shadowArmy.beru) ? (p.shadowArmy.beru.level || 1) : 1;
     let beruGoldMult = (p.beruSpeedUntil && now < p.beruSpeedUntil) ? (1 + ((35 + ((beruLvl - 1) * 3)) / 100)) : 1.0;
-        let wolfGoldMult = hasEq("eq_acc_wolf") ? 1.15 : 1.0;
+    let wolfGoldMult = hasEq("eq_acc_wolf") ? 1.15 : 1.0;
     let copperFocusMult = (pendingReward.type === 'study' && hasEq("eq_acc_copper")) ? 1.25 : 1.0;
     let hasWolfTitle = Array.isArray(p.titles) && p.titles.some(t => t.id === 't_wolf_slayer');
     let wolfStudyXpMult = (pendingReward.type === 'study' && hasWolfTitle) ? 1.05 : 1.0;
@@ -704,7 +805,16 @@ function executeSealSuccess(isCrit = false) {
     let finalXP = Math.floor((pendingReward.xp || 0) * igrisBuff * critMult * voidMult * copperFocusMult * wolfStudyXpMult);
     let finalGold = 0;
 
-    if (p.starStreamNext && (pendingReward.gold || 0) > 0) {
+    if ((p.starStreamNext || (p.starStreamCharges && p.starStreamCharges > 0)) && (pendingReward.gold || 0) > 0) {
+        finalGold = Math.floor((pendingReward.gold || 0) * 3 * igrisBuff) + 90;
+        if (p.starStreamCharges && p.starStreamCharges > 1) {
+            p.starStreamCharges--;
+        } else {
+            p.starStreamCharges = 0;
+            p.starStreamNext = false;
+        }
+        systemNotify(`¡Patrocinio del Star Stream aplicado! Oro x3 + 90 G libres de impuestos (${p.starStreamCharges || 0} cargas restantes).`, "gold");
+    } else if (false) {
         finalGold = Math.floor((pendingReward.gold || 0) * 3 * igrisBuff);
         p.starStreamNext = false;
         systemNotify("¡Patrocinio del Star Stream consumido! Oro triplicado libre de impuestos.", "gold");
@@ -713,21 +823,25 @@ function executeSealSuccess(isCrit = false) {
         finalGold = Math.floor((pendingReward.gold || 0) * igrisBuff * beruGoldMult * wolfGoldMult * taxRate);
     }
 
-let availOrcs = (typeof getAvailableInfantryCount === "function") ? getAvailableInfantryCount('orcs') : 0;
+    let availOrcs = (typeof getAvailableInfantryCount === "function") ? getAvailableInfantryCount('orcs') : 0;
     if (pendingReward.stat === 'str' && availOrcs > 0) {
         let orcMult = hasEq("eq_acc_metus") ? 4.5 : 3;
         finalGold += Math.floor(availOrcs * orcMult);
     }
-    
+
+    if (pendingReward.id && typeof cancelMissionNativeReminders === "function") {
+        cancelMissionNativeReminders(pendingReward.id);
+    }
+
     if (pendingReward.id === 'm_traffic_ida') {
         p.chorrosIdaFinishedAt = Date.now();
         saveData();
         setTimeout(() => {
             if (typeof renderRoutine === "function") renderRoutine();
             if (typeof systemNotify === "function") {
-                systemNotify("Ruta Los Chorros (Retorno) ya está disponible en tu Tablón para tu viaje de regreso.", "info");
+                systemNotify("Ruta de Ida completada. Recuerda desplegar [Jornada Laboral] en menos de 20 min para activar la Sinergia de Relevo.", "info");
             }
-        }, 30100);
+        }, 1200);
     }
     if (pendingReward.id && pendingReward.id.includes('traffic') && hasEq("eq_a_serpento")) {
         finalGold += 35;
@@ -738,24 +852,23 @@ let availOrcs = (typeof getAvailableInfantryCount === "function") ? getAvailable
 
     let h = new Date().getHours();
     let m = new Date().getMinutes();
-        let curMinSeal = h * 60 + m;
-    let isLate = (h === 21 && m >= 15) || h >= 22 || curMinSeal < 270;
+    let curMinSeal = h * 60 + m;
+    let isLate = (h === 21 && m >= 35) || h >= 22 || curMinSeal < 270;
     let vigilOk = (typeof isNightVigilActiveNow === "function") ? isNightVigilActiveNow() : (p.nightPassActive === currentDayStr);
 
     if (isLate && !vigilOk && !(p.stealthModeUntil && now < p.stealthModeUntil) && !isMercyActive() && pendingReward.type !== 'penalty') {
         finalXP = 0;
         finalGold = 0;
-        systemNotify("Maldición de Insomnio: Has quemado tu estamina en horario prohibido. +0 G, +0 XP.", "danger");
+        systemNotify("Maldición de Insomnio: Has quemado tu estamina en horario prohibido (Post 9:35 PM). +0 G, +0 XP.", "danger");
     }
 
     p.xp += finalXP;
     p.gold += finalGold;
 
-        let hasUnlockedShadow = p.shadowArmy && ['igris', 'tank', 'iron', 'tusk', 'beru'].some(k => p.shadowArmy[k] && p.shadowArmy[k].unlocked);
     let mpGain = (pendingReward.type === 'study') ? ((pendingReward.mins === 25) ? 110 : 35) : 25;
     if (pendingReward.type === 'study' && hasWolfTitle) mpGain = Math.floor(mpGain * 1.40);
     if (isCrit) mpGain += 15;
-    if (hasEq("eq_w_scythe")) { mpGain += 250; p.hp = Math.min(maxHP, p.hp + 25); }
+    if (hasEq("eq_w_scythe")) { mpGain += 250; p.hp = Math.max(p.hp, Math.min(maxHP, p.hp + 25)); }
     if (pendingReward.type === 'study' && hasEq("eq_acc_copper")) mpGain += 120;
     if (pendingReward.type === 'study' && p.sageTeaFocusMp) {
         mpGain += 180;
@@ -765,7 +878,6 @@ let availOrcs = (typeof getAvailableInfantryCount === "function") ? getAvailable
     if (p.shadowArmy && p.shadowArmy.min && p.shadowArmy.min.usedForever) mpGain = Math.floor(mpGain * 1.05);
 
     p.mp = Math.min(maxMP, (p.mp || 0) + mpGain);
-
 
     if (pendingReward.type === 'routine' && p.whiteTigerBounty) {
         let taxRefund = Math.floor((pendingReward.gold || 0) * (1 - GOLD_NERF));
@@ -784,6 +896,11 @@ let availOrcs = (typeof getAvailableInfantryCount === "function") ? getAvailable
 
     if (typeof _evalArcSealHook === "function") _evalArcSealHook(isCrit, pendingReward);
 
+    if (!p.missionTimestampsToday || p.missionTimestampsDay !== currentDayStr) {
+        p.missionTimestampsDay = currentDayStr;
+        p.missionTimestampsToday = {};
+    }
+
     if (pendingReward.type === 'penalty') {
         p.hp = 35;
         p.sp = 50;
@@ -799,6 +916,7 @@ let availOrcs = (typeof getAvailableInfantryCount === "function") ? getAvailable
         if (!p.completedToday.includes(pendingReward.id)) {
             p.completedToday.push(pendingReward.id);
         }
+        p.missionTimestampsToday[pendingReward.id] = now;
         p.totalMissions = (p.totalMissions || 0) + 1;
         if (pendingReward.stat === 'str' && typeof gainHunterSkillXP === "function") {
             gainHunterSkillXP('longevity', 1);
@@ -808,7 +926,11 @@ let availOrcs = (typeof getAvailableInfantryCount === "function") ? getAvailable
             p.synergiesClaimedDay = currentDayStr;
             p.synergiesClaimedList = [];
         }
-        const hasDone = (mid) => p.completedToday.includes(mid);
+        const tsMap = p.missionTimestampsToday;
+        const withinMins = (idA, idB, maxMins) => {
+            if (!tsMap[idA] || !tsMap[idB]) return false;
+            return Math.abs(tsMap[idA] - tsMap[idB]) <= (maxMins * 60000);
+        };
         const claimSynergy = (synKey, notifyMsg, effectFn) => {
             if (!p.synergiesClaimedList.includes(synKey)) {
                 p.synergiesClaimedList.push(synKey);
@@ -817,31 +939,36 @@ let availOrcs = (typeof getAvailableInfantryCount === "function") ? getAvailable
             }
         };
 
-        if (hasDone('m_hydration') && (hasDone('m_traffic_ida') || hasDone('m_traffic_vuelta'))) {
-            claimSynergy('syn_hydration_road', "[SINERGIA: HIDRATACIÓN EN RUTA] Completaste Recarga Biológica + Ruta Los Chorros: Recibes 1x Lágrima de Maná Puro (+400 MP) en tu Bolsa.", () => {
+        if (withinMins('m_workout', 'm_hydration', 90) && curMinSeal <= 390) {
+            claimSynergy('syn_morning_steel', "[SINERGIA MATUTINA: ARRANQUE DE ACERO] Completaste Up Físico + Recarga Biológica antes de salir (4:45 - 6:30 AM): Recibes 1x Lágrima de Maná Puro y +40 Escudo.", () => {
                 let mpPot = (typeof shopDB !== 'undefined') ? shopDB.find(x => x.id === 'c_mp_pot') : null;
                 if (mpPot) p.inventory.push({...mpPot, type: 'item'});
-                p.mp = Math.min(maxMP, (p.mp || 0) + 100);
+                p.arcticShield = Math.min(800, (p.arcticShield || 0) + 40);
             });
         }
-        let anySchedDone = p.completedToday.some(id => id.startsWith('sched_'));
-        if (hasDone('m_workout') && (p.studyCompletedToday || anySchedDone)) {
-            claimSynergy('syn_mind_body', "[SINERGIA: MENTE Y CUERPO DE ACERO] Completaste Entrenamiento + Estudio: +45 Escudo Protector y -20 Fatiga.", () => {
-                p.arcticShield = Math.min(800, (p.arcticShield || 0) + 45);
+
+        let schedDoneKey = Object.keys(tsMap).find(id => id.startsWith('sched_'));
+        let studyRefKey = schedDoneKey || (tsMap['study_focus'] ? 'study_focus' : null);
+        if (studyRefKey && !p.classDeserterToday) {
+            claimSynergy('syn_mind_invicta', "[SINERGIA ACADÉMICA: MENTE INVICTA] Completaste tu sesión académica con 0 deserciones a juegos externos: +50 Escudo Protector, +100 MP y -20 Fatiga.", () => {
+                p.arcticShield = Math.min(800, (p.arcticShield || 0) + 50);
+                p.mp = Math.min(maxMP, (p.mp || 0) + 100);
                 p.sp = Math.min(100, p.sp + 20);
             });
         }
-        if (hasDone('m_clean') && hasDone('m_work')) {
-            claimSynergy('syn_order_work', "[SINERGIA: DOMINIO OPERATIVO] Completaste Zona Limpia + Jornada Laboral: +1 Llave de Portal Rango D añadida a tu Bolsa.", () => {
+
+        if (withinMins('m_clean', 'm_phys', 75) || withinMins('m_clean', 'm_work', 120)) {
+            claimSynergy('syn_order_work', "[SINERGIA TÁCTICA: DOMINIO OPERATIVO] Encadenaste Zona Limpia + Mantenimiento/Jornada en ventana activa: +1 Llave de Portal Rango D añadida a tu Bolsa.", () => {
                 if (!p.dungeonKeys) p.dungeonKeys = { rankE: 0, rankD: 0, rankC: 0, rankB: 0, rankA: 0, rankS: 0 };
                 p.dungeonKeys.rankD = (p.dungeonKeys.rankD || 0) + 1;
             });
         }
-        if (hasDone('m_creative') && (hasDone('m_gf') || hasDone('m_phys'))) {
-            claimSynergy('syn_creative_flow', "[SINERGIA: FLUJO DEL CREADOR] Completaste Práctica Creativa + Misión Paralela: Recibes 1x Incienso de Meditación y +20 HP.", () => {
+
+        if (withinMins('m_creative', 'm_gf', 120) || withinMins('m_creative', 'm_phys', 90)) {
+            claimSynergy('syn_creative_flow', "[SINERGIA DE FLUJO: CADENA PARALELA] Completaste 2 misiones paralelas en menos de 90 min de diferencia: Recibes 1x Incienso de Meditación y +20 HP.", () => {
                 let medItem = (typeof shopDB !== 'undefined') ? shopDB.find(x => x.id === 'c_med') : null;
                 if (medItem) p.inventory.push({...medItem, type: 'item'});
-                p.hp = Math.min(maxHP, p.hp + 20);
+                p.hp = Math.max(p.hp, Math.min(maxHP, p.hp + 20));
             });
         }
 
@@ -920,6 +1047,7 @@ let availOrcs = (typeof getAvailableInfantryCount === "function") ? getAvailable
 
     } else if (pendingReward.type === 'study') {
         p.studyCompletedToday = true;
+        p.missionTimestampsToday['study_focus'] = now;
         if (!p.intBlockedUntil || now > p.intBlockedUntil) {
             let intGain = (pendingReward.mins === 25 ? 0.10 : 0.03);
             if (p.sageTeaActive) {
@@ -1821,7 +1949,6 @@ function openShadowBestowNameModal(cmdId) {
     let meta = COMMANDERS_META[cmdId];
     if (!meta) return;
     let st = p.shadowArmy[cmdId] || { level: 1 };
-    let defaultName = meta.name.replace('Comandante ', '').split(' ')[0];
 
     let ov = document.createElement('div');
     ov.id = 'sl-bestow-name-overlay';
@@ -1839,12 +1966,12 @@ function openShadowBestowNameModal(cmdId) {
                     </div>
                     <div id="bestow-step-1">
                         <div style="color:#e0f2fe; font-size:0.95em; margin-bottom:6px;">[Habilidad: <b style="color:#00e5ff;">Extracción de Sombra</b> realizada con éxito.]</div>
-                        <div style="color:#bae6fd; font-size:0.88em; margin-bottom:10px;">Nv.${st.level || 1} • ${meta.title}<br>Puedes asignarle un nombre.</div>
-                        <input type="text" id="bestow-name-input" class="sl-name-bestow-input" value="${defaultName}" maxlength="18" autocomplete="off">
+                        <div style="color:#bae6fd; font-size:0.88em; margin-bottom:10px;">Nv.${st.level || 1} • ${meta.title}<br>Puedes asignarle un nombre a tu sombra.</div>
+                        <input type="text" id="bestow-name-input" class="sl-name-bestow-input" value="" placeholder="[ Escribe su nombre... ]" maxlength="36" autocomplete="off">
                         <button class="btn btn-main" style="width:78%; padding:10px;" onclick="confirmShadowBestowName('${cmdId}')">CONFIRMAR NOMBRE</button>
                     </div>
                     <div id="bestow-step-2" style="display:none; padding:12px 0;">
-                        <div style="font-family:'Exo 2', sans-serif; font-size:1.25em; font-weight:700; color:#ffffff; text-shadow:0 0 12px #00e5ff; margin-bottom:6px;" id="bestow-final-tag">[${defaultName} Nv.${st.level || 1}]</div>
+                        <div style="font-family:'Exo 2', sans-serif; font-size:1.25em; font-weight:700; color:#ffffff; text-shadow:0 0 12px #00e5ff; margin-bottom:6px;" id="bestow-final-tag"></div>
                         <div style="color:#bae6fd; font-size:0.92em;">${meta.title}</div>
                     </div>
                 </div>
@@ -1861,15 +1988,20 @@ function openShadowBestowNameModal(cmdId) {
 
 window.confirmShadowBestowName = function(cmdId) {
     let inp = document.getElementById('bestow-name-input');
-    let chosen = (inp && inp.value.trim()) ? inp.value.trim() : COMMANDERS_META[cmdId].name;
+    let rawVal = inp ? inp.value.trim() : '';
+    if (!rawVal) {
+        systemNotify("Escribe el nombre que deseas otorgarle a tu sombra.", "info");
+        if (inp) inp.focus();
+        return;
+    }
     let st = p.shadowArmy[cmdId];
-    if (st) st.customName = chosen;
-    COMMANDERS_META[cmdId].name = chosen;
+    if (st) st.customName = rawVal;
+    COMMANDERS_META[cmdId].name = rawVal;
 
     let s1 = document.getElementById('bestow-step-1');
     let s2 = document.getElementById('bestow-step-2');
     let tag = document.getElementById('bestow-final-tag');
-    if (tag) tag.innerText = `[${chosen} Nv.${st ? (st.level || 1) : 1}]`;
+    if (tag) tag.innerText = `[${rawVal} Nv.${st ? (st.level || 1) : 1}]`;
     if (s1) s1.style.display = 'none';
     if (s2) s2.style.display = 'block';
 
@@ -1881,7 +2013,7 @@ window.confirmShadowBestowName = function(cmdId) {
     setTimeout(() => {
         let ov = document.getElementById('sl-bestow-name-overlay');
         if (ov) ov.remove();
-        systemNotify(`🗣️ «Ese es tu nombre»: [${chosen}] se ha unido a tu Panteón de Sombras.`, "purple");
+        systemNotify(`«Ese es tu nombre»: [${rawVal}] se ha unido a tu Panteón de Sombras.`, "purple");
     }, 1700);
 };
 

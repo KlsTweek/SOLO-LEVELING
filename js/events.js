@@ -50,7 +50,7 @@ function checkFissureSpawn(forcedByIron = false) {
     }
 
     if (typeof playSystemSound === "function") playSystemSound('danger');
-    if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+    if (navigator.vibrate && navigator.userActivation && navigator.userActivation.hasBeenActive) { try { navigator.vibrate([200, 100, 200]); } catch (e) {} }
     if (typeof openModal === "function") openModal('fissure-modal');
 }
 

@@ -64,14 +64,17 @@ const SEVEN_EQUIP_SLOTS = ['head', 'chest', 'gloves', 'necklace', 'weapon', 'rin
 function ensureSevenSlotEquipment() {
     if (!p) return;
     if (!p.equipment) p.equipment = {};
-    // Migrar automáticamente si el jugador tenía ítems en las ranuras antiguas "armor" o "accessory"
     if (p.equipment.armor) {
         let oldArmor = p.equipment.armor;
         let dbMatch = (typeof shopDB !== 'undefined') ? shopDB.find(x => x.id === oldArmor.id) : null;
         let targetSlot = (dbMatch && dbMatch.slot) ? dbMatch.slot : 'chest';
         oldArmor.slot = targetSlot;
-        if (!p.equipment[targetSlot]) p.equipment[targetSlot] = oldArmor;
-        else p.inventory.push(oldArmor);
+        if (!p.equipment[targetSlot]) {
+            p.equipment[targetSlot] = oldArmor;
+        } else {
+            applyEquipmentStats(oldArmor, -1);
+            p.inventory.push(oldArmor);
+        }
         delete p.equipment.armor;
     }
     if (p.equipment.accessory) {
@@ -79,14 +82,17 @@ function ensureSevenSlotEquipment() {
         let dbMatch = (typeof shopDB !== 'undefined') ? shopDB.find(x => x.id === oldAcc.id) : null;
         let targetSlot = (dbMatch && dbMatch.slot) ? dbMatch.slot : 'necklace';
         oldAcc.slot = targetSlot;
-        if (!p.equipment[targetSlot]) p.equipment[targetSlot] = oldAcc;
-        else p.inventory.push(oldAcc);
+        if (!p.equipment[targetSlot]) {
+            p.equipment[targetSlot] = oldAcc;
+        } else {
+            applyEquipmentStats(oldAcc, -1);
+            p.inventory.push(oldAcc);
+        }
         delete p.equipment.accessory;
     }
     SEVEN_EQUIP_SLOTS.forEach(s => {
         if (p.equipment[s] === undefined) p.equipment[s] = null;
     });
-    // Actualizar las ranuras de cualquier reliquia guardada en la bolsa
     if (Array.isArray(p.inventory) && typeof shopDB !== 'undefined') {
         p.inventory.forEach(it => {
             let dbIt = shopDB.find(x => x.id === it.id);
@@ -1165,6 +1171,11 @@ window.executeDokkaebiWager = function(idx) {
     if (btnCancel) btnCancel.style.display = 'none';
     inp.disabled = true;
 
+    let win = Math.random() <= 0.50;
+    if (win) p.gold += bet;
+    else p.gold = Math.max(0, p.gold - bet);
+    finalizeInventoryConsumption(idx);
+
     let ticks = 0;
     let spinTimer = setInterval(() => {
         ticks++;
@@ -1172,25 +1183,21 @@ window.executeDokkaebiWager = function(idx) {
         resArea.innerHTML = ` GIRANDO MONEDA DEL DESTINO... <span class="sl-digit-new">${ticks % 2 === 0 ? 'CARA (+' + bet + 'G)' : 'CRUZ (-' + bet + 'G)'}</span>`;
         if (ticks >= 12) {
             clearInterval(spinTimer);
-            let win = Math.random() <= 0.52;
             if (win) {
-                p.gold += bet;
-                resArea.style.color = '#39ff14';
+                resArea.style.color = '#7dd3fc';
                 resArea.innerHTML = `¡LAS CONSTELACIONES APLAUDEN! GANASTE <b>+${bet} G</b>`;
                 if (typeof playSystemSound === "function") playSystemSound('gold');
             } else {
-                p.gold = Math.max(0, p.gold - bet);
                 resArea.style.color = '#ff2a55';
                 resArea.innerHTML = `EL DOKKAEBI SE QUEDA CON TU ORO: <b>-${bet} G</b>`;
                 if (typeof playSystemSound === "function") playSystemSound('danger');
             }
-            finalizeInventoryConsumption(idx);
             setTimeout(() => {
                 closeArtifactRitualModal();
-                systemNotify(win ? `🪙 Apuesta ganada: +${bet} G transferidos a tu cuenta.` : `💀 Apuesta perdida: -${bet} G absorbidos por el canal.`, win ? "gold" : "danger");
-            }, 1450);
+                systemNotify(win ? `Apuesta ganada: +${bet} G transferidos a tu cuenta.` : `Apuesta perdida: -${bet} G absorbidos por el canal.`, win ? "gold" : "danger");
+            }, 1250);
         }
-    }, 95);
+    }, 90);
 };
 
 /* 2. INTERFAZ PERSONALIZADA: CONTRATO DE SANGRE DEL ARQUITECTO */
@@ -1629,30 +1636,34 @@ let now = Date.now(); let currentDayStr = (typeof getBiologicalDayStr === 'funct
     } else if (item.id === "c_magma_heart") {
         p.hp = Math.floor(maxHP * 1.4);
         p.magmaOverheal = true;
-        systemNotify(`❤️‍🔥 Corazón de Magma: ¡SOBRECARGA VITAL AL 140% (${p.hp}/${maxHP} HP)!`, "gold");
+        p.arcticShield = Math.min(800, (p.arcticShield || 0) + 85);
+        systemNotify(`Corazón de Magma: ¡SOBRECARGA VITAL AL 140% (${p.hp}/${maxHP} HP) y +85 Escudo!`, "gold");
     } else if (item.id === "c_zero_serum") {
         p.cryoBuffUntil = now + (6 * 3600000);
-        systemNotify("🧊 Suero de Cero Absoluto: Todo daño recibido se reduce al 50% durante 6 Horas.", "info");
+        systemNotify("Suero de Cero Absoluto: Todo daño recibido se reduce al 50% durante 6 Horas.", "info");
     } else if (item.id === "c_void_blood") {
         if (p.hp <= 25) return systemNotify("Riesgo letal: Necesitas más de 25 HP para soportar la Sangre Corrupta.", "danger");
         p.hp -= 25;
         p.voidXpBuffUntil = now + (90 * 60000);
-        systemNotify("🟣 Sangre Corrupta asimilada (-25 HP): Barra de EXP Púrpura y ganancia de EXP aumentada por 90 min.", "purple");
+        systemNotify("Sangre Corrupta asimilada (-25 HP): Ganancia de EXP duplicada por 90 min.", "purple");
     } else if (item.id === "c_hourglass") {
         p.entropyBuffUntil = now + (90 * 60000);
-        systemNotify("⏳ Reloj de Ceniza activo: Desplegar misiones te regenerará +8 SP durante 90 minutos.", "info");
+        systemNotify("Reloj de Ceniza activo: Desplegar misiones te regenerará +8 SP durante 90 minutos.", "info");
     } else if (item.id === "c_star_drop") {
         p.starStreamNext = true;
-        systemNotify("🌟 Patrocinio del Star Stream: Tu próxima misión o incursión pagará Oro extra libre de impuestos.", "gold");
+        p.starStreamCharges = (p.starStreamCharges || 0) + 2;
+        systemNotify("Patrocinio del Star Stream (2 Cargas): Tus próximas 2 misiones o incursiones pagarán Oro x3 libre de impuestos + 90 G extra.", "gold");
     } else if (item.id === "c1") {
         let heal = Math.max(35, Math.floor(maxHP * 0.25));
-        p.hp = Math.min(maxHP, +(p.hp + heal).toFixed(1));
+        let capH = p.magmaOverheal ? Math.max(p.hp, Math.floor(maxHP * 1.4)) : maxHP;
+        p.hp = Math.min(capH, +(p.hp + heal).toFixed(1));
         systemNotify(`Poción de Sangre Menor consumida: +${heal} HP restaurados.`, "success");
     } else if (item.id === "c_hp_mid") {
         if (p.sp < 10) return systemNotify("Necesitas al menos 10 SP para asimilar el Cáliz Carmesí.", "danger");
         p.sp -= 10;
         let heal = Math.max(75, Math.floor(maxHP * 0.45));
-        p.hp = Math.min(maxHP, +(p.hp + heal).toFixed(1));
+        let capH = p.magmaOverheal ? Math.max(p.hp, Math.floor(maxHP * 1.4)) : maxHP;
+        p.hp = Math.min(capH, +(p.hp + heal).toFixed(1));
         systemNotify(`Cáliz Carmesí consumido: +${heal} HP restaurados (-10 SP).`, "success");
     } else if (item.id === "c_med") {
         p.spDiscountUntil = now + 3600000;
@@ -1665,9 +1676,10 @@ let now = Date.now(); let currentDayStr = (typeof getBiologicalDayStr === 'funct
         p.sp = Math.min(100, p.sp + 70);
         systemNotify("Celda de Plasma absorbida: +70 SP limpios sin bloqueo mental.", "stamina");
     } else if (item.id === "c_mp_pot") {
-        let mpRest = Math.max(500, Math.floor(maxMP * 0.25));
+        let mpRest = Math.max(600, Math.floor(maxMP * 0.35));
         p.mp = Math.min(maxMP, (p.mp || 0) + mpRest);
-        systemNotify(`Lágrima de Maná absorbida: +${mpRest} MP.`, "purple");
+        p.halfMpDrainUntil = Math.max(p.halfMpDrainUntil || 0, now + 15 * 60000);
+        systemNotify(`Lágrima de Maná absorbida: +${mpRest} MP y -50% drenaje sombrío por 15 min.`, "purple");
     } else if (item.id === "c3") {
         p.hp = Math.max(1, Math.floor(p.hp * 0.5));
         p.sp = 100;
@@ -1676,14 +1688,16 @@ let now = Date.now(); let currentDayStr = (typeof getBiologicalDayStr === 'funct
         if (p.sp < 35) return systemNotify("Necesitas al menos 35 SP para el Latido del Berserker.", "danger");
         p.sp -= 35;
         let heal = Math.max(90, Math.floor(maxHP * 0.55));
-        p.hp = Math.min(maxHP, +(p.hp + heal).toFixed(1));
+        let capH = p.magmaOverheal ? Math.max(p.hp, Math.floor(maxHP * 1.4)) : maxHP;
+        p.hp = Math.min(capH, +(p.hp + heal).toFixed(1));
         systemNotify(`Latido del Berserker: -35 SP convertidos en +${heal} HP.`, "danger");
     } else if (item.id === "c_antidote") {
         p.sleepDebt = false;
         p.sleepCheatNextMorning = false;
         p.intBlockedUntil = null;
         let heal = Math.max(30, Math.floor(maxHP * 0.20));
-        p.hp = Math.min(maxHP, +(p.hp + heal).toFixed(1));
+        let capH = p.magmaOverheal ? Math.max(p.hp, Math.floor(maxHP * 1.4)) : maxHP;
+        p.hp = Math.min(capH, +(p.hp + heal).toFixed(1));
         systemNotify(`Antídoto de Kasaka: Resaca y bloqueos mentales purgados (+${heal} HP).`, "success");
 
     } else if (item.id === "c4") {
@@ -1929,12 +1943,16 @@ let now = Date.now(); let currentDayStr = (typeof getBiologicalDayStr === 'funct
             systemNotify(`¡ASCENSIÓN AL NIVEL ${p.level}!`, "gold");
         }
         systemNotify("📘 Grimorio del Arquitecto descifrado: +140 XP.", "gold");
-    } else if (item.id === "p_bloodlust") {
+} else if (item.id === "p_bloodlust") {
         if (p.bosses && p.bosses.length > 0) {
             let b = p.bosses.shift();
-            p.xp += b.xp || 80;
-            p.gold += Math.floor((b.gold || 40) * GOLD_NERF);
-            systemNotify(`👁️ Intención Asesina: [${b.title}] colapsó de terror (+${b.xp} XP).`, "purple");
+            let gainXp = Math.floor((b.xp || 100) * 1.5);
+            let gainG = Math.floor((b.gold || 60) * 2.0);
+            p.xp += gainXp;
+            p.gold += gainG;
+            p.crystals = (p.crystals || 0) + 2;
+            p.mp = Math.min(maxMP, (p.mp || 0) + 200);
+            systemNotify(`Intención Asesina: [${b.title}] colapsó de terror (+${gainXp} XP, +${gainG} G libres, +2 CM y +200 MP).`, "purple");
             if (typeof renderBosses === "function") renderBosses();
         } else {
             return systemNotify("No tienes amenazas personales escaneadas para aniquilar.", "danger");
@@ -2244,25 +2262,65 @@ function exportData() {
     systemNotify("Alma extraída con éxito.", "gold");
 }
 
+function sanitizeImportedSoul(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    const num = (v, def, min = 0) => {
+        let n = Number(v);
+        return (Number.isFinite(n) && n >= min) ? n : def;
+    };
+    raw.level = Math.floor(num(raw.level, 1, 1));
+    raw.xp = Math.floor(num(raw.xp, 0, 0));
+    raw.maxXp = (typeof getRequiredXpForLevel === 'function') ? getRequiredXpForLevel(raw.level) : num(raw.maxXp, 150, 50);
+    raw.hp = num(raw.hp, 100, 0);
+    raw.sp = num(raw.sp, 100, 0);
+    raw.mp = num(raw.mp, 0, 0);
+    raw.gold = Math.floor(num(raw.gold, 0, 0));
+    raw.crystals = Math.floor(num(raw.crystals, 0, 0));
+    if (!raw.stats || typeof raw.stats !== 'object') raw.stats = { str: 1.0, int: 1.0, agi: 1.0 };
+    raw.stats.str = num(raw.stats.str, 1.0, 1.0);
+    raw.stats.int = num(raw.stats.int, 1.0, 1.0);
+    raw.stats.agi = num(raw.stats.agi, 1.0, 1.0);
+    if (!Array.isArray(raw.inventory)) raw.inventory = [];
+    if (!Array.isArray(raw.bosses)) raw.bosses = [];
+    if (!Array.isArray(raw.schedules)) raw.schedules = [];
+    if (!Array.isArray(raw.titles)) raw.titles = [];
+    if (!Array.isArray(raw.completedToday)) raw.completedToday = [];
+    if (!Array.isArray(raw.equippedShadows)) raw.equippedShadows = [];
+    if (!raw.activeMissions || typeof raw.activeMissions !== 'object') raw.activeMissions = {};
+    if (!raw.dungeonKeys || typeof raw.dungeonKeys !== 'object') raw.dungeonKeys = { rankE: 0, rankD: 0, rankC: 0, rankB: 0, rankA: 0, rankS: 0, rankSSS: 0 };
+    if (!raw.history || typeof raw.history !== 'object') raw.history = { deaths: 0, goldLost: 0, itemsBroken: 0 };
+    if (!raw.timeStats || typeof raw.timeStats !== 'object') raw.timeStats = { work: 0, study: 0, traffic: 0, total: 0 };
+    if (!raw._arcFlags || typeof raw._arcFlags !== 'object') raw._arcFlags = {};
+    return raw;
+}
+
 function importData(event) {
     const file = event.target.files[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = function(e) {
         try {
-            const importedData = JSON.parse(e.target.result);
-            if (importedData && importedData.hasOwnProperty('level') && importedData.hasOwnProperty('hp')) {
+            const parsed = JSON.parse(e.target.result);
+            const cleanSoul = sanitizeImportedSoul(parsed);
+            if (cleanSoul && cleanSoul.level >= 1) {
                 if (confirm("ADVERTENCIA: Inyectar un alma sobrescribirá todo tu progreso actual. ¿Continuar?")) {
-                    p = importedData; saveData();
-                    systemNotify("Alma inyectada. Reiniciando Sistema...", "gold");
-                    setTimeout(() => { window.location.reload(); }, 1500);
+                    p = cleanSoul;
+                    if (typeof ensureSevenSlotEquipment === 'function') ensureSevenSlotEquipment();
+                    if (typeof ensureShadowStructure === 'function') ensureShadowStructure();
+                    saveData();
+                    systemNotify("Alma sanitizada e inyectada. Reiniciando Sistema...", "gold");
+                    setTimeout(() => { window.location.reload(); }, 1200);
                 }
-            } else { systemNotify("Archivo corrupto.", "danger"); }
-        } catch (error) { systemNotify("Formato irreconocible.", "danger"); }
+            } else {
+                systemNotify("Estructura de alma inválida o corrupta.", "danger");
+            }
+        } catch (error) {
+            systemNotify("Formato JSON irreconocible.", "danger");
+        }
         event.target.value = '';
     };
     reader.readAsText(file);
-}
+} 
 
 function applyEquipmentStats(item, direction = 1) {
     if (!item || !item.stats || !p.stats) return;
@@ -2437,8 +2495,8 @@ function updateEquipmentUI() {
         let it = eq[slotKey];
         let ic = it ? getIconFor(it) : emptySvgs[slotKey];
         return `
-        <div class="sl-anatomy-node ${isRight ? 'right-node' : ''}" onclick="unequipItem('${slotKey}')">
-            <div class="sl-node-box ${it ? '' : 'empty-node'}">${ic}</div>
+        <div class="sl-anatomy-node ${isRight ? 'right-node' : ''}" data-slot-node="${slotKey}" onclick="unequipItem('${slotKey}')">
+            <div class="sl-node-box ${it ? '' : 'empty-node'}" id="sl-anat-box-${slotKey}">${ic}</div>
             <div class="sl-node-meta">
                 <span class="sl-node-slot-lbl">${label}</span>
                 <span class="sl-node-name">${it ? it.title : 'Sin equipar'}</span>
@@ -2464,18 +2522,8 @@ function updateEquipmentUI() {
                 <div style="font-family:'Share Tech Mono', monospace; font-size:0.68em; color:#7dd3fc;">7 RANURAS ACTIVAS</div>
             </div>
 
-            <div class="sl-anatomy-stage">
-                <svg class="sl-anatomy-lines-svg" viewBox="0 0 360 270" preserveAspectRatio="none">
-                    <!-- 3 Líneas Izquierdas: Casco -> Cabeza, Pechera -> Torso, Guantelete -> Brazo Izq -->
-                    <polyline points="82,42 138,42 172,28" fill="none" stroke="rgba(186,230,253,0.5)" stroke-width="1"/>
-                    <polyline points="82,135 138,135 168,78" fill="none" stroke="rgba(186,230,253,0.5)" stroke-width="1"/>
-                    <polyline points="82,228 135,228 158,125" fill="none" stroke="rgba(186,230,253,0.5)" stroke-width="1"/>
-                    <!-- 4 Líneas Derechas: Collar -> Cuello, Arma -> Mano Der, Anillo -> Dedos, Botas -> Pies -->
-                    <polyline points="278,30 225,30 188,44" fill="none" stroke="rgba(186,230,253,0.5)" stroke-width="1"/>
-                    <polyline points="278,98 228,98 202,118" fill="none" stroke="rgba(186,230,253,0.5)" stroke-width="1"/>
-                    <polyline points="278,168 228,168 204,136" fill="none" stroke="rgba(186,230,253,0.5)" stroke-width="1"/>
-                    <polyline points="278,236 225,236 196,236" fill="none" stroke="rgba(186,230,253,0.5)" stroke-width="1"/>
-                </svg>
+            <div class="sl-anatomy-stage" id="sl-anatomy-stage">
+                <svg class="sl-anatomy-lines-svg" id="sl-anatomy-lines-svg" viewBox="0 0 360 270" preserveAspectRatio="none"></svg>
 
                 <!-- Columna Izquierda: 3 Ranuras (Casco, Pechera, Guantelete) -->
                 <div class="sl-anatomy-col">
@@ -2485,7 +2533,7 @@ function updateEquipmentUI() {
                 </div>
 
                 <!-- Centro: Silueta Anatómica Holográfica del Anime -->
-                <div class="sl-anatomy-body-center">
+                <div class="sl-anatomy-body-center" id="sl-anatomy-body-center">
                     ${getCentralCoreSVG()}
                 </div>
 
@@ -2506,7 +2554,89 @@ function updateEquipmentUI() {
         </div>
         <div class="sl-mech-rail bottom"></div>
     `;
+
+    requestAnimationFrame(syncAnatomyPointerLines);
 }
+
+window.syncAnatomyPointerLines = function() {
+    const stage = document.getElementById('sl-anatomy-stage');
+    const svg = document.getElementById('sl-anatomy-lines-svg');
+    const bodyCenter = document.getElementById('sl-anatomy-body-center');
+    if (!stage || !svg || !bodyCenter) return;
+
+    const stRect = stage.getBoundingClientRect();
+    const bRect = bodyCenter.getBoundingClientRect();
+    const W = stRect.width || 360;
+    const H = stRect.height || 270;
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+
+    // Coordenadas anatómicas exactas dentro del viewBox (0..110, 0..260) del maniquí central
+    const bodyTargets = {
+        head:     { x: 48, y: 22 },  // Cráneo / Casco
+        chest:    { x: 46, y: 66 },  // Torso / Pechera
+        gloves:   { x: 20, y: 108 }, // Antebrazo / Guantelete Izquierdo
+        necklace: { x: 60, y: 42 },  // Cuello / Collar
+        weapon:   { x: 96, y: 128 }, // Mano Derecha / Arma
+        ring:     { x: 90, y: 134 }, // Dedos Mano Derecha / Anillo
+        boots:    { x: 76, y: 242 }  // Pie / Bota Derecha
+    };
+
+    const fallbackBoxes = {
+        head:     { x: 112, y: 42,  isLeft: true },
+        chest:    { x: 112, y: 135, isLeft: true },
+        gloves:   { x: 112, y: 228, isLeft: true },
+        necklace: { x: W - 112, y: 32,  isLeft: false },
+        weapon:   { x: W - 112, y: 100, isLeft: false },
+        ring:     { x: W - 112, y: 168, isLeft: false },
+        boots:    { x: W - 112, y: 236, isLeft: false }
+    };
+
+    const mLeft = (bRect.width > 0) ? (bRect.left - stRect.left) : ((W - 96) / 2);
+    const mTop  = (bRect.height > 0) ? (bRect.top - stRect.top) : ((H - 256) / 2);
+    const mW    = (bRect.width > 0) ? bRect.width : 96;
+    const mH    = (bRect.height > 0) ? bRect.height : 256;
+
+    let linesMarkup = `
+        <defs>
+            <marker id="sl-anat-arrow" viewBox="0 0 8 8" refX="6.5" refY="4" markerWidth="5" markerHeight="5" orient="auto">
+                <path d="M 0 1 L 7 4 L 0 7 z" fill="#7dd3fc"/>
+            </marker>
+        </defs>
+    `;
+
+    Object.keys(bodyTargets).forEach(slotKey => {
+        const boxEl = document.getElementById('sl-anat-box-' + slotKey);
+        const fb = fallbackBoxes[slotKey];
+        let startX = fb.x;
+        let startY = fb.y;
+        let isLeft = fb.isLeft;
+
+        if (boxEl && stRect.width > 0) {
+            const r = boxEl.getBoundingClientRect();
+            if (r.width > 0) {
+                startX = isLeft ? (r.right - stRect.left) : (r.left - stRect.left);
+                startY = (r.top - stRect.top) + (r.height / 2);
+            }
+        }
+
+        const t = bodyTargets[slotKey];
+        const endX = mLeft + (t.x / 110) * mW;
+        const endY = mTop + (t.y / 260) * mH;
+        const elbowX = isLeft ? (startX + (endX - startX) * 0.42) : (startX - (startX - endX) * 0.42);
+
+        linesMarkup += `
+            <circle cx="${startX.toFixed(1)}" cy="${startY.toFixed(1)}" r="2" fill="#e0f2fe"/>
+            <polyline points="${startX.toFixed(1)},${startY.toFixed(1)} ${elbowX.toFixed(1)},${startY.toFixed(1)} ${endX.toFixed(1)},${endY.toFixed(1)}"
+                fill="none" stroke="rgba(186,230,253,0.68)" stroke-width="1.15" marker-end="url(#sl-anat-arrow)"/>
+        `;
+    });
+
+    svg.innerHTML = linesMarkup;
+};
+
+window.addEventListener('resize', () => {
+    if (typeof syncAnatomyPointerLines === 'function') syncAnatomyPointerLines();
+});
 
 function formatItemInspectorText(item) {
     let extraStats = "";

@@ -166,32 +166,32 @@ const HUNTER_SKILLS_META = {
     // --- HABILIDADES PASIVAS ---
     longevity: {
         id: 'longevity', type: 'passive', name: 'Voluntad de Recuperación', maxLvl: 5,
-        desc: (lvl) => `Bendición de Kandiaru: Regenera +${lvl * 2} HP cada hora y reduce el daño de veneno/sangrado un ${lvl * 12}%. (Sube al completar misiones físicas o emergencias).`
+        desc: (lvl) => `Bendición de Kandiaru: Regenera +${lvl} HP cada hora y reduce el daño de veneno/sangrado un ${lvl * 6}%. (Sube al completar misiones físicas o emergencias).`
     },
     tenacity: {
         id: 'tenacity', type: 'passive', name: 'Tenacidad', maxLvl: 3,
-        desc: (lvl) => `El que Vence a la Adversidad: Cuando tu HP baja del ${20 + (lvl * 10)}%, el daño recibido se reduce un 50% y tu ataque sube +${20 + (lvl * 10)}%. (Sube al combatir con baja vida).`
+        desc: (lvl) => `El que Vence a la Adversidad: Cuando tu HP baja del ${20 + (lvl * 5)}%, el daño recibido se reduce un 30% y tu ataque sube +${10 + (lvl * 5)}%. (Sube al combatir con baja vida).`
     },
     dagger_mastery: {
         id: 'dagger_mastery', type: 'passive', name: 'Maestría en Armas Cortas', maxLvl: 10,
-        desc: (lvl) => `Técnica de Asesino: Aumenta tu daño directo un +${lvl * 4}% y ensancha +${(lvl * 1.5).toFixed(1)}% la barra crítica del Corte Dimensional. (Sube con cada Corte y golpe a Jefes).`
+        desc: (lvl) => `Técnica de Asesino: Aumenta tu daño directo un +${lvl * 2}% y ensancha +${(lvl * 0.8).toFixed(1)}% la barra crítica del Corte Dimensional. (Sube con cada Corte y golpe a Jefes).`
     },
-    // --- HABILIDADES ACTIVAS ---
+    // --- HABILIDADES ACTIVAS EQUILIBRADAS ---
     sprint: {
         id: 'sprint', type: 'active', name: 'Sprint (Quicksilver)', maxLvl: 5, mpCost: 45, cdSec: 35,
-        desc: (lvl) => `En Mazmorra: Reduce un ${22 + (lvl * 3)}% el tiempo restante de la fase actual y da +30% Evasión por 60s. En Rutina: Adelanta ${6 + (lvl * 2)} min tus misiones activas (Potenciado por Botas).`
+        desc: (lvl) => `En Mazmorra: Reduce un ${8 + (lvl * 2)}% el tiempo restante de la fase actual y da +15% Evasión por 30s. En Rutina: Adelanta ${1 + Math.floor((lvl - 1) * 0.5)} min tus misiones activas (Potenciado +1m por Botas).`
     },
     vital_strike: {
         id: 'vital_strike', type: 'active', name: 'Tajo Vital (Mutilación)', maxLvl: 5, mpCost: 60, cdSec: 12,
-        desc: (lvl) => `En Choque de Jefe: Estocada al punto débil que inflige x${(2.2 + (lvl * 0.25)).toFixed(2)} de daño crítico inmediato y drena +${8 + (lvl * 3)} HP. Fuera de Mazmorra: Ensancha +25% tu próximo Corte (Potenciado por Guanteletes).`
+        desc: (lvl) => `En Choque de Jefe: Estocada al punto débil que inflige x${(1.35 + (lvl * 0.10)).toFixed(2)} de daño crítico inmediato y drena +${3 + lvl} HP. Fuera de Mazmorra: Ensancha +10% tu próximo Corte (Potenciado por Guanteletes).`
     },
     bloodlust: {
         id: 'bloodlust', type: 'active', name: 'Intención Asesina (Sed de Sangre)', maxLvl: 3, mpCost: 85, cdSec: 45,
-        desc: (lvl) => `En Mazmorra / Jefe: Paraliza de terror a los enemigos por ${12 + (lvl * 5)}s (0 daño recibido) y reduce un ${15 + (lvl * 5)}% la vida del Jefe actual (Potenciado por Casco).`
+        desc: (lvl) => `En Mazmorra / Jefe: Paraliza de terror a los enemigos por ${5 + (lvl * 2)}s (0 daño recibido) y reduce un ${6 + (lvl * 2)}% la vida del Jefe actual (Potenciado por Casco).`
     },
     rulers_touch: {
         id: 'rulers_touch', type: 'active', name: 'Toque del Gobernante', maxLvl: 5, mpCost: 95, cdSec: 40,
-        desc: (lvl) => `Telequinesis soberana: En Mazmorra golpea con fuerza gravitatoria (-${70 + (lvl * 25)} HP al Jefe) y atrae 1 mineral/llave del vacío. Fuera de Mazmorra: Reclama expediciones y condensa +${15 + (lvl * 5)} G (Potenciado por Anillo/Collar).`
+        desc: (lvl) => `Telequinesis soberana: En Mazmorra golpea con fuerza gravitatoria (-${30 + (lvl * 12)} HP al Jefe). Fuera de Mazmorra: Reclama expediciones listas y condensa +${5 + (lvl * 2)} G (Potenciado por Anillo/Collar).`
     }
 };
 window.HUNTER_SKILLS_META = HUNTER_SKILLS_META;
@@ -263,24 +263,24 @@ window.castHunterSkill = function(skillId) {
     let maxHP = (typeof calculateHunterMaxHP === "function") ? calculateHunterMaxHP() : 100;
 
     if (skillId === 'sprint') {
-        let pctCut = (22 + (sk.lvl * 3) + (hasBoots ? 8 : 0)) / 100;
-        p.adrenalineDodgeUntil = now + 60000;
+        let pctCut = (8 + (sk.lvl * 2) + (hasBoots ? 4 : 0)) / 100;
+        p.adrenalineDodgeUntil = now + 30000;
         if (typeof activeDungeon !== 'undefined' && activeDungeon && !waitingForValidation) {
             raidTimeLeft = Math.max(2, Math.floor(raidTimeLeft * (1 - pctCut)));
             updateRaidTimerUI();
-            pushRaidLog(`[HABILIDAD: SPRINT Nv.${sk.lvl}] Velocidad supersónica (-${Math.round(pctCut * 100)}% tiempo de fase y +30% Evasión).`, "#7dd3fc");
+            pushRaidLog(`[HABILIDAD: SPRINT Nv.${sk.lvl}] Impulso veloz (-${Math.round(pctCut * 100)}% tiempo de fase y +15% Evasión).`, "#7dd3fc");
             triggerArenaChoreography('hunter');
-            systemNotify(`[Sprint Nv.${sk.lvl}]: Reloj de fase acelerado un ${Math.round(pctCut * 100)}% y +30% Evasión activa.`, "info");
+            systemNotify(`[Sprint Nv.${sk.lvl}]: Reloj de fase acelerado un ${Math.round(pctCut * 100)}% y +15% Evasión por 30s.`, "info");
         } else {
-            let minsAdv = 6 + (sk.lvl * 2) + (hasBoots ? 3 : 0);
+            let minsAdv = 1 + Math.floor((sk.lvl - 1) * 0.5) + (hasBoots ? 1 : 0);
             let count = window.advanceNonTelemetryMissions(minsAdv);
             systemNotify(count > 0
-                ? `[Sprint Nv.${sk.lvl}]: Tus misiones en curso avanzaron +${minsAdv} minutos y ganaste +30% Evasión.`
-                : `[Sprint Nv.${sk.lvl}]: Reflejos acelerados (+30% Evasión por 60s).`, "info");
+                ? `[Sprint Nv.${sk.lvl}]: Tus misiones en curso avanzaron +${minsAdv} min y ganaste +15% Evasión.`
+                : `[Sprint Nv.${sk.lvl}]: Reflejos acelerados (+15% Evasión por 30s).`, "info");
         }
     } else if (skillId === 'vital_strike') {
-        let mult = 2.2 + (sk.lvl * 0.25) + (hasGloves ? 0.35 : 0);
-        let heal = 8 + (sk.lvl * 3) + (hasGloves ? 6 : 0);
+        let mult = 1.35 + (sk.lvl * 0.10) + (hasGloves ? 0.15 : 0);
+        let heal = 3 + sk.lvl + (hasGloves ? 2 : 0);
         if (typeof activeDungeon !== 'undefined' && activeDungeon && waitingForValidation) {
             let baseAtk = Math.floor((28 + (p.stats.str * 16)) * mult);
             clashBossHP = Math.max(0, clashBossHP - baseAtk);
@@ -293,11 +293,11 @@ window.castHunterSkill = function(skillId) {
             p.nextBossCrit = true;
             p.nextSlashWiden = true;
             p.hp = Math.min(maxHP, +(p.hp + heal).toFixed(1));
-            systemNotify(`[Tajo Vital Nv.${sk.lvl}]: +${heal} HP, Zona Vital ensanchada en tu próximo Corte y Crítico listo contra el Jefe.`, "gold");
+            systemNotify(`[Tajo Vital Nv.${sk.lvl}]: +${heal} HP, Zona Vital ensanchada en tu próximo Corte y Crítico listo.`, "gold");
         }
     } else if (skillId === 'bloodlust') {
-        let durSec = 12 + (sk.lvl * 5) + (hasHelm ? 5 : 0);
-        let bossShredPct = (15 + (sk.lvl * 5)) / 100;
+        let durSec = 5 + (sk.lvl * 2) + (hasHelm ? 3 : 0);
+        let bossShredPct = (6 + (sk.lvl * 2)) / 100;
         p.ironImmunityUntil = now + (durSec * 1000);
         if (typeof activeDungeon !== 'undefined' && activeDungeon) {
             if (waitingForValidation && clashBossHP > 0) {
@@ -306,31 +306,30 @@ window.castHunterSkill = function(skillId) {
                 updateClashUI();
             }
             pushRaidLog(`[INTENCIÓN ASESINA Nv.${sk.lvl}] Los monstruos tiemblan de terror (${durSec}s sin recibir daño).`, "#a5b4fc");
-            systemNotify(`[Intención Asesina Nv.${sk.lvl}]: Enemigos paralizados por ${durSec}s y defensas reducidas un ${Math.round(bossShredPct * 100)}%.`, "purple");
+            systemNotify(`[Intención Asesina Nv.${sk.lvl}]: Enemigos paralizados por ${durSec}s y vida del Jefe reducida un ${Math.round(bossShredPct * 100)}%.`, "purple");
         } else {
-            systemNotify(`[Intención Asesina Nv.${sk.lvl}]: Aura de terror activa (Inmune a perder HP por ${durSec}s).`, "purple");
+            systemNotify(`[Intención Asesina Nv.${sk.lvl}]: Aura intimidante activa (Inmune a perder HP por ${durSec}s).`, "purple");
         }
     } else if (skillId === 'rulers_touch') {
-        let dmg = 70 + (sk.lvl * 25) + (hasJewel ? 30 : 0);
+        let dmg = 30 + (sk.lvl * 12) + (hasJewel ? 15 : 0);
         if (typeof activeDungeon !== 'undefined' && activeDungeon) {
             if (waitingForValidation) {
                 clashBossHP = Math.max(0, clashBossHP - dmg);
                 updateClashUI();
                 if (clashBossHP <= 0) finishBossClash();
             } else {
-                raidTimeLeft = Math.max(2, raidTimeLeft - (8 + sk.lvl * 3));
+                raidTimeLeft = Math.max(2, raidTimeLeft - (3 + sk.lvl));
                 updateRaidTimerUI();
             }
-            if (typeof rollLootDrop === "function") rollLootDrop(false);
-            pushRaidLog(`[TOQUE DEL GOBERNANTE Nv.${sk.lvl}] Telequinesis aplasta la sala y atrae botín del vacío.`, "#7dd3fc");
+            if (Math.random() < 0.25 && typeof rollLootDrop === "function") rollLootDrop(false);
+            pushRaidLog(`[TOQUE DEL GOBERNANTE Nv.${sk.lvl}] Fuerza telequinética impacta la sala (-${dmg} HP).`, "#7dd3fc");
         } else {
             if (p.activeExpedition && Date.now() >= p.activeExpedition.endsAt && typeof claimInfantryExpedition === "function") {
                 claimInfantryExpedition();
             }
-            let gGain = 15 + (sk.lvl * 5);
+            let gGain = 5 + (sk.lvl * 2) + (hasJewel ? 3 : 0);
             p.gold += gGain;
-            if (typeof rollLootDrop === "function") rollLootDrop(false);
-            systemNotify(`[Toque del Gobernante Nv.${sk.lvl}]: Telequinesis atrajo +${gGain} G y 1 objeto del vacío a tu Bolsa.`, "gold");
+            systemNotify(`[Toque del Gobernante Nv.${sk.lvl}]: Telequinesis condensó +${gGain} G en tu Bolsa.`, "gold");
         }
     }
 
@@ -339,6 +338,15 @@ window.castHunterSkill = function(skillId) {
     if (typeof syncRaidVitalsUI === "function") syncRaidVitalsUI();
     let skModal = document.getElementById('hunter-skills-modal');
     if (skModal && skModal.style.display === 'flex') openHunterSkillsModal();
+};
+
+let _expandedHunterSkills = {};
+window.toggleHunterSkillDesc = function(skillId) {
+    _expandedHunterSkills[skillId] = !_expandedHunterSkills[skillId];
+    let descEl = document.getElementById('hskill-desc-' + skillId);
+    if (descEl) {
+        descEl.style.display = _expandedHunterSkills[skillId] ? 'block' : 'none';
+    }
 };
 
 window.openHunterSkillsModal = function() {
@@ -358,22 +366,23 @@ window.openHunterSkillsModal = function() {
         let isMax = sk.lvl >= meta.maxLvl;
         let pct = isMax ? 100 : Math.min(100, Math.floor(((sk.xp || 0) / Math.max(1, sk.maxXp || 5)) * 100));
         let cdRem = (sk.cdUntil && now < sk.cdUntil) ? Math.ceil((sk.cdUntil - now) / 1000) : 0;
+        let isExpanded = !!_expandedHunterSkills[k];
 
         let actBtn = '';
         if (meta.type === 'active') {
-            actBtn = `<button class="btn ${cdRem > 0 ? 'btn-blue' : 'btn-main'}" style="width:100%; margin-top:6px; padding:7px !important; font-size:0.72em !important;" onclick="castHunterSkill('${k}')">${cdRem > 0 ? `ENFRIAMIENTO (${cdRem}s)` : `ACTIVAR HABILIDAD (-${meta.mpCost} MP)`}</button>`;
+            actBtn = `<button class="btn ${cdRem > 0 ? 'btn-blue' : 'btn-main'}" style="width:100%; margin-top:6px; padding:7px !important; font-size:0.72em !important;" onclick="event.stopPropagation(); castHunterSkill('${k}')">${cdRem > 0 ? `ENFRIAMIENTO (${cdRem}s)` : `ACTIVAR HABILIDAD (-${meta.mpCost} MP)`}</button>`;
         }
 
         return `
-        <div style="background:rgba(3,10,24,0.92); border:1px solid rgba(125,211,252,0.4); border-left:3px solid ${meta.type === 'active' ? '#00e5ff' : '#818cf8'}; padding:10px 12px; margin-bottom:8px;">
+        <div style="background:rgba(3,10,24,0.92); border:1px solid rgba(125,211,252,0.4); border-left:3px solid ${meta.type === 'active' ? '#00e5ff' : '#818cf8'}; padding:10px 12px; margin-bottom:8px; cursor:pointer;" onclick="toggleHunterSkillDesc('${k}')">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
                 <span style="color:#ffffff; font-weight:700; font-size:0.9em;">${meta.name} <span style="color:#7dd3fc;">Nv.${sk.lvl}/${meta.maxLvl}</span></span>
                 <span style="font-family:'Share Tech Mono', monospace; font-size:0.68em; color:#94a3b8;">${isMax ? 'MAESTRÍA MÁX' : `DOMINIO: ${sk.xp}/${sk.maxXp}`}</span>
             </div>
-            <div class="bar-wrap" style="height:4px; margin-bottom:6px;">
+            <div class="bar-wrap" style="height:4px; margin-bottom:4px;">
                 <div class="bar-fill xp-bar" style="width:${pct}%;"></div>
             </div>
-            <div style="font-size:0.78em; color:#cbd5e1; line-height:1.4;">${meta.desc(sk.lvl)}</div>
+            <div id="hskill-desc-${k}" style="display:${isExpanded ? 'block' : 'none'}; font-size:0.78em; color:#cbd5e1; line-height:1.4; margin-top:6px; padding-top:6px; border-top:1px solid rgba(125,211,252,0.2);">${meta.desc(sk.lvl)}</div>
             ${actBtn}
         </div>`;
     };
@@ -493,11 +502,20 @@ function playSystemSound(type = 'info', fromNotification = false) {
     if (document.hidden) return;
     _unlockAudioContext();
 
+    if ((type === 'type' || type === 'step_arrow') && audioCtx && audioCtx.state === 'running') {
+        const now = audioCtx.currentTime;
+        if (type === 'type') {
+            _holoChime(now, 1480, 1920, 0.028, 0.025, 'sine', 0);
+        } else {
+            _holoChime(now, 880, 1320, 0.055, 0.04, 'triangle', 0);
+            _subThump(now, 140, 55, 0.06, 0.08, 0);
+        }
+        return;
+    }
+
     let audioFileName = 'system-notification.mp3';
     if (type === 'monarch_awakening' || type === 'dungeon_major' || type === 'gold' || type === 'success') {
         audioFileName = 'system-levelup.mp3';
-    } else if (type === 'type' || type === 'step_arrow') {
-        audioFileName = 'notification-clic.mp3';
     }
 
     try {
@@ -507,9 +525,13 @@ function playSystemSound(type = 'info', fromNotification = false) {
             sfx.preload = 'auto';
             _sfxPool[audioFileName] = sfx;
         }
-        sfx.volume = (type === 'type') ? 0.35 : 0.85;
+        sfx.volume = 0.85;
         sfx.currentTime = 0;
-        sfx.play().catch(() => {});
+        sfx.play().catch(() => {
+            if (audioCtx && audioCtx.state === 'running') {
+                _holoChime(audioCtx.currentTime, 660, 990, 0.12, 0.05, 'triangle', 0);
+            }
+        });
     } catch (e) {}
 }
 
@@ -1667,7 +1689,7 @@ function initBiomeCanvas(biome) {
     stopBiomeCanvas();
     const canvas = document.getElementById('biome-canvas');
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { alpha: true });
 
     function resize() {
         canvas.width = window.innerWidth;
@@ -1677,23 +1699,22 @@ function initBiomeCanvas(biome) {
     window.onresize = resize;
 
     biomeParticles = [];
-    let count = 55;
-    if (biome === 'gore' || biome === 'tower') count = 75;
-    if (biome === 'star-stream') count = 65;
+    let count = 38;
+    if (biome === 'gore' || biome === 'tower') count = 48;
+    if (biome === 'star-stream') count = 32;
 
     for (let i = 0; i < count; i++) {
         biomeParticles.push({
             x: Math.random() * canvas.width,
             y: Math.random() * canvas.height,
-            size: Math.random() * 3 + 1,
-            speedX: (Math.random() - 0.5) * 1.5,
-            speedY: Math.random() * 2 + 0.5,
-            alpha: Math.random() * 0.8 + 0.2,
-            angle: Math.random() * Math.PI * 2
+            size: Math.random() * 2.8 + 1,
+            speedX: (Math.random() - 0.5) * 1.4,
+            speedY: Math.random() * 1.8 + 0.5,
+            alpha: Math.random() * 0.75 + 0.2
         });
     }
 
-let tick = 0;
+    let tick = 0;
     function renderLoop() {
         if (document.hidden || window._ultCinematicActive) {
             biomeAnimFrame = requestAnimationFrame(renderLoop);
@@ -1703,98 +1724,60 @@ let tick = 0;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         if (biome === 'trap-grid') {
-            ctx.strokeStyle = 'rgba(255, 170, 0, 0.18)';
+            ctx.strokeStyle = 'rgba(125, 211, 252, 0.15)';
             ctx.lineWidth = 1;
-            let step = 45;
-            let offset = (tick * 1.2) % step;
+            let step = 48;
+            let offset = (tick * 1.1) % step;
+            ctx.beginPath();
             for (let y = offset; y < canvas.height; y += step) {
-                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+                ctx.moveTo(0, y); ctx.lineTo(canvas.width, y);
             }
             for (let x = 0; x < canvas.width; x += step) {
-                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+                ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height);
             }
+            ctx.stroke();
         }
 
-        biomeParticles.forEach((pt, i) => {
-            ctx.save();
+        const len = biomeParticles.length;
+        for (let i = 0; i < len; i++) {
+            const pt = biomeParticles[i];
             if (biome === 'gore') {
-                ctx.strokeStyle = `rgba(255, 15, 15, ${pt.alpha})`;
-                ctx.lineWidth = 2;
-                ctx.beginPath(); ctx.moveTo(pt.x, pt.y); ctx.lineTo(pt.x, pt.y + 22); ctx.stroke();
-                pt.y += pt.speedY * 7;
+                ctx.strokeStyle = `rgba(255, 42, 85, ${pt.alpha})`;
+                ctx.lineWidth = 1.8;
+                ctx.beginPath(); ctx.moveTo(pt.x, pt.y); ctx.lineTo(pt.x, pt.y + 20); ctx.stroke();
+                pt.y += pt.speedY * 6.5;
                 if (pt.y > canvas.height) { pt.y = -20; pt.x = Math.random() * canvas.width; }
-            } 
-            else if (biome === 'tower') {
-                ctx.strokeStyle = `rgba(220, 240, 255, ${pt.alpha * 0.6})`;
-                ctx.lineWidth = 1.5;
-                ctx.beginPath(); ctx.moveTo(pt.x, pt.y); ctx.lineTo(pt.x, pt.y + 35); ctx.stroke();
-                pt.y -= pt.speedY * 6;
-                if (pt.y < -40) { pt.y = canvas.height + 20; pt.x = Math.random() * canvas.width; }
-            }
-            else if (biome === 'star-stream') {
-                ctx.fillStyle = (i % 3 === 0) ? `rgba(255, 215, 0, ${pt.alpha})` : `rgba(0, 210, 255, ${pt.alpha})`;
+            } else if (biome === 'tower') {
+                ctx.strokeStyle = `rgba(224, 242, 254, ${pt.alpha * 0.55})`;
+                ctx.lineWidth = 1.4;
+                ctx.beginPath(); ctx.moveTo(pt.x, pt.y); ctx.lineTo(pt.x, pt.y + 30); ctx.stroke();
+                pt.y -= pt.speedY * 5.5;
+                if (pt.y < -35) { pt.y = canvas.height + 20; pt.x = Math.random() * canvas.width; }
+            } else if (biome === 'star-stream') {
+                ctx.fillStyle = `rgba(125, 211, 252, ${pt.alpha})`;
                 ctx.beginPath(); ctx.arc(pt.x, pt.y, pt.size, 0, Math.PI * 2); ctx.fill();
                 pt.x += pt.speedX * 0.3; pt.y -= pt.speedY * 0.25;
                 if (pt.y < 0) pt.y = canvas.height;
                 if (pt.x < 0) pt.x = canvas.width;
                 if (pt.x > canvas.width) pt.x = 0;
 
-                for (let j = i + 1; j < biomeParticles.length; j++) {
-                    let p2 = biomeParticles[j];
-                    let dist = Math.hypot(pt.x - p2.x, pt.y - p2.y);
-                    if (dist < 85) {
-                        ctx.strokeStyle = `rgba(255, 215, 0, ${(1 - dist / 85) * 0.22})`;
+                if (i + 1 < len) {
+                    const p2 = biomeParticles[i + 1];
+                    const dx = pt.x - p2.x;
+                    const dy = pt.y - p2.y;
+                    if ((dx * dx + dy * dy) < 6400) {
+                        ctx.strokeStyle = 'rgba(125, 211, 252, 0.16)';
                         ctx.lineWidth = 0.8;
                         ctx.beginPath(); ctx.moveTo(pt.x, pt.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
                     }
                 }
-            }
-            else if (biome === 'ghoul') {
-                let isRC = i % 2 === 0;
-                ctx.fillStyle = isRC ? `rgba(255, 0, 55, ${pt.alpha})` : `rgba(160, 160, 160, ${pt.alpha * 0.5})`;
-                ctx.shadowBlur = isRC ? 12 : 0; ctx.shadowColor = '#ff0033';
-                ctx.beginPath(); ctx.arc(pt.x, pt.y, isRC ? pt.size * 1.4 : pt.size * 0.8, 0, Math.PI * 2); ctx.fill();
-                pt.y -= pt.speedY * 0.8; pt.x += Math.sin(tick * 0.03 + i) * 0.6;
-                if (pt.y < -10) { pt.y = canvas.height + 10; pt.x = Math.random() * canvas.width; }
-            }
-            else if (biome === 'abyss') {
-                ctx.fillStyle = (i % 4 === 0) ? `rgba(255, 0, 85, ${pt.alpha})` : `rgba(168, 85, 247, ${pt.alpha * 0.7})`;
-                ctx.shadowBlur = 15; ctx.shadowColor = '#ff0055';
-                ctx.beginPath(); ctx.arc(pt.x, pt.y, pt.size * 1.3, 0, Math.PI * 2); ctx.fill();
-                pt.y -= pt.speedY * 1.1; pt.x += Math.cos(tick * 0.02 + i) * 0.8;
-                if (pt.y < -10) { pt.y = canvas.height + 10; }
-            }
-            else if (biome === 'shrine') {
-                ctx.fillStyle = (i % 5 === 0) ? `rgba(255, 153, 0, ${pt.alpha})` : `rgba(0, 216, 255, ${pt.alpha})`;
-                ctx.fillRect(pt.x, pt.y, pt.size * 1.5, pt.size * 1.5);
-                pt.y -= pt.speedY * 0.6;
-                if (pt.y < 0) pt.y = canvas.height;
-            }
-            else if (biome === 'paranormal') {
-                ctx.fillStyle = (tick % 20 < 10) ? `rgba(0, 255, 204, ${pt.alpha})` : `rgba(255, 0, 200, ${pt.alpha})`;
-                ctx.fillRect(pt.x, pt.y, pt.size * 4, 2);
-                pt.x += (Math.random() - 0.5) * 8; pt.y += (Math.random() - 0.5) * 8;
-            }
-            else if (biome === 'retro-mobile') {
-                ctx.fillStyle = `rgba(74, 222, 128, ${pt.alpha * 0.5})`;
-                ctx.fillRect(Math.floor(pt.x / 8) * 8, Math.floor(pt.y / 8) * 8, 6, 6);
-                pt.y += pt.speedY * 0.5;
-                if (pt.y > canvas.height) pt.y = 0;
-            }
-            else {
-                let color = `rgba(0, 210, 255, ${pt.alpha})`;
-                if (biome === 'fire' || biome === 'groove-st') color = `rgba(255, 110, 0, ${pt.alpha})`;
-                if (biome === 'ice') color = `rgba(180, 255, 255, ${pt.alpha})`;
-                if (biome === 'poison' || biome === 'toxic') color = `rgba(57, 255, 20, ${pt.alpha})`;
-                if (biome === 'blood-demon' || biome === 'void') color = `rgba(192, 132, 252, ${pt.alpha})`;
-
-                ctx.fillStyle = color;
+            } else {
+                ctx.fillStyle = `rgba(0, 210, 255, ${pt.alpha})`;
                 ctx.beginPath(); ctx.arc(pt.x, pt.y, pt.size, 0, Math.PI * 2); ctx.fill();
                 pt.y -= pt.speedY * 0.7;
                 if (pt.y < 0) pt.y = canvas.height;
             }
-            ctx.restore();
-        });
+        }
 
         biomeAnimFrame = requestAnimationFrame(renderLoop);
     }
@@ -2509,7 +2492,7 @@ function _evalArcDeployHook(m) {
 }
 
 function _evalArcRadarScan() {
-    let todayKey = new Date().toDateString();
+    let todayKey = getBiologicalDayStr();
     if (p._arcRadarDay === todayKey) return;
     if (Math.random() < 0.005) { // Bajado a 0.5%
         p._arcRadarDay = todayKey;
@@ -2569,7 +2552,7 @@ function _evalArcAriseFail() {
 
 function _evalArcPulseClick() {
     let now = Date.now();
-    let todayKey = new Date().toDateString();
+    let todayKey = getBiologicalDayStr();
     if (!p._arcFlags) p._arcFlags = {};
     if (!p._arcFlags.pulseClicks) p._arcFlags.pulseClicks = 0;
     p._arcFlags.pulseClicks++;
@@ -3224,38 +3207,43 @@ function executePlayerClashStrike() {
     if (clashBossHP <= 0) finishBossClash();
 }
 
+let _clashFinishingLock = false;
+
 function executeShadowClashSkill(cmdId, mpCost) {
-    if (!waitingForValidation) return;
+    if (!waitingForValidation || _clashFinishingLock) return;
 
     let shadowMult = 1.0;
     if (_hasEq("eq_w_arachnid")) shadowMult += 0.25;
     if (_hasEq("eq_r_mage")) shadowMult += 0.20;
     if (_hasEq("eq_w_halberd") && (cmdId === 'igris' || cmdId === 'tank')) shadowMult += 0.45;
 
+    _clashFinishingLock = true;
     consumeMPFast(mpCost, () => {
         playCommanderUltCinematic(cmdId, () => {
+            _clashFinishingLock = false;
+            if (!waitingForValidation || !activeDungeon) return;
             if (cmdId === 'igris') {
                 let d = Math.floor(110 * shadowMult);
                 clashBossHP = Math.max(0, clashBossHP - d);
-                systemNotify(`¡Igris ejecutó un Tajo Relámpago (-${d} HP al Jefe)!`, "purple");
+                systemNotify(`¡${COMMANDERS_META.igris.name} ejecutó un Tajo Relámpago (-${d} HP al Jefe)!`, "purple");
             } else if (cmdId === 'tank') {
                 let d = Math.floor(50 * shadowMult);
                 p.arcticShield = (p.arcticShield || 0) + 45;
                 clashBossHP = Math.max(0, clashBossHP - d);
-                systemNotify(`¡Tank embistió al Jefe (-${d} HP) y levantó +45 Escudo Ártico!`, "info");
+                systemNotify(`¡${COMMANDERS_META.tank.name} embistió al Jefe (-${d} HP) y levantó +45 Escudo Ártico!`, "info");
             } else if (cmdId === 'iron') {
                 let d = Math.floor(70 * shadowMult);
                 clashBossHP = Math.max(0, clashBossHP - d);
                 p.arcticShield = (p.arcticShield || 0) + 30;
-                systemNotify(`¡Iron aturdió al Jefe con su escudo (-${d} HP, +30 Guardia)!`, "gold");
+                systemNotify(`¡${COMMANDERS_META.iron.name} aturdió al Jefe con su escudo (-${d} HP, +30 Guardia)!`, "gold");
             } else if (cmdId === 'tusk') {
                 clashBossHP = 0;
-                systemNotify("¡TUSK DESATÓ EL HIMNO DEL DRAGÓN DE FUEGO! Jefe incinerado al instante.", "gold");
+                systemNotify(`¡${COMMANDERS_META.tusk.name.toUpperCase()} DESATÓ EL HIMNO DEL DRAGÓN DE FUEGO! Jefe incinerado al instante.`, "gold");
             } else if (cmdId === 'beru') {
                 let d = Math.floor(160 * shadowMult);
                 clashBossHP = Math.max(0, clashBossHP - d);
                 p.hp += 25;
-                systemNotify(`¡Beru desgarró al Jefe (-${d} HP) y te regeneró +25 HP!`, "purple");
+                systemNotify(`¡${COMMANDERS_META.beru.name} desgarró al Jefe (-${d} HP) y te regeneró +25 HP!`, "purple");
             }
             syncRaidVitalsUI();
             updateClashUI();
@@ -3265,8 +3253,10 @@ function executeShadowClashSkill(cmdId, mpCost) {
 }
 
 function finishBossClash() {
-    clearInterval(clashInterval);
+    if (!waitingForValidation) return;
     waitingForValidation = false;
+    _clashFinishingLock = false;
+    clearInterval(clashInterval);
     let timerBox = document.getElementById('raid-timer-box');
     if (timerBox) timerBox.style.display = 'block';
     let clashBox = document.getElementById('raid-boss-clash');
