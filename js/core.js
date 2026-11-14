@@ -630,12 +630,15 @@ function checkDaily(forcedDayStr = null) {
 
     if (p.lastLogin !== evalDayStr) {
         let yestDay = new Date(p.lastLogin).getDay();
+        let maxH = (typeof calculateHunterMaxHP === "function") ? calculateHunterMaxHP() : 100;
+        let didFailRoutine = false;
 
         if (typeof getTodayMissions === "function") {
             let expMissions = getTodayMissions(yestDay).length;
             let compMissions = p.completedToday ? p.completedToday.length : 0;
+            let missed = Math.max(0, expMissions - compMissions);
 
-            if (compMissions >= expMissions && expMissions > 0) {
+            if (missed === 0 && expMissions > 0) {
                 p.perfectDays++;
                 if (p.contractActive === p.lastLogin) {
                     p.contractActive = null;
@@ -648,17 +651,23 @@ function checkDaily(forcedDayStr = null) {
                 if (typeof systemNotify === "function") {
                     systemNotify(`Racha Perfecta: ${p.perfectDays} días invicto.`, "gold");
                 }
+                // Solo se cura al 100% si fuiste perfecto y no estuviste castigado.
+                p.hp = Math.max(1, maxH);
             } else if (p.streakShieldActive === p.lastLogin || p.vigilProtectedDay === p.lastLogin) {
                 let wasVigil = (p.vigilProtectedDay === p.lastLogin);
                 p.streakShieldActive = null;
                 p.vigilProtectedDay = null;
                 p.contractActive = null;
+                p.hp = Math.max(1, maxH);
                 if (typeof systemNotify === "function") {
                     systemNotify(wasVigil
                         ? "Pase de Vigilia Nocturna completado: Tu Racha Perfecta fue resguardada tras tu regreso nocturno."
                         : "Decreto de Soberanía consumido: Tu Racha Perfecta fue protegida anoche sin recibir daño.", "gold");
                 }
             } else {
+                didFailRoutine = true;
+                p.perfectDays = 0;
+                
                 if (p.contractActive === p.lastLogin) {
                     p.contractActive = null;
                     p.hp -= 50;
@@ -666,22 +675,18 @@ function checkDaily(forcedDayStr = null) {
                         systemNotify("Violación del Contrato de Sangre del Arquitecto: -50 HP.", "danger");
                     }
                 }
-                let missed = expMissions - compMissions;
-                if (missed > 0 && compMissions > 0) {
+                if (missed > 0) {
                     p.hp -= (missed * 15);
                     if (typeof systemNotify === "function") {
-                        systemNotify(`Castigo: Dejaste ${missed} misiones inconclusas ayer.`, "danger");
+                        systemNotify(`Castigo Nocturno: Dejaste ${missed} misión(es) inconclusa(s) ayer (-${missed * 15} HP).`, "danger");
                     }
                 }
                 if (p.hp <= 0) {
                     triggerDeath("Fallo acumulado en la rutina obligatoria diaria o Contrato de Sangre.", "routine");
                 }
-                p.perfectDays = 0;
             }
         }
 
-        let maxH = (typeof calculateHunterMaxHP === "function") ? calculateHunterMaxHP() : 100;
-        p.hp = Math.max(1, maxH);
         p.sp = 100;
         p.arcticShield = 0;
         p.sleepingUntilMorning = null;
@@ -689,16 +694,16 @@ function checkDaily(forcedDayStr = null) {
         p.sleepActiveUsageSecs = 0;
         p.nightPassActive = null;
 
-        if (p.titles && p.titles.some(t => t.id === "t_demon_hunter")) {
+        if (p.titles && p.titles.some(t => t.id === "t_demon_hunter") && p.hp > 0) {
             p.hp = Math.min(maxH, p.hp + 5);
         }
 
-        // Etapa 1 o Etapa 4 al amanecer (5:00 AM): Bono Circadiano vs Resaca del Sistema (normal o x2 por trampa)
+        // Etapa 1 o Etapa 4 al amanecer (4:30 AM): Bono Circadiano vs Resaca del Sistema (normal o x2 por trampa)
         if (p.sleepCheatNextMorning) {
             p.sleepCheatNextMorning = false;
             p.sleepDebt = false;
             p.earlySleepBonusPending = false;
-            p.hp = Math.max(15, Math.floor(maxH * 0.25));
+            p.hp = Math.min(p.hp, Math.floor(maxH * 0.25)); // Se queda con el HP actual o se recorta al 25%, lo que sea menor
             p.sp = 20;
             p.mp = Math.floor((p.mp || 0) * 0.25);
             if (typeof systemNotify === "function") {
@@ -706,20 +711,22 @@ function checkDaily(forcedDayStr = null) {
             }
         } else if (p.sleepDebt) {
             let hasSteelTitle = p.titles && p.titles.some(t => t.id === "t_adversity");
-            p.hp = Math.min(p.hp, Math.floor(maxH * (hasSteelTitle ? 0.65 : 0.50)));
+            let penaltyRatio = hasSteelTitle ? 0.65 : 0.50;
+            p.hp = Math.min(p.hp, Math.floor(maxH * penaltyRatio)); // Recorta sobre la vida que le haya quedado
             p.sp = hasSteelTitle ? 55 : 40;
-            p.mp = Math.floor((p.mp || 0) * (hasSteelTitle ? 0.65 : 0.50));
+            p.mp = Math.floor((p.mp || 0) * penaltyRatio);
             p.sleepDebt = false;
             p.earlySleepBonusPending = false;
             if (typeof systemNotify === "function") {
-                systemNotify("Resaca del Sistema: Te acostaste después del toque de queda (10:00 PM). HP, SP y MP reducidos.", "danger");
+                systemNotify("Resaca del Sistema: Te acostaste después de las 10:00 PM sin hibernar. Tu cuerpo amanece agotado y debilitado.", "danger");
             }
         } else if (p.earlySleepBonusPending) {
             p.earlySleepBonusPending = false;
             p.arcticShield = Math.min(800, (p.arcticShield || 0) + 35);
             p.circadianXpBuffUntil = Date.now() + 3600000;
+            if (!didFailRoutine) p.hp = maxH; // Solo cura full si fuiste perfecto
             if (typeof systemNotify === "function") {
-                systemNotify("SINCRONIZACIÓN CIRCADIANA: Dormiste antes de las 9:30 PM. Amaneces con 100% HP, 0 Fatiga, +35 Escudo y +10% EXP por 1 Hora.", "gold");
+                systemNotify("SINCRONIZACIÓN CIRCADIANA: Dormiste a tiempo. Amaneces con 0 Fatiga, +35 Escudo y +10% EXP por 1 Hora.", "gold");
             }
         }
 
