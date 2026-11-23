@@ -41,7 +41,7 @@ const COMMANDERS_META = {
         activeCost: 270,
         activeName: 'Grito de Provocación Total',
         reqText: 'Niv. 52 o STR 4.00',
-        passiveDesc: 'Absorbe el 80% de todo daño en Mazmorras o fallos de Corte. Cada vez que bloquea un ataque de Jefe por ti, su escudo suelta chispas doradas (+1,500 G).',
+        passiveDesc: 'Absorbe el 80% de todo daño en Mazmorras o fallos de Corte. Cada vez que bloquea un ataque de Jefe por ti, su escudo suelta chispas doradas (+15 G).',
         activeDesc: 'Golpea su escudo forzando una Fisura Rango A con TRIPLE botín de Oro, descarga -35 de FATIGA y te vuelve 100% inmune a perder vida durante 20 minutos.'
     },
     tusk: {
@@ -170,62 +170,10 @@ let tabs = ['igris', 'tank', 'iron', 'tusk', 'beru', 'min'].map(k =>
     `;
 };
 
-let _igrisUidFallback = 0;
-window.getCommanderSVG = function(cmdId, mode = 'idle') {
-    let key = String(cmdId || '').toLowerCase().trim();
-    let svgOut = '';
-
-    if (key === 'igris' && typeof getIgrisSVG === 'function') {
-        svgOut = getIgrisSVG();
-    } else if (key === 'tank' && typeof getTankSVG === 'function') {
-        svgOut = getTankSVG();
-    } else if (key === 'iron' && typeof getIronSVG === 'function') {
-        svgOut = getIronSVG();
-    } else if (key === 'igris') {
-        let rawSvg = (typeof IGRIS_SVG !== 'undefined') ? IGRIS_SVG : (window.IGRIS_SVG || '');
-        if (rawSvg) {
-            let uid = (++_igrisUidFallback);
-            svgOut = rawSvg.replace(/\b(igcL|igcR|igcA|igcCore|igcLobeL|igcLobeR|Gradient1|Gradient2|Gradient3)\b/g, `$1_${uid}`);
-        }
-} else if (key === 'tusk' && typeof getTuskSVG === 'function') {
-        svgOut = getTuskSVG();
-    } else if (key === 'tusk' && typeof TUSK_SVG !== 'undefined' && TUSK_SVG) {
-        svgOut = TUSK_SVG;
-    } else if (key === 'beru' && typeof getBeruSVG === 'function') {
-        svgOut = getBeruSVG();
-    } else if (key === 'beru' && typeof BERU_SVG !== 'undefined' && BERU_SVG) {
-        svgOut = BERU_SVG;
-    } else if (key === 'tusk') {
-        svgOut = `<svg viewBox="0 0 220 220" width="100%" height="100%"><circle cx="110" cy="110" r="65" fill="none" stroke="#334155" stroke-width="2" stroke-dasharray="6 6"/></svg>`;
-} else if (key === 'beru') {
-        svgOut = `<svg viewBox="0 0 220 220" width="100%" height="100%"><circle cx="110" cy="110" r="65" fill="none" stroke="#334155" stroke-width="2" stroke-dasharray="6 6"/></svg>`;
-    } else if (key === 'min' && typeof getMinSVG === 'function') {
-        svgOut = getMinSVG();
-    } else if (key === 'min' && typeof getMinByungGyuSVG === 'function') {
-        svgOut = getMinByungGyuSVG();
-    } else if (key === 'min' && typeof MIN_SVG !== 'undefined' && MIN_SVG) {
-        svgOut = MIN_SVG;
-    } else if (key === 'min' && typeof MIN_BYUNG_GYU_SVG !== 'undefined' && MIN_BYUNG_GYU_SVG) {
-        svgOut = MIN_BYUNG_GYU_SVG;
-    } else if (key === 'min') {
-        svgOut = `<svg class="ig ig-idle" viewBox="0 0 220 220" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><ellipse cx="110" cy="198" rx="64" ry="10" fill="none" stroke="#7dd3fc" stroke-width="1.6" stroke-dasharray="8 5"/><g class="svg-torso-solid"><circle cx="110" cy="78" r="46" fill="none" stroke="rgba(186,230,253,0.45)" stroke-width="1.4" stroke-dasharray="6 4"/><path d="M110 20 L110 34 M103 27 L117 27" stroke="#ffffff" stroke-width="2.4"/><path d="M110 36 C82 36 70 58 74 88 L90 98 L110 86 L130 98 L146 88 C150 58 138 36 110 36 Z" fill="#061226" stroke="#e0f2fe" stroke-width="1.8"/><path d="M56 92 L110 108 L164 92 L176 192 L44 192 Z" fill="#040b18" stroke="#7dd3fc" stroke-width="1.8"/><path d="M92 98 L110 178 L128 98" fill="none" stroke="#e0f2fe" stroke-width="1.5"/><polygon points="95,68 106,71 98,74" fill="#ffffff"/><polygon points="125,68 114,71 122,74" fill="#ffffff"/><line x1="168" y1="54" x2="168" y2="192" stroke="#e0f2fe" stroke-width="2.4"/><polygon points="168,36 180,52 168,68 156,52" fill="rgba(125,211,252,0.3)" stroke="#ffffff" stroke-width="1.8"/></g></svg>`;
-    } else if (key === 'min_unknown') {
-        svgOut = `<svg viewBox="0 0 220 220" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><ellipse cx="110" cy="198" rx="60" ry="10" fill="none" stroke="#64748b" stroke-width="1.5" stroke-dasharray="6 5"/><circle cx="110" cy="105" r="56" fill="rgba(15,23,42,0.75)" stroke="rgba(125,211,252,0.45)" stroke-width="1.6" stroke-dasharray="8 6"/><text x="110" y="132" text-anchor="middle" fill="#e0f2fe" font-family="Exo 2, sans-serif" font-weight="700" font-size="82" style="filter:drop-shadow(0 0 12px #00e5ff);">?</text></svg>`;
-    } else {
-        svgOut = `<svg viewBox="0 0 220 220" width="100%" height="100%"><circle cx="110" cy="110" r="65" fill="none" stroke="#334155" stroke-width="2" stroke-dasharray="6 6"/></svg>`;
-    }
-
-    if (mode && mode !== 'idle') {
-        svgOut = svgOut.replace('class="ig ig-idle"', `class="ig ig-${mode}"`);
-    }
-    svgOut = svgOut.replace('<svg ', `<svg data-cmd-key="${key}" `);
-    setTimeout(() => applyShadowOffsetsToDOM(), 0);
-    return svgOut;
-};
-var getCommanderSVG = window.getCommanderSVG;
 /* ==========================================================================
    3. CINEMÁTICA HOLOGRÁFICA A PANTALLA COMPLETA PARA HABILIDADES ACTIVAS
    ========================================================================== */
+   
 function playCommanderUltCinematic(cmdId, onComplete) {
     let meta = COMMANDERS_META[cmdId];
     if (!meta) {
@@ -498,11 +446,42 @@ function resetSealModalToPhase1() {
             } else if (pendingReward.id === 'm_phys') {
                 promptLabel = 'BITÁCORA SERPENTO (Qué revisaste o ajustaste en la moto):';
             }
+                        let presets = ['Tarea completada hoy', 'Objetivo cumplido al 100%'];
+            if (pendingReward.id && pendingReward.id.startsWith('sched_')) {
+                presets = ['Asistencia y apuntes de clase', 'Repaso y ejercicios vistos'];
+            } else if (pendingReward.id === 'm_workout') {
+                presets = ['Flexiones y rutina matutina', 'Entrenamiento de fuerza completo'];
+            } else if (pendingReward.id === 'm_phys') {
+                presets = ['Revisión de cadena y frenos', 'Chequeo de aceite y luces'];
+            } else if (pendingReward.id === 'm_clean') {
+                presets = ['Cuarto ordenado y mochila lista', 'Cama tendida y escritorio limpio'];
+            } else if (pendingReward.id && pendingReward.id.includes('traffic')) {
+                presets = ['Tránsito Los Chorros superado', 'Ruta completada sin incidentes'];
+            } else if (pendingReward.id === 'm_work') {
+                presets = ['Jornada laboral completada', 'Operaciones del turno cerradas'];
+            } else if (pendingReward.id === 'm_creative') {
+                presets = ['Avance de edición / dibujo', 'Práctica de guion y doblaje'];
+            }
+
+            if (Array.isArray(p.honorLogs)) {
+                let lastForId = p.honorLogs.find(l => l.id === (pendingReward.id || pendingReward.type));
+                if (lastForId && lastForId.note && !presets.includes(lastForId.note)) {
+                    presets.unshift(lastForId.note);
+                }
+            }
+
+            let chipsHtml = presets.slice(0, 3).map(txt => {
+                let safe = txt.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                return `<span class="sl-honor-chip" onclick="let i=document.getElementById('sl-honor-proof-input'); if(i){ i.value='${safe}'; i.focus(); } if(typeof playSystemSound==='function') playSystemSound('type');">${txt}</span>`;
+            }).join('');
+
             honorWrap.style.display = 'block';
             honorWrap.innerHTML = `
                 <div style="font-family:'Share Tech Mono', monospace; font-size:0.74em; color:#bae6fd; margin-bottom:5px; text-align:left;">[${promptLabel}]</div>
                 <input type="text" id="sl-honor-proof-input" class="input-dark" style="margin:0; padding:10px; font-size:0.88em; border-color:#7dd3fc; text-align:left;" placeholder="Registro obligatorio ante el Sistema..." autocomplete="off">
+                <div class="sl-honor-chips-row">${chipsHtml}</div>
             `;
+
         } else {
             honorWrap.style.display = 'none';
             honorWrap.innerHTML = '';
@@ -814,10 +793,6 @@ function executeSealSuccess(isCrit = false) {
             p.starStreamNext = false;
         }
         systemNotify(`¡Patrocinio del Star Stream aplicado! Oro x3 + 90 G libres de impuestos (${p.starStreamCharges || 0} cargas restantes).`, "gold");
-    } else if (false) {
-        finalGold = Math.floor((pendingReward.gold || 0) * 3 * igrisBuff);
-        p.starStreamNext = false;
-        systemNotify("¡Patrocinio del Star Stream consumido! Oro triplicado libre de impuestos.", "gold");
     } else {
         let taxRate = (p._arcGildedUntil && now < p._arcGildedUntil) ? 1.0 : GOLD_NERF;
         finalGold = Math.floor((pendingReward.gold || 0) * igrisBuff * beruGoldMult * wolfGoldMult * taxRate);
@@ -1172,6 +1147,16 @@ window.toggleInfantryCardInspect = function(infKey) {
     renderShadowSanctuary();
 };
 
+// Reescribe el HTML solo si cambió algo visible. El SVG se excluye de la firma porque su id
+// interno cambia en cada render; así la animación de respiración del Comandante no se reinicia.
+function _setGuardedHtml(el, html) {
+    if (!el) return;
+    let sig = html.replace(/<svg[\s\S]*?<\/svg>/g, '<svg/>');
+    if (el.dataset.renderSig === sig && el.childElementCount > 0) return;
+    el.dataset.renderSig = sig;
+    el.innerHTML = html;
+}
+
 function renderShadowSanctuary() {
     ensureShadowStructure();
     let maxSlots = getMaxShadowSlots();
@@ -1201,7 +1186,7 @@ function renderShadowSanctuary() {
                     }).join('') + `</div>`;
             }
 
-            altarEl.innerHTML = `
+            _setGuardedHtml(altarEl, `
                 <div class="altar-snow-bg"></div>
                 ${selectorHtml}
                 <div class="commander-svg-stage live-anim-active" id="throne-cmd-stage" onclick="setCommanderAnim('#throne-cmd-stage', 'attack', 650)">${customIdleSvg}</div>
@@ -1216,7 +1201,7 @@ function renderShadowSanctuary() {
                         <button class="btn btn-main" style="flex:1; padding:8px; font-size:0.76em;" onclick="castCommanderActive('${activeCmdId}')">${meta.activeName} (-${effCost} MP)</button>
                         <button class="btn btn-blue" style="flex:1; padding:8px; font-size:0.76em;" onclick="toggleEquipCommander('${activeCmdId}')">GUARDAR EN SOMBRA</button>
                     </div>
-                </div>`;
+                                </div>`);
         } else {
             altarEl.classList.add('resting-compact');
             let firstUnlockedCmd = Object.keys(COMMANDERS_META).find(k => p.shadowArmy[k] && p.shadowArmy[k].unlocked);
@@ -1224,14 +1209,14 @@ function renderShadowSanctuary() {
                 ? `<button class="btn btn-main" style="padding:8px 14px; font-size:0.78em; flex-shrink:0;" onclick="toggleEquipCommander('${firstUnlockedCmd}')">¡SURGE!</button>`
                 : `<button class="btn btn-blue" style="padding:8px 12px; font-size:0.72em; flex-shrink:0; opacity:0.5; cursor:not-allowed;" disabled>${getHoloLockSVG(12, "#94a3b8")} NIV.40</button>`;
 
-            altarEl.innerHTML = `
+                        _setGuardedHtml(altarEl, `
                 <div class="altar-info-bar" style="margin-top:0; display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 14px; width:100%;">
                     <div style="text-align:left;">
                         <div style="font-size:0.9em; font-weight:700; color:#cbd5e1; letter-spacing:1px;">TRONO EN REPOSO ABSOLUTO</div>
                         <div style="font-size:0.74em; color:#7dd3fc; font-family:'Share Tech Mono', monospace;">Consumo: 0 MP/min (Núcleo Estable)</div>
                     </div>
                     ${surgeBtnHtml}
-                </div>`;
+                </div>`);
         }
     }
 
@@ -1242,10 +1227,11 @@ function renderShadowSanctuary() {
 
         if (i > maxSlots) {
             slotEl.className = "shadow-slot locked-slot";
+            slotEl.onclick = null;
             let cond = (i === 2)
                 ? `Niv.45 o STR+INT: ${Math.floor((p.stats.str + p.stats.int) * 10)}/500`
                 : `Niv.75 + INT ${p.stats.int.toFixed(2)}/4.50`;
-            slotEl.innerHTML = `<span class="lock-icon">${getHoloLockSVG(24, "#64748b")}</span><span class="slot-lock-text" style="color:#94a3b8;">RANURA ${i}</span><span class="slot-2-condition" style="color:#64748b;">${cond}</span>`;
+            _setGuardedHtml(slotEl, `<span class="lock-icon">${getHoloLockSVG(24, "#64748b")}</span><span class="slot-lock-text" style="color:#94a3b8;">RANURA ${i}</span><span class="slot-2-condition" style="color:#64748b;">${cond}</span>`);
         } else {
             let cmdId = p.equippedShadows[i - 1];
             if (cmdId && COMMANDERS_META[cmdId]) {
@@ -1253,18 +1239,19 @@ function renderShadowSanctuary() {
                 let cmdState = p.shadowArmy[cmdId];
                 slotEl.className = "shadow-slot active-slot";
                 slotEl.onclick = () => toggleCommanderCardInspect(cmdId);
-                slotEl.innerHTML = `
+                _setGuardedHtml(slotEl, `
                     <div class="slot-live-model static-shadow-pose" style="width:74px; height:74px; margin:0 auto;">${getCommanderSVG(cmdId, 'idle')}</div>
                     <div style="color:#f8fafc; font-weight:700; font-size:0.8em; letter-spacing:0.8px;">${meta.name.replace('Comandante ', '').toUpperCase()}</div>
                     <div style="font-size:0.68em; color:#7dd3fc; font-family:'Share Tech Mono', monospace;">NV.${cmdState.level || 1} • -${meta.mpDrain} MP/m</div>
-                    <button class="btn btn-blue" style="width:100%; padding:4px; font-size:0.62em; margin-top:4px;" onclick="event.stopPropagation(); toggleEquipCommander('${cmdId}')">GUARDAR</button>`;
+                    <button class="btn btn-blue" style="width:100%; padding:4px; font-size:0.62em; margin-top:4px;" onclick="event.stopPropagation(); toggleEquipCommander('${cmdId}')">GUARDAR</button>`);
             } else {
                 slotEl.className = "shadow-slot";
                 slotEl.onclick = null;
-                slotEl.innerHTML = `<span class="slot-1-meta" style="color:#64748b;">[RANURA ${i} LIBRE]</span><span style="font-size:0.7em; color:#94a3b8; margin-top:4px;">0 MP/m</span><span style="font-size:0.65em; color:#475569;">Toca una sombra abajo</span>`;
+                _setGuardedHtml(slotEl, `<span class="slot-1-meta" style="color:#64748b;">[RANURA ${i} LIBRE]</span><span style="font-size:0.7em; color:#94a3b8; margin-top:4px;">0 MP/m</span><span style="font-size:0.65em; color:#475569;">Toca una sombra abajo</span>`);
             }
         }
     }
+
 
 // 3. Ocultar el contenedor viejo de Min Byung-Gyu (ahora vive como la 6.ª tarjeta de la cuadrícula)
     let minCont = document.getElementById('min-sanctuary-container');
@@ -1434,7 +1421,7 @@ function renderShadowSanctuary() {
 
         gridHtml += `</div>`;
 
-        cmdCont.innerHTML = discountBanner + gridHtml;
+        _setGuardedHtml(cmdCont, discountBanner + gridHtml);
         applyShadowOffsetsToDOM(cmdCont);
     }
 // 5. LEGIÓN DE INFANTERÍA COMPACTA + EXPEDICIONES A PORTALES DESPEJADOS
@@ -1525,12 +1512,7 @@ function renderShadowSanctuary() {
             </div>`;
         });
 
-        let bottomSmallCalibrator = `
-            <div style="display:flex; justify-content:flex-end; margin-top:6px;">
-                <button class="btn btn-blue" style="padding:3px 8px !important; font-size:0.58em !important; opacity:0.65;" onclick="openShadowXYCalibrator()">✢ X/Y</button>
-            </div>`;
-
-        infCont.innerHTML = expHtml + rowsHtml + bottomSmallCalibrator;
+                _setGuardedHtml(infCont, expHtml + rowsHtml);
     }
 }
 
@@ -2220,7 +2202,7 @@ function triggerMinByungGyuMiracle(fromDungeon = false) {
         saveData();
         if (typeof updateHUD === "function") updateHUD();
         if (typeof renderRoutine === "function") renderRoutine();
-        systemNotify("✨ ¡MILAGRO CONSUMADO! Vitalidad al 100%, +100 Escudo, +0.50 STR/INT y el título de Min Byung-Gyu ha quedado grabado en tu Perfil.", "success");
+        systemNotify("¡MILAGRO CONSUMADO! Vitalidad al 100%, Escudo al máximo (800/800), +0.50 STR/INT y el título de Min Byung-Gyu ha quedado grabado en tu Perfil.", "success");
     }, 3600);
 }
 
@@ -2236,8 +2218,8 @@ function renderTitles() {
         }
     }
 
-    if (!p.titles || p.titles.length === 0) {
-        cont.innerHTML = `<p style="color:var(--text-muted); font-size:0.9em;">Aún no has desbloqueado reliquias de título en tu expediente.</p>`;
+        if (!p.titles || p.titles.length === 0) {
+        _setGuardedHtml(cont, `<p style="color:var(--text-muted); font-size:0.9em;">Aún no has desbloqueado reliquias de título en tu expediente.</p>`);
         return;
     }
 
@@ -2266,8 +2248,9 @@ function renderTitles() {
             <div class="sl-title-green-buff">${fx.label} <b>${fx.buff}</b></div>
         </div>`;
     });
-    cont.innerHTML = html;
+    _setGuardedHtml(cont, html);
 }
+
 function triggerDeathFromCombat(reason) {
     if (typeof triggerDeath === "function") {
         triggerDeath(reason, 'dungeon');

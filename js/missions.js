@@ -45,7 +45,7 @@ window.incrementHydrationGlass = function() {
 
     p.hydrationGlasses = Math.min(8, (p.hydrationGlasses || 0) + 1);
     p.sp = Math.min(100, (p.sp || 0) + 2);
-    if (typeof playSystemSound === 'function') playSystemSound('step_arrow');
+    if (typeof playSystemSound === 'function') playSystemSound('check');
 
     if (p.hydrationGlasses >= 8) {
         if (!p.completedToday) p.completedToday = [];
@@ -318,14 +318,13 @@ let currentDayStr = (typeof getBiologicalDayStr === "function") ? getBiologicalD
     let isSleeping = (typeof isSleepingNow === "function") ? isSleepingNow(now) : (p.sleepingUntilMorning === currentDayStr);
     let isVigilActiveTonight = (typeof isNightVigilActiveNow === "function") ? isNightVigilActiveNow(now) : (p.nightPassActive === currentDayStr);
 
-    let continuousMins = (h < 5 ? h + 24 : h) * 60 + m;
-    let deadlineMins = 21 * 60 + 35; // 9:15 PM
+        let continuousMins = (h < 5 ? h + 24 : h) * 60 + m;
+    let deadlineMins = 21 * 60 + 20; // 9:20 PM: Misiones incompletas pasan a X roja
     if (p.tankCurfewDelayDay === currentDayStr) deadlineMins += 45;
     if (p.nightPassActive === currentDayStr || p.movieNightCurfewDay === currentDayStr) deadlineMins = 23 * 60 + 20;
     if (isMercyActive()) deadlineMins = 26 * 60;
-        let curMinRoutine = h * 60 + m;
-    let isPastDeadline = (continuousMins >= deadlineMins && !isSleeping && !isVigilActiveTonight && (curMinRoutine >= 1275 || curMinRoutine < 270));
-
+    let curMinRoutine = h * 60 + m;
+    let isPastDeadline = (continuousMins >= deadlineMins && !isSleeping && !isVigilActiveTonight && (curMinRoutine >= 1280 || curMinRoutine < 270));
 
     const svgCheckGreen = `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 6px #00e5ff);"><polyline points="20,6 9,17 4,12"/></svg>`;
     const svgCrossRed   = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#ff2a55" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 6px #ff2a55);"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
@@ -482,8 +481,8 @@ let currentDayStr = (typeof getBiologicalDayStr === "function") ? getBiologicalD
                     ? `<div class="sl-mission-sealed-msg" style="color:#e0f2fe;">[Misión sellada en el registro de hoy]</div>`
                     : (isHydration
                         ? `<button class="btn" onclick="incrementHydrationGlass()">REGISTRAR VASO DE AGUA (${p.hydrationGlasses || 0}/8)</button>`
-                        : (isActive
-                            ? `<button class="btn" onclick="finishRoutineMission('${m.id}')">${isTelemetry ? 'FINALIZAR Y REGISTRAR TIEMPO REAL' : 'SELLAR MISIÓN (' + minsPassed + '/' + reqMins + 'm)'}</button>`
+                                                : (isActive
+                            ? `${m.id.startsWith('sched_') ? `<button class="btn btn-blue" style="margin-bottom:8px;" onclick="toggleClassOledShield(true, '${m.id}', '${m.title.replace(/'/g, "\\'")}')">[ ESCUDO OLED: PONER EN BOLSILLO ]</button>` : ''}<button class="btn" onclick="finishRoutineMission('${m.id}')">${isTelemetry ? 'FINALIZAR Y REGISTRAR TIEMPO REAL' : 'SELLAR MISIÓN (' + minsPassed + '/' + reqMins + 'm)'}</button>`
                             : `<button class="btn" onclick="selectedRoutineMissionId=null; deployRoutineMission('${m.id}')">${isTelemetry ? 'INICIAR CRONÓMETRO REAL' : 'DESPLEGAR MISIÓN (' + reqMins + 'm)'}</button>`))}
             </div>` : ''}
         </div>`;
@@ -613,14 +612,21 @@ function scheduleMissionNativeReminders(m) {
         ];
     }
 
-    navigator.serviceWorker.ready.then(reg => {
+        navigator.serviceWorker.ready.then(reg => {
         if (reg.active) {
             reg.active.postMessage({ type: 'SL_SCHEDULE_REMINDERS', missionId: m.id, alerts: alerts });
         }
     }).catch(() => {});
+
+    if (typeof window.scheduleCloudPush === 'function') {
+        alerts.forEach(al => {
+            window.scheduleCloudPush(m.id, al.title, al.body, Math.round((al.delayMs || 60000) / 1000), al.tag);
+        });
+    }
 }
 
 function cancelMissionNativeReminders(missionId) {
+    if (typeof window.cancelCloudPush === 'function') window.cancelCloudPush(missionId);
     if (!('serviceWorker' in navigator)) return;
     navigator.serviceWorker.ready.then(reg => {
         if (reg.active) {
@@ -628,6 +634,42 @@ function cancelMissionNativeReminders(missionId) {
         }
     }).catch(() => {});
 }
+
+
+let _oledWakeLock = null;
+let _oledTimerInterval = null;
+window._classOledShieldActive = false;
+
+window.toggleClassOledShield = async function(enable, missionId = null, title = 'SESIÓN EN CURSO') {
+    let ov = document.getElementById('sl-class-shield-overlay');
+    let titleEl = document.getElementById('sl-class-shield-title');
+    let timerEl = document.getElementById('sl-class-shield-timer');
+
+    if (!enable) {
+        window._classOledShieldActive = false;
+        if (_oledTimerInterval) { clearInterval(_oledTimerInterval); _oledTimerInterval = null; }
+        if (_oledWakeLock) { try { await _oledWakeLock.release(); } catch (e) {} _oledWakeLock = null; }
+        if (ov) ov.style.display = 'none';
+        return;
+    }
+
+    window._classOledShieldActive = true;
+    if (titleEl) titleEl.innerText = title.toUpperCase();
+    if (ov) ov.style.display = 'flex';
+
+    const updateOledClock = () => {
+        if (!p || !p.activeMissions || !missionId || !p.activeMissions[missionId]) return;
+        let mins = Math.max(0, Math.floor((Date.now() - p.activeMissions[missionId]) / 60000));
+        if (timerEl) timerEl.innerText = `${String(mins).padStart(2, '0')}m`;
+    };
+    updateOledClock();
+    if (_oledTimerInterval) clearInterval(_oledTimerInterval);
+    _oledTimerInterval = setInterval(updateOledClock, 15000);
+
+    if ('wakeLock' in navigator) {
+        try { _oledWakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
+    }
+};
 
 function checkForgottenRouteHandover() {
     if (!p || !p.activeMissions || !p.activeMissions['m_traffic_ida']) return false;
@@ -680,6 +722,84 @@ function checkForgottenRouteHandover() {
     document.body.appendChild(ov);
     return true;
 }
+
+function checkForgottenTelemetryHandover(missionObj) {
+    if (!missionObj || !p || !p.activeMissions || !p.activeMissions[missionObj.id]) return false;
+    let id = missionObj.id;
+    let isWork = (id === 'm_work');
+    let isClass = id.startsWith('sched_');
+    if (!isWork && !isClass) return false;
+
+    let elapsedMins = Math.floor((Date.now() - p.activeMissions[id]) / 60000);
+    let threshold = isWork ? 600 : 210;
+    if (elapsedMins < threshold) return false;
+    if (document.getElementById('sl-handover-modal')) return true;
+
+    let safeAvg = getTelemetryAverageMins(id, isWork ? 240 : 90);
+    let cornerSVG = (typeof getBaroqueCornerSVG === "function") ? getBaroqueCornerSVG() : '';
+    let ov = document.createElement('div');
+    ov.id = 'sl-handover-modal';
+    ov.style.cssText = 'position:fixed; inset:0; background:rgba(2,6,18,0.94); z-index:13600; display:flex; justify-content:center; align-items:center; padding:18px;';
+    ov.innerHTML = `
+        <div class="sl-holo-frame" style="width:100%; max-width:410px; cursor:default;">
+            <div class="sl-holo-rail top"><span class="rail-core"></span></div>
+            <div class="sl-holo-glass">
+                <div class="sl-holo-inner-box" style="padding:20px 16px; text-align:center;">
+                    <span class="sl-baroque-corner tl">${cornerSVG}</span>
+                    <span class="sl-baroque-corner tr">${cornerSVG}</span>
+                    <span class="sl-baroque-corner bl">${cornerSVG}</span>
+                    <span class="sl-baroque-corner br">${cornerSVG}</span>
+                    <div class="sl-holo-header-row" style="margin-bottom:8px;">
+                        <div class="sl-excl-square">!</div>
+                        <div class="sl-title-rect">PROTECCIÓN DE TELEMETRÍA</div>
+                    </div>
+                    <div class="sl-holo-subbracket">[ CRONÓMETRO EXCEDIDO: ${elapsedMins}M ]</div>
+                    <div style="color:#e0f2fe; font-size:0.9em; line-height:1.5; margin:12px 0;">
+                        <b>[${missionObj.title}]</b> lleva <b>${elapsedMins} min</b> activo. ¿Olvidaste cerrarlo a tiempo?<br>
+                        Puedes sellarlo usando tu promedio real (<b>${safeAvg} min</b>) para no distorsionar tus estadísticas.
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:8px;">
+                        <button class="btn btn-main" style="width:100%; padding:11px;" onclick="confirmCleanTelemetrySeal('${id}', ${safeAvg})">
+                            SELLAR CON PROMEDIO REAL (${safeAvg}M)
+                        </button>
+                        <button class="btn btn-blue" style="width:100%; padding:9px;" onclick="document.getElementById('sl-handover-modal').remove(); confirmCleanTelemetrySeal('${id}', ${elapsedMins})">
+                            CONSERVAR ${elapsedMins}M COMPLETOS
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="sl-holo-rail bottom"><span class="rail-core"></span></div>
+        </div>
+    `;
+    document.body.appendChild(ov);
+    return true;
+}
+
+window.confirmCleanTelemetrySeal = function(id, chosenMins) {
+    let modal = document.getElementById('sl-handover-modal');
+    if (modal) modal.remove();
+    let m = getTodayMissions().find(x => x.id === id);
+    if (!m) return;
+
+    if (!p.telemetryStats) p.telemetryStats = {};
+    if (!p.telemetryStats[m.id]) p.telemetryStats[m.id] = { totalMins: 0, count: 0, bestMins: chosenMins };
+    p.telemetryStats[m.id].totalMins += chosenMins;
+    p.telemetryStats[m.id].count += 1;
+    if (!p.telemetryLastToday) p.telemetryLastToday = {};
+    p.telemetryLastToday[m.id] = chosenMins;
+    toggleClassOledShield(false);
+
+    openSealModal({
+        type: 'routine',
+        id: m.id,
+        xp: m.xp,
+        gold: m.gold,
+        stat: m.stat,
+        timeCat: m.timeCat,
+        mins: chosenMins,
+        realMins: chosenMins
+    });
+};
 
 window.confirmRouteToWorkHandover = function(routeMins, workStartTs) {
     let modal = document.getElementById('sl-handover-modal');
@@ -737,7 +857,7 @@ function initAcademicAntiClashGuard() {
     document.addEventListener('visibilitychange', () => {
         if (!p || !p.activeMissions) return;
         let activeClassId = Object.keys(p.activeMissions).find(id => id.startsWith('sched_'));
-        if (!activeClassId) {
+        if (!activeClassId || window._classOledShieldActive) {
             _classFocusLeftAt = null;
             return;
         }
@@ -747,7 +867,7 @@ function initAcademicAntiClashGuard() {
         } else if (_classFocusLeftAt) {
             let awaySecs = Math.floor((Date.now() - _classFocusLeftAt) / 1000);
             _classFocusLeftAt = null;
-            if (awaySecs >= 28 && awaySecs <= 900) {
+            if (awaySecs >= 45 && awaySecs <= 900) {
                 p.classDeserterToday = true;
                 p.hp = Math.max(5, +(p.hp - 20).toFixed(1));
                 p.gold = Math.max(0, p.gold - 35);
@@ -755,7 +875,7 @@ function initAcademicAntiClashGuard() {
                 saveData();
                 updateHUD();
                 renderRoutine();
-                systemNotify(`[DESERCIÓN EN CLASE DETECTADA: ${awaySecs}s FUERA DEL SISTEMA]: Saliste a otra aplicación durante tu horario académico. Penalización: -20 HP, -35 G y esos segundos fueron descontados de tu clase.`, "danger");
+                systemNotify(`[DESERCIÓN EN CLASE DETECTADA: ${awaySecs}s FUERA DEL SISTEMA]: Si vas a bloquear la pantalla para atender clase, activa primero el Escudo OLED en tu misión. (-20 HP, -35 G).`, "danger");
             }
         }
     });
@@ -849,9 +969,13 @@ function finishRoutineMission(id) {
     let m = getTodayMissions().find(x => x.id === id);
     if (!m || !p.activeMissions || !p.activeMissions[id]) return;
 
-    if (id === 'm_traffic_ida' && checkForgottenRouteHandover()) {
+       if (id === 'm_traffic_ida' && checkForgottenRouteHandover()) {
         return;
     }
+    if (checkForgottenTelemetryHandover(m)) {
+        return;
+    }
+    if (id.startsWith('sched_')) toggleClassOledShield(false);
 
     let now = Date.now();
     let rawElapsedMs = now - p.activeMissions[id];
@@ -1001,8 +1125,31 @@ window.filterDungeons = function(rank, btnElement) {
     renderBosses();
 };
 
+let _isSonarScanning = false;
+let _sonarScanTimers = [];
+let _threatsDrawerOpen = false;
+
+window.togglePersonalThreatsDrawer = function() {
+    _threatsDrawerOpen = !_threatsDrawerOpen;
+    let bar = document.getElementById('sl-threats-bar');
+    let drawer = document.getElementById('boss-container');
+    if (bar) bar.classList.toggle('is-open', _threatsDrawerOpen);
+    if (drawer) drawer.classList.toggle('collapsed', !_threatsDrawerOpen);
+};
+
+function _getBlipAngleDeg(x, y) {
+    let rad = Math.atan2(x - 50, -(y - 50));
+    let deg = (rad * 180) / Math.PI;
+    return (deg + 360) % 360;
+}
+
 function rescanRadarHorizon() {
-    if (navigator.vibrate) navigator.vibrate(50);
+    if (_isSonarScanning) return;
+    _isSonarScanning = true;
+    _sonarScanTimers.forEach(t => clearTimeout(t));
+    _sonarScanTimers = [];
+
+    if (navigator.vibrate) navigator.vibrate(40);
     if (typeof _evalArcRadarScan === "function") _evalArcRadarScan();
 
     let usedBeacon = !!(p && p.redBeaconArmed);
@@ -1014,18 +1161,86 @@ function rescanRadarHorizon() {
 
     generateRadarBlips(true, usedBeacon);
     syncBeaconRescanButton();
-    renderBosses();
+    renderBosses(true);
 
-    if (typeof systemNotify === "function") {
-        systemNotify(usedBeacon
-            ? "🚨 ¡SOBRECARGA CARMESÍ COMPLETADA! Portales de alto rango y Portales Rojos fijados en el Sonar durante 30 minutos."
-            : "📡 Barrido de sonar completado. Nuevas fluctuaciones de maná sintonizadas (Guardadas por 30 min).", usedBeacon ? "danger" : "info");
+    let screen = document.querySelector('#dungeon-list-container .sonar-screen');
+    let scanOv = document.getElementById('sonar-scan-overlay');
+    let pingWv = document.getElementById('sonar-ping-wave');
+    let metaCount = document.getElementById('sonar-signals-count');
+    let termSlot = document.getElementById('sonar-terminal-slot');
+
+    if (metaCount) metaCount.textContent = `ESCANEANDO... 0/${currentRadarBlips.length}`;
+    if (termSlot) {
+        termSlot.innerHTML = `
+        <div class="sl-sonar-dossier" style="text-align:center; padding:18px;">
+            <div style="font-family:'Share Tech Mono', monospace; color:#7dd3fc; font-size:0.8em; letter-spacing:1.2px;">
+                [ BARRIDO DIMENSIONAL EN PROGRESO... ]
+            </div>
+        </div>`;
     }
+
+    if (scanOv) {
+        scanOv.classList.remove('scanning-active');
+        void scanOv.offsetWidth;
+        scanOv.classList.add('scanning-active');
+    }
+    if (pingWv) {
+        pingWv.classList.remove('ping-active');
+        void pingWv.offsetWidth;
+        pingWv.classList.add('ping-active');
+    }
+
+    let ordered = currentRadarBlips
+        .map(b => ({ id: b.dung.id, angle: _getBlipAngleDeg(b.x, b.y) }))
+        .sort((a, b) => a.angle - b.angle);
+
+    let foundCount = 0;
+    ordered.forEach((item) => {
+        let delayMs = Math.max(180, Math.round((item.angle / 360) * 1280));
+        let tid = setTimeout(() => {
+            foundCount++;
+            if (screen) {
+                let blipEl = screen.querySelector(`.sonar-blip[data-dung-id="${item.id}"]`);
+                if (blipEl) {
+                    blipEl.classList.remove('blip-hidden');
+                    blipEl.classList.add('blip-lock-in');
+                }
+            }
+            if (metaCount) metaCount.textContent = `DETECTADAS: ${foundCount}/${currentRadarBlips.length}`;
+            if (typeof playSystemSound === 'function') playSystemSound('type');
+        }, delayMs);
+        _sonarScanTimers.push(tid);
+    });
+
+    let finishTid = setTimeout(() => {
+        _isSonarScanning = false;
+        if (scanOv) scanOv.classList.remove('scanning-active');
+        if (pingWv) pingWv.classList.remove('ping-active');
+        if (metaCount) metaCount.textContent = `SEÑALES: ${currentRadarBlips.length}/4`;
+        if (screen) {
+            screen.querySelectorAll('.sonar-blip').forEach(el => {
+                el.classList.remove('blip-hidden', 'blip-lock-in');
+            });
+        }
+        updateSonarTerminalOnly();
+        if (typeof systemNotify === "function") {
+            systemNotify(usedBeacon
+                ? "SOBRECARGA CARMESÍ COMPLETADA: Portales de alto rango fijados durante 30 minutos."
+                : "Barrido de sonar completado. Señales dimensionales fijadas (30 min).", usedBeacon ? "danger" : "info");
+        }
+    }, 1420);
+    _sonarScanTimers.push(finishTid);
 }
 
 function selectRadarBlip(dungId) {
+    if (_isSonarScanning || selectedRadarDungId === dungId) return;
     selectedRadarDungId = dungId;
-    renderBosses();
+    if (typeof playSystemSound === 'function') playSystemSound('type');
+
+    document.querySelectorAll('#dungeon-list-container .sonar-blip').forEach(el => {
+        el.classList.toggle('selected-blip', el.getAttribute('data-dung-id') === dungId);
+    });
+    updateSonarTerminalOnly();
 }
 
 function generateRadarBlips(forceReshuffle = false, triggeredByBeacon = false) {
@@ -1244,8 +1459,12 @@ function startPersonalBoss(idx, asQuickTask = false) {
     b.pausedRemainingSecs = null;
     b.warned30s = false;
 
-    togglePomodoroKeepAliveAudio(true);
+        togglePomodoroKeepAliveAudio(true);
+    if (typeof window.scheduleCloudPush === 'function') {
+        window.scheduleCloudPush('pomo_' + b.id, 'BLOQUE POMODORO COMPLETADO', `Inicia tu receso táctico en [${b.title}].`, firstBlock.mins * 60, 'pomo-end-' + b.id);
+    }
     if ('serviceWorker' in navigator) {
+
         navigator.serviceWorker.ready.then(reg => {
             if (reg.active) {
                 reg.active.postMessage({
@@ -1397,17 +1616,104 @@ function actBoss(idx) {
     });
 }
 
-function renderBosses() {
+function buildSonarTerminalHTML() {
+    let nowMs = Date.now();
+    let activeBlipObj = currentRadarBlips.find(b => b.dung.id === selectedRadarDungId) || null;
+    if (!activeBlipObj) {
+        return `
+        <div class="sl-sonar-dossier" style="text-align:center; padding:18px;">
+            <div style="font-family:'Share Tech Mono', monospace; color:#94a3b8; font-size:0.82em; line-height:1.5;">
+                [ SIN SEÑALES DE RANGO ${currentDungFilter} EN TU NIVEL ACTUAL ]<br>
+                Cambia la frecuencia arriba o presiona REESCANEAR.
+            </div>
+        </div>`;
+    }
+
+    let dung = activeBlipObj.dung;
+    let isClearedPerm = Array.isArray(p.clearedDungeons) && p.clearedDungeons.includes(dung.id);
+    let isBeaconTemp = !!(p.beaconUnlockedGates && p.beaconUnlockedGates[dung.id] && p.beaconUnlockedGates[dung.id].expiresAt > nowMs);
+    let isLevelLocked = (p.level < dung.minLevel) && !isClearedPerm && !isBeaconTemp;
+    let rankKeyStr = dung.reqKey || ('rank' + dung.rank);
+    let keysOwned = p.dungeonKeys ? (p.dungeonKeys[rankKeyStr] || 0) : 0;
+    let hasKey = dung.reqKey === null || keysOwned > 0 || !!(p._arcFreeGateUntil && nowMs < p._arcFreeGateUntil);
+    let totalMins = dung.phases.reduce((acc, ph) => acc + ph.durationMins, 0);
+
+    let accessText = dung.reqKey
+        ? `Llave Rango ${dung.rank} (${keysOwned} en bolsa)`
+        : `Grieta Inestable (Acceso Libre)`;
+
+    let statusNotes = '';
+    if (dung.isRedGate) {
+        statusNotes += `<div style="margin-top:6px; padding:5px 8px; background:rgba(255,42,85,0.16); border-left:2.5px solid #ff2a55; color:#fda4af; font-size:0.78em; font-weight:600;">PORTAL ROJO: Retirada sellada al entrar. Recompensas potenciadas.</div>`;
+    }
+    if (isClearedPerm) {
+        statusNotes += `<div style="margin-top:5px; color:#7dd3fc; font-size:0.74em; font-family:'Share Tech Mono', monospace;">[✓ PORTAL CONQUISTADO • APTO PARA EXPEDICIONES]</div>`;
+    } else if (isBeaconTemp) {
+        let minsRem = Math.max(1, Math.ceil((p.beaconUnlockedGates[dung.id].expiresAt - nowMs) / 60000));
+        statusNotes += `<div style="margin-top:5px; color:#c084fc; font-size:0.74em; font-family:'Share Tech Mono', monospace;">[BALIZA CARMESÍ ACTIVA • EXPIRA EN ${minsRem}M]</div>`;
+    }
+
+    let phasesHtml = `<div class="sl-sonar-phases-track">` +
+        dung.phases.map((ph, idx) => `<span class="sl-sonar-phase-chip">F${idx + 1}: ${ph.name} (${ph.durationMins}m)</span>`).join('') +
+        `</div>`;
+
+    let btnHtml = '';
+    if (isLevelLocked) {
+        btnHtml = `<button class="btn btn-red" style="width:100%; opacity:0.5; cursor:not-allowed;">NIVEL INSUFICIENTE (REQ. NIV. ${dung.minLevel})</button>`;
+    } else if (!hasKey) {
+        btnHtml = `<button class="btn btn-blue" style="width:100%;" onclick="switchTab('shop', 3); filterShop('Pergaminos'); systemNotify('Necesitas una Llave de Rango ${dung.rank}. Adquiérela aquí en Runas.', 'info');">COMPRAR LLAVE RANGO ${dung.rank} EN TIENDA</button>`;
+    } else {
+        btnHtml = `<button class="btn btn-main" style="width:100%; padding:13px; font-size:0.95em;" onclick="startDungeon('${dung.id}')">ENTRAR AL PORTAL (${totalMins} MIN)</button>`;
+    }
+
+    return `
+    <div class="sl-sonar-dossier ${dung.isRedGate ? 'red-dossier' : ''}">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(125,211,252,0.22); padding-bottom:6px; margin-bottom:8px;">
+            <span style="font-family:'Share Tech Mono', monospace; font-size:0.72em; color:#7dd3fc;">${activeBlipObj.sector}</span>
+            <span class="card-tag ${dung.rank}">RANGO ${dung.rank}</span>
+        </div>
+        <div style="font-size:1.12em; font-weight:700; color:#ffffff; margin-bottom:4px; text-shadow:0 0 8px rgba(0,229,255,0.45);">${dung.title}</div>
+        <div style="font-size:0.78em; color:#cbd5e1;">${accessText} • Duración: <b>${totalMins} min</b></div>
+        ${phasesHtml}
+        ${statusNotes}
+        <div class="sl-sonar-rewards-grid" style="margin-top:10px;">
+            <div class="sl-sonar-rew-box"><span class="sl-sonar-rew-lbl">EXPERIENCIA</span><span class="sl-sonar-rew-val">+${dung.rewards.xp} XP</span></div>
+            <div class="sl-sonar-rew-box"><span class="sl-sonar-rew-lbl">BOTÍN ORO</span><span class="sl-sonar-rew-val">+${dung.rewards.gold} G</span></div>
+            <div class="sl-sonar-rew-box"><span class="sl-sonar-rew-lbl">EXTRACCIÓN</span><span class="sl-sonar-rew-val">${['B','A','S','SSS'].includes(dung.rank) ? 'POSIBLE' : 'ESTÁNDAR'}</span></div>
+        </div>
+        ${btnHtml}
+    </div>`;
+}
+
+function updateSonarTerminalOnly() {
+    let slot = document.getElementById('sonar-terminal-slot');
+    if (slot) slot.innerHTML = buildSonarTerminalHTML();
+}
+
+function renderBosses(hideBlipsForScan = false) {
     if (p && p.penaltyActive) {
         if (typeof switchTab === "function") switchTab('routine', 0);
         return;
     }
 
     const personalCont = document.getElementById('boss-container');
+    const threatsBar = document.getElementById('sl-threats-bar');
+    const threatsCount = document.getElementById('sl-threats-count');
+    let bossCount = (p.bosses && Array.isArray(p.bosses)) ? p.bosses.length : 0;
+
+    if (threatsCount) threatsCount.textContent = bossCount;
+    if (threatsBar) {
+        threatsBar.classList.toggle('has-active-threats', bossCount > 0);
+        if (bossCount > 0 && !_threatsDrawerOpen) _threatsDrawerOpen = true;
+        if (bossCount === 0) _threatsDrawerOpen = false;
+        threatsBar.classList.toggle('is-open', _threatsDrawerOpen);
+    }
+
     if (personalCont) {
+        personalCont.classList.toggle('collapsed', !_threatsDrawerOpen);
         personalCont.innerHTML = '';
-        if (!p.bosses || p.bosses.length === 0) {
-            personalCont.innerHTML = `<p style="color:var(--text-muted); text-align:center; padding: 8px 0 14px 0; font-size:0.88em;">Sin objetivos activos. Usa "+ Escanear Jefe" para iniciar un Pomodoro 40/10 ➔ 30/5 o registrar una tarea rápida.</p>`;
+        if (bossCount === 0) {
+            personalCont.innerHTML = `<p style="color:var(--text-muted); text-align:center; padding:8px; font-size:0.8em;">Sin objetivos personales activos. Usa "+ ESCANEAR" para crear un Pomodoro 40/10 ➔ 30/5.</p>`;
         } else {
             let now = Date.now();
             p.bosses.forEach((b, i) => {
@@ -1425,34 +1731,37 @@ function renderBosses() {
                     let blk = POMODORO_CYCLE_BLOCKS[stIdx];
                     let totalSecs = b.phaseDurationSecs || (blk.mins * 60);
                     let pct = Math.min(100, Math.max(0, ((totalSecs - rem) / totalSecs) * 100));
-                    let col = blk.mode === 'break' ? '#00ffcc' : '#00e5ff';
+                    let col = blk.mode === 'break' ? '#7dd3fc' : '#00e5ff';
 
                     timerHtml = `
-                        <div id="pomo-live-timer-${i}" style="color:${col}; font-family:'Share Tech Mono', monospace; font-size:0.84em; margin-top:6px;">
-                            [${b.pausedRemainingSecs ? '⏸️ PAUSADO' : (blk.mode === 'break' ? '☕ RECESO' : '🔥 ' + blk.label)}: ${mm}:${ss} • Bloques: ${blocks}]
+                        <div id="pomo-live-timer-${i}" style="color:${col}; font-family:'Share Tech Mono', monospace; font-size:0.8em; margin-top:4px;">
+                            [${b.pausedRemainingSecs ? 'PAUSADO' : (blk.mode === 'break' ? 'RECESO' : blk.label)}: ${mm}:${ss} • Bloques: ${blocks}]
                         </div>
-                        <div class="bar-wrap" style="height:6px; margin-top:6px; border-color:${col};">
-                            <div class="bar-fill" id="pomo-live-bar-${i}" style="width:${pct}%; background:${col}; box-shadow:0 0 8px ${col};"></div>
+                        <div class="bar-wrap" style="height:5px; margin-top:5px; border-color:${col};">
+                            <div class="bar-fill" id="pomo-live-bar-${i}" style="width:${pct}%; background:${col};"></div>
                         </div>`;
                 }
 
                 let btnAction = isStarted
-                    ? `<div style="display:flex; gap:8px; width:100%;">
-                        <button class="btn btn-blue" style="flex:0.8;" onclick="togglePausePersonalBoss(${i})">${b.pausedRemainingSecs ? '▶️ REANUDAR' : '⏸️ PAUSAR'}</button>
-                        <button class="btn btn-green" style="flex:1.4;" onclick="actBoss(${i})">🏆 COBRAR (x${bonusMult})</button>
+                    ? `<div style="display:flex; gap:6px; width:100%;">
+                        <button class="btn btn-blue" style="flex:0.8; padding:7px !important;" onclick="togglePausePersonalBoss(${i})">${b.pausedRemainingSecs ? 'REANUDAR' : 'PAUSAR'}</button>
+                        <button class="btn btn-green" style="flex:1.4; padding:7px !important;" onclick="actBoss(${i})">COBRAR (x${bonusMult})</button>
                        </div>`
-                    : `<div style="display:flex; gap:8px; width:100%;">
-                        <button class="btn btn-main" style="flex:1.4;" onclick="startPersonalBoss(${i}, false)">🧠 POMODORO (40/10 ➔ 30/5)</button>
-                        <button class="btn btn-blue" style="flex:0.8;" onclick="startPersonalBoss(${i}, true)">⚡ TAREA RÁPIDA</button>
+                    : `<div style="display:flex; gap:6px; width:100%;">
+                        <button class="btn btn-main" style="flex:1.4; padding:7px !important;" onclick="startPersonalBoss(${i}, false)">POMODORO (40/10)</button>
+                        <button class="btn btn-blue" style="flex:0.8; padding:7px !important;" onclick="startPersonalBoss(${i}, true)">RÁPIDA</button>
                        </div>`;
 
                 let netG = Math.floor((b.gold || 40) * (typeof GOLD_NERF !== 'undefined' ? GOLD_NERF : 0.20) * bonusMult);
                 personalCont.innerHTML += `
-                <div class="card rank-${b.rank}" style="flex-direction:column; align-items:stretch;">
-                    <div style="margin-bottom:12px;">
-                        <h3 class="card-title">${b.title} <span class="card-tag ${b.rank}">RANGO ${b.rank}</span></h3>
+                <div class="card rank-${b.rank}" style="flex-direction:column; align-items:stretch; padding:10px 12px !important; margin-bottom:8px;">
+                    <div style="margin-bottom:8px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                            <span style="font-weight:700; color:#fff; font-size:0.96em;">${b.title}</span>
+                            <span class="card-tag ${b.rank}">RANGO ${b.rank}</span>
+                        </div>
                         ${timerHtml}
-                        <div class="card-rewards" style="margin-top:8px;">
+                        <div class="card-rewards" style="margin-top:6px;">
                             <span class="r-xp">+${Math.floor((b.xp || 80) * bonusMult)} XP</span>
                             <span class="r-gold">+${netG} G</span>
                         </div>
@@ -1469,116 +1778,106 @@ function renderBosses() {
     syncBeaconRescanButton();
     generateRadarBlips(false);
 
+    if (!p.dungeonKeys) p.dungeonKeys = { rankE: 0, rankD: 0, rankC: 0, rankB: 0, rankA: 0, rankS: 0 };
+    const keyRanks = [
+        { k: 'rankE', l: 'E' }, { k: 'rankD', l: 'D' }, { k: 'rankC', l: 'C' },
+        { k: 'rankB', l: 'B' }, { k: 'rankA', l: 'A' }, { k: 'rankS', l: 'S' }
+    ];
+    let keyStripInner = `<span>LLAVERO:</span>` +
+        keyRanks.map(kr => {
+            let cnt = p.dungeonKeys[kr.k] || 0;
+            return `<span class="sl-key-pill ${cnt > 0 ? 'has-key' : ''}">${kr.l}:${cnt}</span>`;
+        }).join('');
+
+    let nowMs = Date.now();
+    let scanMinsLeft = (p.savedRadarBlipsUntil && p.savedRadarBlipsUntil > nowMs)
+        ? Math.max(1, Math.ceil((p.savedRadarBlipsUntil - nowMs) / 60000))
+        : 30;
+
     let blipsHtml = '';
     currentRadarBlips.forEach(b => {
         let d = b.dung;
         let isSelected = (d.id === selectedRadarDungId);
-        let redClass = d.isRedGate ? 'red-gate-blip' : '';
+        let isCleared = Array.isArray(p.clearedDungeons) && p.clearedDungeons.includes(d.id);
+        let isBeacon = !!(p.beaconUnlockedGates && p.beaconUnlockedGates[d.id] && p.beaconUnlockedGates[d.id].expiresAt > nowMs);
+        let isLvlLocked = (p.level < d.minLevel) && !isCleared && !isBeacon;
+        let rk = d.reqKey || ('rank' + d.rank);
+        let hasKey = d.reqKey === null || (p.dungeonKeys[rk] || 0) > 0 || !!(p._arcFreeGateUntil && nowMs < p._arcFreeGateUntil);
+
+        let extraCls = [];
+        let badgeTxt = '';
+        if (d.isRedGate) { extraCls.push('red-gate-blip'); badgeTxt = 'ROJO'; }
+        else if (d.reqKey === null) { extraCls.push('free-blip'); badgeTxt = 'LIBRE'; }
+
+        if (isLvlLocked || !hasKey) {
+            extraCls.push('locked-blip');
+            if (!badgeTxt) badgeTxt = isLvlLocked ? `NV.${d.minLevel}` : 'LLAVE';
+        } else if (isCleared) {
+            extraCls.push('cleared-blip');
+            if (!badgeTxt) badgeTxt = '✓';
+        }
+        if (hideBlipsForScan) extraCls.push('blip-hidden');
+
         blipsHtml += `
-        <div class="sonar-blip blip-${d.rank} ${redClass} ${isSelected ? 'selected-blip' : ''}" 
-             style="left:${b.x}%; top:${b.y}%;" 
+        <div class="sonar-blip ${extraCls.join(' ')} ${isSelected ? 'selected-blip' : ''}"
+             data-dung-id="${d.id}"
+             style="left:${b.x}%; top:${b.y}%;"
              onclick="selectRadarBlip('${d.id}')">
-            ${d.rank}
+            <span>${d.rank}</span>
+            ${badgeTxt ? `<span class="sonar-blip-badge">${badgeTxt}</span>` : ''}
         </div>`;
     });
 
-    let activeBlipObj = currentRadarBlips.find(b => b.dung.id === selectedRadarDungId) || null;
-    let terminalHtml = '';
-
-    if (!activeBlipObj) {
-        terminalHtml = `
-        <div class="card" style="border-style:dashed; border-color:#334155; text-align:center; flex-direction:column; padding:22px;">
-            <div style="font-family:'Share Tech Mono', monospace; color:var(--text-muted); font-size:0.9em;">
-                [ SIN SEÑALES DE ESTE RANGO EN TU NIVEL ACTUAL ]<br>
-                Cambia la frecuencia arriba o sube tu Nivel de Cazador.
-            </div>
-        </div>`;
-    } else {
-        let dung = activeBlipObj.dung;
-        let isClearedPerm = Array.isArray(p.clearedDungeons) && p.clearedDungeons.includes(dung.id);
-        let isBeaconTemp = !!(p.beaconUnlockedGates && p.beaconUnlockedGates[dung.id] && p.beaconUnlockedGates[dung.id].expiresAt > Date.now());
-        let isLevelLocked = (p.level < dung.minLevel) && !isClearedPerm && !isBeaconTemp;
-        let rankKeyStr = dung.reqKey || ('rank' + dung.rank);
-        let keysOwned = p.dungeonKeys ? (p.dungeonKeys[rankKeyStr] || 0) : 0;
-        let hasKey = dung.reqKey === null || keysOwned > 0 || !!(p._arcFreeGateUntil && Date.now() < p._arcFreeGateUntil);
-        let totalMins = dung.phases.reduce((acc, ph) => acc + ph.durationMins, 0);
-
-        let accessText = dung.reqKey 
-            ? `🗝️ Llave requerida: Rango ${dung.rank} (${keysOwned} en bolsa)` 
-            : `⚡ Grieta Inestable: Entrada Libre (Sin llave)`;
-
-        let beaconTimerNote = '';
-        if (isClearedPerm) {
-            beaconTimerNote = `<div style="margin-top:6px; color:#00ffcc; font-size:0.78em; font-family:'Share Tech Mono', monospace;">✓ PORTAL CONQUISTADO (DESBLOQUEADO PERMANENTEMENTE)</div>`;
-        } else if (isBeaconTemp) {
-            let minsRem = Math.max(1, Math.ceil((p.beaconUnlockedGates[dung.id].expiresAt - Date.now()) / 60000));
-            beaconTimerNote = `<div style="margin-top:6px; color:#c084fc; font-size:0.78em; font-family:'Share Tech Mono', monospace;">📡 FIJADO POR BALIZA CARMESÍ: Expira en ${minsRem} min</div>`;
-        }
-
-        let redGateWarning = (dung.isRedGate
-            ? `<div style="margin-top:8px; padding:6px 10px; background:rgba(255,42,85,0.15); border-left:3px solid var(--danger); color:var(--danger); font-weight:700; font-size:0.84em;">⚠️ ANOMALÍA DE PORTAL ROJO (+50% EXP Y ORO): Una vez dentro, la huida convencional queda sellada.</div>` 
-            : '') + beaconTimerNote;
-
-        let phasesPreview = dung.phases.map((ph, idx) => `<span style="color:#cbd5e1;">F${idx+1}: ${ph.name} (${ph.durationMins}m)</span>`).join(' → ');
-
-        let btnHtml = '';
-        if (isLevelLocked) {
-            btnHtml = `<button class="btn btn-red" style="width: 100%; opacity: 0.45; cursor: not-allowed;">🔒 NIVEL INSUFICIENTE (REQ. NIV. ${dung.minLevel})</button>`;
-        } else if (!hasKey) {
-            btnHtml = `<button class="btn btn-red" style="width: 100%;" onclick="systemNotify('Te falta una llave de Rango ${dung.rank}. Adquiérela en la sección Pergaminos de la tienda.', 'danger')">🗝️ LLAVE REQUERIDA (${keysOwned} EN BOLSA)</button>`;
-        } else {
-            btnHtml = `<button class="btn btn-main" style="width: 100%; padding:15px; font-size:1.05em;" onclick="startDungeon('${dung.id}')">⚔️ ENTRAR AL PORTAL (${totalMins} MIN)</button>`;
-        }
-
-        terminalHtml = `
-        <div class="card rank-${dung.rank}" style="flex-direction:column; align-items:stretch;">
-            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:8px; margin-bottom:10px;">
-                <span style="font-family:'Share Tech Mono', monospace; font-size:0.75em; color:var(--neon-main);">📡 COORDENADAS: ${activeBlipObj.sector}</span>
-                <span class="card-tag ${dung.rank}">RANGO ${dung.rank}</span>
-            </div>
-            <div class="card-title" style="font-size:1.3em; margin-bottom:6px;">${dung.title}</div>
-            <div class="card-desc" style="margin-bottom:10px;">
-                <div>${accessText} • ⏱️ Duración total: <b>${totalMins} min</b></div>
-                <div style="font-size:0.82em; margin-top:6px; color:var(--text-lore);">Estructura: ${phasesPreview}</div>
-                ${redGateWarning}
-            </div>
-            <div class="card-rewards" style="margin-bottom:14px; justify-content:space-around; width:100%;">
-                <span class="r-xp">🏆 +${dung.rewards.xp} EXP</span>
-                <span class="r-gold">🪙 +${dung.rewards.gold} G</span>
-                <span class="r-stat">🗣️ Extracción Posible</span>
-            </div>
-            ${btnHtml}
-        </div>`;
-    }
-
+    // Crear el contenedor del Sonar una sola vez para no reiniciar nunca el giro del haz
     let existingScreen = container.querySelector('.sonar-screen');
-    let coordsBar = container.querySelector('.sonar-coords-bar');
-    let termWrap = document.getElementById('sonar-terminal-slot');
-
-    if (existingScreen && coordsBar && termWrap) {
-        coordsBar.innerText = `TOCA UN NODO DE MANÁ EN EL SONAR (${currentRadarBlips.length} DETECTADOS)`;
-        existingScreen.querySelectorAll('.sonar-blip').forEach(el => el.remove());
-        existingScreen.insertAdjacentHTML('beforeend', blipsHtml);
-        termWrap.innerHTML = terminalHtml;
-    } else {
+    if (!existingScreen) {
         container.innerHTML = `
-        <div class="sonar-radar-wrap">
-            <div class="sonar-coords-bar">TOCA UN NODO DE MANÁ EN EL SONAR (${currentRadarBlips.length} DETECTADOS)</div>
-            <div class="sonar-screen">
-                <div class="sonar-crosshair-h"></div>
-                <div class="sonar-crosshair-v"></div>
-                <div class="sonar-sweep-beam"></div>
-                <div class="sonar-center-dot"></div>
-                ${blipsHtml}
+        <div class="sl-sonar-frame-outer">
+            <div class="sl-mech-rail top"></div>
+            <div class="sl-sonar-window">
+                <div class="sl-sonar-key-strip" id="sonar-key-strip-slot">${keyStripInner}</div>
+                <div class="sonar-radar-wrap">
+                    <div class="sonar-meta-row">
+                        <span id="sonar-signals-count">SEÑALES: ${currentRadarBlips.length}/4</span>
+                        <span id="sonar-cycle-left">CICLO: ${scanMinsLeft}M</span>
+                    </div>
+                    <div class="sonar-screen">
+                        <div class="sonar-crosshair-h"></div>
+                        <div class="sonar-crosshair-v"></div>
+                        <div class="sonar-sweep-beam"></div>
+                        <div class="sonar-scan-overlay" id="sonar-scan-overlay"></div>
+                        <div class="sonar-ping-wave" id="sonar-ping-wave"></div>
+                        <div class="sonar-center-dot"></div>
+                        <div id="sonar-blips-layer">${blipsHtml}</div>
+                    </div>
+                </div>
+                <div id="sonar-terminal-slot">${hideBlipsForScan ? '' : buildSonarTerminalHTML()}</div>
             </div>
-        </div>
-        <div id="sonar-terminal-slot">${terminalHtml}</div>`;
+            <div class="sl-mech-rail bottom"></div>
+        </div>`;
+    } else {
+        let keySlot = document.getElementById('sonar-key-strip-slot');
+        let sigSlot = document.getElementById('sonar-signals-count');
+        let cycSlot = document.getElementById('sonar-cycle-left');
+        let blipsLayer = document.getElementById('sonar-blips-layer');
+
+        if (keySlot) keySlot.innerHTML = keyStripInner;
+        if (sigSlot && !hideBlipsForScan) sigSlot.textContent = `SEÑALES: ${currentRadarBlips.length}/4`;
+        if (cycSlot) cycSlot.textContent = `CICLO: ${scanMinsLeft}M`;
+
+        let blipSig = (hideBlipsForScan ? 'H|' : 'S|') + currentRadarBlips.map(b => `${b.dung.id}:${b.dung.isRedGate ? 1 : 0}:${b.dung.id === selectedRadarDungId ? 1 : 0}`).join(',');
+        if (blipsLayer && blipsLayer.dataset.blipSig !== blipSig) {
+            blipsLayer.dataset.blipSig = blipSig;
+            blipsLayer.innerHTML = blipsHtml;
+        }
+        if (!hideBlipsForScan) updateSonarTerminalOnly();
     }
 }
 
 /* ==========================================================================
    5. GESTOR DE HORARIOS UNIVERSITARIOS (ACADEMIAS)
    ========================================================================== */
+   
 function _normSubjectKey(str) {
     return (str || "")
         .toLowerCase()
@@ -1805,7 +2104,7 @@ function syncDailyGoalFooterStatus() {
     let completedArr = Array.isArray(p.completedToday) ? p.completedToday : [];
     let totalCount = todayMissions.length;
     let doneCount = todayMissions.filter(m => completedArr.includes(m.id)).length;
-    let allCompleted = (totalCount > 0 && doneCount >= totalCount);
+    let allCompleted = (totalCount > 0 && doneCount >= totalCount && !!p.studyCompletedToday);
 
     let now = new Date();
     let h = now.getHours();
@@ -1815,14 +2114,14 @@ function syncDailyGoalFooterStatus() {
     let isVigil = (typeof isNightVigilActiveNow === "function") ? isNightVigilActiveNow(now) : (p.nightPassActive === currentDayStr);
 
     let continuousMins = (h < 5 ? h + 24 : h) * 60 + m;
-    let deadlineMins = 21 * 60 + 35; // 9:35 PM
+    let deadlineMins = 21 * 60 + 20; // 9:20 PM: Inicio oficial de X rojas y desangrado
     if (p.tankCurfewDelayDay === currentDayStr) deadlineMins += 45;
     if (p.nightPassActive === currentDayStr || p.movieNightCurfewDay === currentDayStr) deadlineMins = 23 * 60 + 20;
     if (typeof isMercyActive === "function" && isMercyActive()) deadlineMins = 26 * 60;
 
     let curMinFooter = h * 60 + m;
-    let isPastDeadline = (continuousMins >= deadlineMins && !isSleeping && !isVigil && (curMinFooter >= 1295 || curMinFooter < 270));
-    let isBleedTriggered = (!allCompleted && isPastDeadline);
+    let isPastDeadline = (continuousMins >= deadlineMins && !isSleeping && !isVigil && (curMinFooter >= 1280 || curMinFooter < 270));
+    let isBleedTriggered = (!allCompleted && isPastDeadline) || (continuousMins >= 22 * 60 && !isSleeping && !isVigil);
     let rewardPending = (allCompleted && p.dailyClearRewardClaimedDay !== currentDayStr);
 
     let warningTextHtml = '';

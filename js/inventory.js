@@ -151,51 +151,7 @@ function calculateHunterMaxHP() {
 /* ==========================================================================
    2. PUENTE CONECTOR CON MODELS.JS (INVOCACIÓN DIRECTA DE MODELOS SVG)
    ========================================================================== */
-function getIconFor(itemOrTitle, type) {
-    let id = "", slot = "", cat = "", t = "";
-    if (typeof itemOrTitle === 'object' && itemOrTitle !== null) {
-        id = (itemOrTitle.id || "").toLowerCase();
-        slot = (itemOrTitle.slot || "").toLowerCase();
-        cat = (itemOrTitle.cat || "").toLowerCase();
-        type = itemOrTitle.type || type;
-        t = (itemOrTitle.title || itemOrTitle.t || "").toLowerCase();
-    } else {
-        t = (itemOrTitle || "").toLowerCase();
-    }
-
-const strokeMain = "#ffffff";
-    const strokeAccent = "#7dd3fc";
-    const fillGlow = "rgba(0, 210, 255, 0.22)";
-
-    const baseAttr = `class="sl-holo-glyph" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"`;
-    const s1 = `stroke="${strokeMain}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"`;
-    const s2 = `stroke="${strokeAccent}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"`;
-    const f1 = `fill="${fillGlow}"`;
-
-    const itemDict = (typeof UNIQUE_ITEM_SVGS !== 'undefined') ? UNIQUE_ITEM_SVGS : window.UNIQUE_ITEM_SVGS;
-    const lootDict = (typeof UNIQUE_LOOT_SVGS !== 'undefined') ? UNIQUE_LOOT_SVGS : window.UNIQUE_LOOT_SVGS;
-
-    let body = (itemDict && itemDict[id]) || (lootDict && lootDict[t]);
-    if (!body) {
-        if (slot === "weapon" || id.startsWith("eq_w")) {
-            body = `<g transform="rotate(35 32 32)"><polygon points="32,6 37,18 35,44 29,44 27,18" F1 S1/><path d="M20 44 L44 44 M32 44 L32 56" S2/></g>`;
-        } else if (slot === "armor" || id.startsWith("eq_a")) {
-            body = `<path d="M14 12 L50 12 L48 36 L32 56 L16 36 Z" F1 S1/><polygon points="32,18 38,32 32,46 26,32" fill="#ffffff"/>`;
-        } else if (slot === "accessory" || id.startsWith("eq_acc")) {
-            body = `<circle cx="32" cy="36" r="15" F1 S1/><polygon points="32,10 39,20 25,20" fill="#ffffff" S2/>`;
-        } else if (cat.includes("pergamino") || id.startsWith("p")) {
-            body = `<rect x="14" y="10" width="36" height="44" rx="3" F1 S1/><polygon points="32,20 38,32 32,44 26,32" fill="#ffffff"/>`;
-        } else if (cat.includes("privilegio") || id.startsWith("v")) {
-            body = `<polygon points="32,8 54,22 46,50 18,50 10,22" F1 S1/><circle cx="32" cy="30" r="6" fill="#ffffff"/>`;
-        } else {
-            body = `<path d="M24 8 L40 8 M28 8 L28 20 L14 48 L50 48 L36 20 L36 8" F1 S1/><polygon points="32,26 37,36 32,44 27,36" fill="#ffffff"/>`;
-        }
-    }
-
-body = body.replace(/\bS1\b/g, s1).replace(/\bS2\b/g, s2).replace(/\bF1\b/g, f1);
-    return `<svg ${baseAttr}>${body}</svg>`;
-}
-
+// getIconFor vive unificado en models.js (sin duplicación)
 // Si models.js terminó de cargar de forma asíncrona, limpiar caché previo y re-renderizar los iconos reales
 window.addEventListener('load', () => {
     if (typeof shopDB !== 'undefined') {
@@ -1088,7 +1044,7 @@ function createArtifactRitualShell(headerTitle, subBracket, innerHtml, themeClas
     ov.id = 'sl-artifact-ritual-overlay';
     ov.innerHTML = `
         <div class="sl-holo-frame ${themeClass}" style="width:100%; max-width:415px; cursor:default;">
-            <div class="sl-holo-rail top"><span class="rail-Core"></span></div>
+            <div class="sl-holo-rail top"><span class="rail-core"></span></div>
             <div class="sl-holo-glass">
                 <div class="sl-holo-inner-box" style="padding:18px 15px; text-align:center;">
                     <span class="sl-baroque-corner tl">${cornerSVG}</span>
@@ -1103,7 +1059,7 @@ function createArtifactRitualShell(headerTitle, subBracket, innerHtml, themeClas
                     <div id="sl-ritual-body-slot">${innerHtml}</div>
                 </div>
             </div>
-            <div class="sl-holo-rail bottom"><span class="rail-Core"></span></div>
+            <div class="sl-holo-rail bottom"><span class="rail-core"></span></div>
         </div>
     `;
     document.body.appendChild(ov);

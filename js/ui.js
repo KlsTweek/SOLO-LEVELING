@@ -139,30 +139,6 @@ function vectorizeEmojisIn(root) {
 function startEmojiVectorizer() {
     document.title = stripAllSystemEmojis(document.title).trim();
     vectorizeEmojisIn(document.body);
-    new MutationObserver(muts => {
-        if (document.hidden) return;
-        for (let i = 0; i < muts.length; i++) {
-            const m = muts[i];
-            if (m.target && m.target.closest && m.target.closest('.sl-digit-slot, #mp-text, #raid-mp-text, #raid-timer, #study-timer-text')) continue;
-            if (m.type === 'characterData') {
-                const t = m.target;
-                if (t && t.nodeValue && _EMO_TEST.test(t.nodeValue)) {
-                    t.nodeValue = t.nodeValue.replace(_EMO_RE, '');
-                }
-            } else {
-                const added = m.addedNodes;
-                for (let j = 0; j < added.length; j++) {
-                    const n = added[j];
-                    if (n.nodeType === 1) {
-                        if (n.classList && n.classList.contains('sl-digit-slot')) continue;
-                        if (n.textContent && _EMO_TEST.test(n.textContent)) vectorizeEmojisIn(n);
-                    } else if (n.nodeType === 3 && n.nodeValue && _EMO_TEST.test(n.nodeValue)) {
-                        n.nodeValue = n.nodeValue.replace(_EMO_RE, '');
-                    }
-                }
-            }
-        }
-    }).observe(document.body, { childList: true, subtree: true });
 }
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', startEmojiVectorizer);
@@ -170,22 +146,23 @@ if (document.readyState === 'loading') {
     startEmojiVectorizer();
 }
 
+
 function scrubAllDOMVectors(root = document.body) {
     if (root) vectorizeEmojisIn(root);
 }
 
 function highlightAnimeKeywords(text) {
     let base = stripAllSystemEmojis(text || "");
-    const negStatRegex = /(?<![a-záéíóúñA-ZÁÉÍÓÚÑ])(PENALIZACIÓN|CASTIGO|COLAPSO|ALERTA|PELIGRO|FALLIDA|-[0-9.]+(?:\s+)?(?:HP|SP|MP|G))(?![a-záéíóúñA-ZÁÉÍÓÚÑ])/gi;
-    const posStatRegex = /(?:[+\-]?\d+(?:[\.,]\d+)?%?(?:\s+(?:de|del|la|el))?\s+(?:G|XP|EXP|MP|CM|HP|SP|FATIGA|STR|INT|AGI|FUE|VIT|PER|Escudo|Oro|Evasión)(?:\s+[a-záéíóúñA-ZÁÉÍÓÚÑ]+)?)(?![a-záéíóúñA-ZÁÉÍÓÚÑ])/gi;
-    const rankRegex = /(?<![a-záéíóúñA-ZÁÉÍÓÚÑ])(JUGADOR 1|CAZADORES|CAZADOR|ÉXITO|NIVEL \d+|ASCENSIÓN AL NIVEL \d+|¡SURGE!|MILAGRO CONSUMADO)(?![a-záéíóúñA-ZÁÉÍÓÚÑ])/g;
+    const negStatRegex = /(?<![a-záéíóúñA-ZÁÉÍÓÚÑ])(PENALIZACIÓN|CASTIGO|COLAPSO|ALERTA|PELIGRO|FALLIDA|(?:DE\s+)?EMERGENCIA|-[0-9.]+(?:\s+)?(?:HP|SP|MP|G))(?![a-záéíóúñA-ZÁÉÍÓÚÑ])/gi;
+    const posStatRegex = /(?<![a-záéíóúñA-ZÁÉÍÓÚÑ])(?:[+\-]?\d+(?:[\.,]\d+)?%?(?:\s+(?:de|del|la|el))?\s+(?:G|XP|EXP|MP|CM|HP|SP|FATIGA|STR|INT|AGI|FUE|VIT|PER|Escudo|Oro|Evasión)|CAZADORES|CAZADOR)(?![a-záéíóúñA-ZÁÉÍÓÚÑ])/gi;
+    const rankRegex = /(?<![a-záéíóúñA-ZÁÉÍÓÚÑ])(JUGADOR 1|ÉXITO|NIVEL \d+|ASCENSIÓN AL NIVEL \d+|¡SURGE!|MILAGRO CONSUMADO)(?![a-záéíóúñA-ZÁÉÍÓÚÑ])/gi;
 
-        return base
+    return base
         .replace(negStatRegex, '<span style="color:#fb7185; font-weight:700; text-shadow:0 0 8px rgba(255,42,85,0.85);">$1</span>')
         .replace(posStatRegex, '<span style="color:#00e5ff; font-weight:700; text-shadow:0 0 10px rgba(0,229,255,0.8);">$&</span>')
         .replace(rankRegex, '<span style="color:#ffffff; font-weight:700; text-shadow:0 0 10px #00d2ff;">$1</span>')
         .replace(/(\[[^\]]+\])/g, '<span style="color:#7dd3fc; font-weight:700; text-shadow:0 0 8px rgba(0,210,255,0.65);">$1</span>');
-} 
+}
 
 function getBaroqueCornerSVG() {
     return `<svg viewBox="0 0 28 28" width="100%" height="100%" fill="none" stroke="#e0f2fe" stroke-width="1.6"><path d="M2 26V2h24"/><path d="M6 18V6h12"/><circle cx="6" cy="6" r="2" fill="#00d2ff"/></svg>`;
@@ -455,16 +432,34 @@ function closeModal(id) {
     if (m) m.style.display = 'none'; 
 }
 
-function switchTab(tab, idx) {
+let _currentActiveTab = 'routine';
+const _tabScrollMemory = {};
+let _lastTabSwitchAt = 0;
+let _lastTabAiAt = 0;
+let _lastArcTabAt = 0;
+let _tabScrollRaf = null;
+const TAB_SWITCH_COOLDOWN_MS = 260;
+
+function switchTab(tab, idx, force = false) {
     if ("Notification" in window && Notification.permission === "default") {
         Notification.requestPermission().catch(() => {});
     }
 
-    if (p && p.penaltyActive && !['routine', 'inventory', 'shop'].includes(tab)) {
-        systemNotify("🔒 ZONA DE PENALIZACIÓN: El Sistema ha bloqueado esta sección.", "danger");
+    let isPenalty = !!(p && p.penaltyActive);
+    if (isPenalty && !['routine', 'inventory', 'shop'].includes(tab)) {
+        systemNotify("ZONA DE PENALIZACIÓN: El Sistema ha bloqueado esta sección.", "danger");
         tab = 'routine';
         idx = 0;
     }
+
+    if (_currentActiveTab === tab) return;
+
+    let nowMs = Date.now();
+    if (!force && !isPenalty && (nowMs - _lastTabSwitchAt < TAB_SWITCH_COOLDOWN_MS)) return;
+    _lastTabSwitchAt = nowMs;
+
+    _tabScrollMemory[_currentActiveTab] = window.scrollY || document.documentElement.scrollTop || 0;
+    _currentActiveTab = tab;
 
     ['routine', 'bosses', 'inventory', 'shop', 'gacha', 'profile'].forEach(t => { 
         let e = document.getElementById(`tab-${t}`); 
@@ -479,31 +474,48 @@ function switchTab(tab, idx) {
     let navItems = document.querySelectorAll('.nav-item'); 
     if (navItems[idx]) navItems[idx].classList.add('active');
 
-    if (typeof _evalArcTabHook === 'function') _evalArcTabHook(tab, idx);
-    if (typeof triggerAiMonarchComment === 'function') triggerAiMonarchComment('tab_' + tab);
-
-    if (tab === 'routine' && typeof renderRoutine === 'function') renderRoutine();
-    if (tab === 'inventory' && typeof syncAnatomyPointerLines === 'function') {
-        requestAnimationFrame(syncAnatomyPointerLines);
+    if (typeof _evalArcTabHook === 'function' && (nowMs - _lastArcTabAt >= 3000)) {
+        _lastArcTabAt = nowMs;
+        _evalArcTabHook(tab, idx);
     }
-    if (tab === 'bosses' && typeof renderBosses === 'function') renderBosses();
-if (tab === 'gacha' && typeof renderShadowSanctuary === 'function') {
+
+    if (typeof triggerAiMonarchComment === 'function' && (nowMs - _lastTabAiAt >= AI_COOLDOWN_MS)) {
+        _lastTabAiAt = nowMs;
+        triggerAiMonarchComment('tab_' + tab);
+        if (typeof scheduleAiRotation === 'function') scheduleAiRotation(AI_ROTATION_TAB_MS);
+    }
+
+    if (tab === 'routine') {
+        let rc = document.getElementById('routine-container');
+        if ((!rc || !rc.childElementCount) && typeof renderRoutine === 'function') renderRoutine();
+    } else if (tab === 'inventory' && typeof syncAnatomyPointerLines === 'function') {
+        requestAnimationFrame(syncAnatomyPointerLines);
+    } else if (tab === 'bosses') {
+        let dc = document.getElementById('dungeon-list-container');
+        if ((!dc || !dc.childElementCount) && typeof renderBosses === 'function') renderBosses();
+    } else if (tab === 'gacha' && typeof renderShadowSanctuary === 'function') {
         renderShadowSanctuary();
         if (typeof enforceSanctuaryMonochrome === 'function') enforceSanctuaryMonochrome();
-    }
-    if (tab === 'profile') {
+    } else if (tab === 'profile') {
         if (typeof renderStatusRadarProfile === 'function') renderStatusRadarProfile();
         if (typeof renderTitles === 'function') renderTitles();
-        if (typeof scrubAllDOMVectors === 'function') setTimeout(() => scrubAllDOMVectors(), 20);
     }
+
+    if (_tabScrollRaf) cancelAnimationFrame(_tabScrollRaf);
+    let savedScroll = _tabScrollMemory[tab] || 0;
+    _tabScrollRaf = requestAnimationFrame(() => {
+        _tabScrollRaf = null;
+        window.scrollTo(0, savedScroll);
+    });
 }
+
+
 function renderStatusRadarProfile() {
     let tabProf = document.getElementById('tab-profile');
     if (!tabProf || !p || !p.stats) return;
 
     let statusCard = document.getElementById('sl-status-master-card');
     if (!statusCard) {
-        // Ocultar las dos tarjetas viejas de arriba para mostrar la nueva ventana ESTADO unificada
         let oldCards = tabProf.querySelectorAll('.profile-card');
         if (oldCards[0]) oldCards[0].style.display = 'none';
         if (oldCards[1]) oldCards[1].style.display = 'none';
@@ -516,7 +528,6 @@ function renderStatusRadarProfile() {
         tabProf.insertBefore(statusCard, tabProf.firstChild);
     }
 
-    // Calcular Rango y Clase 100% Canon según el Nivel del Manhwa
     let hunterRank = 'E';
     if (p.level >= 122) hunterRank = 'NAC';
     else if (p.level >= 80) hunterRank = 'S';
@@ -533,7 +544,6 @@ function renderStatusRadarProfile() {
         ? p.titles[p.titles.length - 1].name.replace(/^[^\s]+\s/, '')
         : 'NINGUNO';
 
-    // Escalar valores estilo la captura (x10 para que 1.00 sea 10, 1.25 sea 12.5, etc.)
     let strVal = +(p.stats.str * 10).toFixed(2);
     let intVal = +(p.stats.int * 10).toFixed(2);
     let agiVal = +(p.stats.agi * 10).toFixed(2);
@@ -541,31 +551,44 @@ function renderStatusRadarProfile() {
     let spiVal = +(10 + ((p.equippedShadows ? p.equippedShadows.length : 0) * 2.5) + ((p.stats.int - 1) * 5)).toFixed(2);
 
     let apVal = Math.floor(strVal * 1.2 + agiVal * 0.5);
-    let bearsOn = p.infantry && p.infantry.bears && !(p.infantryDisabled && p.infantryDisabled.bears); let defVal = Math.floor(strVal * 1.1 + (bearsOn ? p.infantry.bears * 2 : 0));
-    let leaderPts = +((strVal + intVal + agiVal + disVal + spiVal) / 4.8 + (p.level * 1.25)).toFixed(3);
-    let physRed = Math.min(75, Math.floor(4 + (p.stats.str * 1.5) + (p.equippedShadows && p.equippedShadows.includes('iron') ? 35 : 0)));
-    let magRed = Math.min(75, Math.floor(3 + (p.stats.int * 1.5)));
+    let bearsOn = p.infantry && p.infantry.bears && !(p.infantryDisabled && p.infantryDisabled.bears);
+    let defVal = Math.floor(strVal * 1.1 + (bearsOn ? p.infantry.bears * 2 : 0));
 
-    // Calcular los 5 vértices del Pentágono Radar (Centro 110, 105, Radio Máx 68)
-    const cx = 110, cy = 105, maxR = 68;
-    const angles = [-90, -18, 54, 126, 198].map(a => a * Math.PI / 180);
-    const norm = (v) => Math.min(1, Math.max(0.16, (v - 8) / 35));
-    const vals = [norm(strVal), norm(intVal), norm(spiVal), norm(disVal), norm(agiVal)];
-
-    const getPolyPoints = (scale) => angles.map(ang => `${(cx + Math.cos(ang) * maxR * scale).toFixed(1)},${(cy + Math.sin(ang) * maxR * scale).toFixed(1)}`).join(' ');
-    const statPoints = angles.map((ang, i) => `${(cx + Math.cos(ang) * maxR * vals[i]).toFixed(1)},${(cy + Math.sin(ang) * maxR * vals[i]).toFixed(1)}`).join(' ');
-    const statDots = angles.map((ang, i) => `<circle cx="${(cx + Math.cos(ang) * maxR * vals[i]).toFixed(1)}" cy="${(cy + Math.sin(ang) * maxR * vals[i]).toFixed(1)}" r="3.5" fill="#00aaff" stroke="#ffffff" stroke-width="1"/>`).join('');
-
-let discCount = Array.isArray(p.discoveredArcs) ? p.discoveredArcs.length : 0;
+    let discCount = Array.isArray(p.discoveredArcs) ? p.discoveredArcs.length : 0;
     let bioDayStr = (typeof getBiologicalDayStr === "function") ? getBiologicalDayStr() : new Date().toDateString();
     let isSleeping = (typeof isSleepingNow === "function") ? isSleepingNow() : (p.sleepingUntilMorning === bioDayStr);
     let vigilLeft = (typeof ensureNightVigilQuota === "function") ? ensureNightVigilQuota() : 2;
     let isVigilActiveTonight = (typeof isNightVigilActiveNow === "function") ? isNightVigilActiveNow() : (p.nightPassActive === bioDayStr);
 
-let gearSvg = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#e0f2fe" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px #00e5ff);"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
+    let hist = Array.isArray(p.streakHistory) ? p.streakHistory : [];
+    let histKey = hist.map(x => x.status[0]).join('');
+
+    let profSig = [
+        p.playerName || 'CRISTIAN', p.level, hunterClass, hunterTitle, hunterRank,
+        strVal, intVal, agiVal, disVal, spiVal, apVal, defVal, p.perfectDays || 0,
+        discCount, Array.isArray(p.honorLogs) ? p.honorLogs.length : 0,
+        isSleeping ? 1 : 0, isVigilActiveTonight ? 1 : 0, vigilLeft, histKey
+    ].join('|');
+    if (statusCard.dataset.profSig === profSig && statusCard.childElementCount > 0) return;
+    statusCard.dataset.profSig = profSig;
+
+    // Construir barra visual de los últimos 14 días (13 pasados + hoy)
+    let cellsHtml = '';
+    let padded = hist.slice(-13);
+    let emptyCount = Math.max(0, 13 - padded.length);
+    for (let i = 0; i < emptyCount; i++) {
+        cellsHtml += `<div class="sl-streak-day-cell" title="Sin registro"></div>`;
+    }
+    padded.forEach(item => {
+        let cls = item.status === 'perfect' ? 'st-perfect' : (item.status === 'protected' ? 'st-protected' : 'st-missed');
+        cellsHtml += `<div class="sl-streak-day-cell ${cls}" title="${item.day}: ${item.status.toUpperCase()}"></div>`;
+    });
+    cellsHtml += `<div class="sl-streak-day-cell st-today" title="Hoy en curso"></div>`;
+
+    let gearSvg = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#e0f2fe" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px #00e5ff);"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
     let cubeSvg = `<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="#7dd3fc" stroke-width="2" style="margin-right:3px; filter:drop-shadow(0 0 4px #00e5ff);"><polygon points="12,2 21,7 21,17 12,22 3,17 3,7"/><circle cx="12" cy="12" r="2.5" fill="#ffffff"/></svg>`;
 
-statusCard.innerHTML = `
+    statusCard.innerHTML = `
         <div class="sl-status-top-bar">
             <span style="opacity:0.9; cursor:pointer; width:48px; height:22px; display:inline-flex; align-items:center; justify-content:center; border:1px solid rgba(186,230,253,0.4); background:rgba(4,15,32,0.8);" onclick="openModal('schedule-modal')" title="Configurar Horario">${gearSvg}</span>
             <h2 class="sl-status-main-title">ESTADO</h2>
@@ -582,7 +605,7 @@ statusCard.innerHTML = `
             </div>
             <div class="sl-status-rank-box">
                 <svg viewBox="0 0 100 100" width="78" height="78">
-<polygon points="50,6 90,28 76,86 24,86 10,28" fill="none" stroke="#e0f2fe" stroke-width="1.8" opacity="0.9" filter="drop-shadow(0 0 6px #00e5ff)"/>
+                    <polygon points="50,6 90,28 76,86 24,86 10,28" fill="none" stroke="#e0f2fe" stroke-width="1.8" opacity="0.9" filter="drop-shadow(0 0 6px #00e5ff)"/>
                     <polygon points="50,94 90,72 76,14 24,14 10,72" fill="rgba(0, 229, 255, 0.14)" stroke="#7dd3fc" stroke-width="1.8" filter="drop-shadow(0 0 8px rgba(0,229,255,0.65))"/>
                     <text x="50" y="64" text-anchor="middle" fill="#ffffff" font-family="Rajdhani, sans-serif" font-weight="700" font-size="42">${hunterRank}</text>
                 </svg>
@@ -608,9 +631,19 @@ statusCard.innerHTML = `
         </div>
 
         <div class="sl-status-divider"></div>
+
+        <div class="sl-streak-14-wrap">
+            <div class="sl-streak-14-header">
+                <span>CADENA DE DISCIPLINA (14 DÍAS)</span>
+                <span style="color:#7dd3fc;">${p.perfectDays || 0} INVICTO</span>
+            </div>
+            <div class="sl-streak-14-grid">${cellsHtml}</div>
+        </div>
+
+        <div class="sl-status-divider"></div>
         <div style="display:flex; flex-direction:column; gap:8px; margin-top:6px;">
             <button class="btn btn-main" style="width:100%; padding:10px; font-size:0.8em;" onclick="openHunterSkillsModal()">
-[ HABILIDADES DEL CAZADOR (PASIVAS Y ACTIVAS) ]
+                [ HABILIDADES DEL CAZADOR (PASIVAS Y ACTIVAS) ]
             </button>
             <button class="btn btn-blue" style="width:100%; padding:9px; font-size:0.76em;" onclick="openHonorLogModal()">
                 [ BITÁCORA DE HONOR DEL CAZADOR (${Array.isArray(p.honorLogs) ? p.honorLogs.length : 0}) ]
@@ -618,7 +651,7 @@ statusCard.innerHTML = `
             ${isVigilActiveTonight
                 ? `<div style="padding:9px 12px; background:rgba(30,41,59,0.55); border:1px solid #818cf8; text-align:center; font-size:0.78em; color:#e0f2fe;">
                     <b>PASE DE VIGILIA NOCTURNA ACTIVO HOY</b><br>
-                    <span style="color:#94a3b8;">Cero corrosión nocturna • Misiones al 100% (${vigilLeft}/2 restantes)</span>
+                    <span style="color:#94a3b8;">Cero corrosión hasta 11:20 PM • Misiones al 100% (${vigilLeft}/2 restantes)</span>
                    </div>`
                 : `<button class="btn btn-blue" style="width:100%; padding:10px; font-size:0.78em;" onclick="openNightVigilModal()">
                     PASE DE VIGILIA NOCTURNA (${vigilLeft}/2 ESTA SEMANA)
@@ -626,23 +659,33 @@ statusCard.innerHTML = `
             ${isSleeping
                 ? `<div style="padding:10px; background:rgba(14,165,233,0.12); border:1px solid #7dd3fc; text-align:center;">
                     <div style="color:#e0f2fe; font-weight:700; font-size:0.85em; margin-bottom:4px;">MODO HIBERNACIÓN ACTIVO</div>
-                    <div style="color:#94a3b8; font-size:0.76em; margin-bottom:8px;">Signos vitales y tesorería protegidos hasta las 5:00 AM.</div>
-                    <button class="btn btn-blue" style="padding:6px 12px; font-size:0.72em;" onclick="wakeUpFromSleepMode()">Desbloquear antes de las 5:00 AM</button>
+                    <div style="color:#94a3b8; font-size:0.76em; margin-bottom:8px;">Signos vitales y tesorería protegidos hasta las 4:30 AM.</div>
+                    <button class="btn btn-blue" style="padding:6px 12px; font-size:0.72em;" onclick="wakeUpFromSleepMode()">Desbloquear antes de las 4:30 AM</button>
                    </div>`
                 : `<button class="btn btn-main" style="width:100%; padding:11px; font-size:0.78em;" onclick="activateNightSleepMode()">
                     TERMINAR DÍA Y DORMIR (CONGELAR DRENAJE NOCTURNO)
                    </button>`}
+                        <button class="btn btn-blue" style="width:100%; padding:9px; font-size:0.74em;" onclick="enableMonarchWebPush()">
+                ${(p && p.webPushSub) ? '[ PUSH EN SEGUNDO PLANO: ACTIVO • PROBAR ]' : '[ ACTIVAR NOTIFICACIONES PUSH (APP CERRADA) ]'}
+            </button>
         </div>
     `;
 }
 /* ==========================================================================
-   2. DRENAJE VISUAL RÁPIDO DE MANÁ (HUD Y MAZMORRA EN TIEMPO REAL)
+   2. MOTOR DE FLUJO CONTINUO 60 FPS PARA HP Y MANÁ (CERO PAUSAS)
    ========================================================================== */
 let _rollingMpValue = null;
 let _rollingMpRaf = null;
 let _lastRenderedMpInt = null;
 let _lastRenderedMpPct = null;
 let _mpDomCache = null;
+let _mpLastEls = {};
+
+let _rollingHpValue = null;
+let _rollingHpRaf = null;
+let _lastRenderedHpStr = null;
+let _lastRenderedHpPct = null;
+let _hpDomCache = null;
 
 function _getMpDomElements() {
     if (!_mpDomCache || !_mpDomCache.mpTxtEl || !_mpDomCache.mpTxtEl.isConnected) {
@@ -656,6 +699,18 @@ function _getMpDomElements() {
     return _mpDomCache;
 }
 
+function _getHpDomElements() {
+    if (!_hpDomCache || !_hpDomCache.hpTxtEl || !_hpDomCache.hpTxtEl.isConnected) {
+        _hpDomCache = {
+            hpTxtEl: document.getElementById('hp-text'),
+            hpBarEl: document.getElementById('hp-bar'),
+            rHpTxtEl: document.getElementById('raid-hp-text'),
+            rHpBarEl: document.getElementById('raid-hp-bar')
+        };
+    }
+    return _hpDomCache;
+}
+
 function renderMpElementsNow(val, maxMP) {
     let dom = _getMpDomElements();
     let safeMax = Math.max(1, maxMP);
@@ -663,7 +718,16 @@ function renderMpElementsNow(val, maxMP) {
     let pctNum = Math.max(0, Math.min(100, (val / safeMax) * 100));
     let pctStr = `${pctNum.toFixed(2)}%`;
 
-    if (_lastRenderedMpInt !== displayInt) {
+   // Si el DOM de la barra fue reemplazado, forzar una nueva escritura de ancho y texto
+let _mpSwapped = (dom.mpTxtEl !== _mpLastEls.txt) || (dom.rMpTxtEl !== _mpLastEls.rTxt) ||
+                 (dom.mpBarEl !== _mpLastEls.bar) || (dom.rMpBarEl !== _mpLastEls.rBar);
+if (_mpSwapped) {
+    _mpLastEls = { txt: dom.mpTxtEl, rTxt: dom.rMpTxtEl, bar: dom.mpBarEl, rBar: dom.rMpBarEl };
+    _lastRenderedMpInt = null;
+    _lastRenderedMpPct = null;
+}
+
+if (_lastRenderedMpInt !== displayInt) {
         _lastRenderedMpInt = displayInt;
         let txt = `${displayInt}/${safeMax}`;
         if (dom.mpTxtEl) dom.mpTxtEl.textContent = txt;
@@ -672,10 +736,92 @@ function renderMpElementsNow(val, maxMP) {
 
     if (_lastRenderedMpPct !== pctStr) {
         _lastRenderedMpPct = pctStr;
-        if (dom.mpBarEl) dom.mpBarEl.style.width = pctStr;
-        if (dom.rMpBarEl) dom.rMpBarEl.style.width = pctStr;
+        if (dom.mpBarEl) {
+            dom.mpBarEl.style.transition = 'none';
+            dom.mpBarEl.style.width = pctStr;
+        }
+        if (dom.rMpBarEl) {
+            dom.rMpBarEl.style.transition = 'none';
+            dom.rMpBarEl.style.width = pctStr;
+        }
     }
 }
+
+function renderHpElementsNow(val, maxHP) {
+    let dom = _getHpDomElements();
+    let safeMax = Math.max(1, maxHP);
+    let clamped = Math.max(0, val);
+    let isTenacity = (clamped > 0 && clamped <= safeMax * 0.30);
+    let numStr = (Math.abs(clamped - Math.round(clamped)) < 0.05)
+        ? String(Math.round(clamped))
+        : clamped.toFixed(1);
+    let fullTxt = `${numStr}/${safeMax}${isTenacity ? ' [TENACIDAD]' : ''}`;
+    let pctNum = Math.max(0, Math.min(100, (clamped / safeMax) * 100));
+    let pctStr = `${pctNum.toFixed(2)}%`;
+
+    if (_lastRenderedHpStr !== fullTxt) {
+        _lastRenderedHpStr = fullTxt;
+        if (dom.hpTxtEl) dom.hpTxtEl.textContent = fullTxt;
+        _animatedNumCache['hp-text'] = fullTxt;
+    }
+
+    if (_lastRenderedHpPct !== pctStr) {
+        _lastRenderedHpPct = pctStr;
+        if (dom.hpBarEl) {
+            dom.hpBarEl.style.transition = 'none';
+            dom.hpBarEl.style.width = pctStr;
+        }
+        if (dom.rHpBarEl) {
+            dom.rHpBarEl.style.transition = 'none';
+            dom.rHpBarEl.style.width = pctStr;
+        }
+    }
+}
+
+function animateHPDisplayTo(targetHP, maxHP) {
+    if (document.hidden) {
+        _rollingHpValue = targetHP;
+        renderHpElementsNow(targetHP, maxHP);
+        return;
+    }
+    if (_rollingHpValue === null) {
+        _rollingHpValue = targetHP;
+        renderHpElementsNow(targetHP, maxHP);
+        return;
+    }
+
+    let diff = targetHP - _rollingHpValue;
+    if (Math.abs(diff) < 0.005) {
+        _rollingHpValue = targetHP;
+        renderHpElementsNow(targetHP, maxHP);
+        return;
+    }
+
+    if (_rollingHpRaf) cancelAnimationFrame(_rollingHpRaf);
+
+    let startVal = _rollingHpValue;
+    let absDiff = Math.abs(diff);
+    // 1050ms solapa ligeramente el tick de 1000ms para que el movimiento jamás se detenga entre segundos
+    let durationMs = absDiff <= 15 ? 1050 : Math.min(500, Math.max(220, absDiff * 4));
+    let startTime = performance.now();
+
+    function stepHpFrame(now) {
+        let elapsed = now - startTime;
+        let t = Math.min(1, elapsed / durationMs);
+        _rollingHpValue = startVal + (targetHP - startVal) * t;
+        renderHpElementsNow(_rollingHpValue, maxHP);
+
+        if (t < 1) {
+            _rollingHpRaf = requestAnimationFrame(stepHpFrame);
+        } else {
+            _rollingHpValue = targetHP;
+            _rollingHpRaf = null;
+            renderHpElementsNow(targetHP, maxHP);
+        }
+    }
+    _rollingHpRaf = requestAnimationFrame(stepHpFrame);
+}
+window.animateHPDisplayTo = animateHPDisplayTo;
 
 function animateMPDisplayTo(targetMP, maxMP) {
     if (document.hidden) {
@@ -690,7 +836,7 @@ function animateMPDisplayTo(targetMP, maxMP) {
     }
 
     let diff = targetMP - _rollingMpValue;
-    if (Math.abs(diff) < 0.05) {
+    if (Math.abs(diff) < 0.01) {
         _rollingMpValue = targetMP;
         renderMpElementsNow(targetMP, maxMP);
         return;
@@ -700,8 +846,8 @@ function animateMPDisplayTo(targetMP, maxMP) {
 
     let startVal = _rollingMpValue;
     let absDiff = Math.abs(diff);
-    // Si es el tick continuo por segundo (drenaje/recarga), interpolar durante 960ms para que baje de 1 en 1 (100->99->98) sin pausas
-    let durationMs = absDiff <= 25 ? 960 : Math.min(520, Math.max(240, absDiff * 1.1));
+    // 1050ms solapa el tick de 1000ms para que el conteo sea 100% continuo sin pausas
+    let durationMs = absDiff <= 35 ? 1050 : Math.min(520, Math.max(240, absDiff * 1.1));
     let startTime = performance.now();
 
     function stepMpFrame(now) {
@@ -721,6 +867,7 @@ function animateMPDisplayTo(targetMP, maxMP) {
     _rollingMpRaf = requestAnimationFrame(stepMpFrame);
 }
 window.animateMPDisplayTo = animateMPDisplayTo;
+
 
 function consumeMPFast(amount, onComplete) {
     if (!p) return false;
@@ -914,6 +1061,22 @@ function triggerAiMonarchComment(forcedCategory = null) {
     typeWriterMessage(cleanMsg, 'sys-message', 18);
 }
 
+const AI_ROTATION_NORMAL_MS = 15000; // Ritmo normal
+const AI_ROTATION_TAB_MS = 12000;    // Primer comentario tras cambiar de pestaña
+let aiRotationTimer = null;
+
+// Cada cambio de pestaña reprograma el siguiente comentario en 12 s; después vuelve al ritmo de 15 s.
+function scheduleAiRotation(delayMs) {
+    clearTimeout(aiRotationTimer);
+    aiRotationTimer = setTimeout(() => {
+        const sb = document.querySelector('.sys-log');
+        if (!document.hidden && p && !p.penaltyActive && (!sb || !sb.classList.contains('sys-log-collapsed'))) {
+            triggerAiMonarchComment();
+        }
+        scheduleAiRotation(AI_ROTATION_NORMAL_MS);
+    }, delayMs);
+}
+
 function initAiBootScreen() {
     if (!p || !p.dayZeroCompleted) return;
     let bioDay = (typeof getBiologicalDayStr === 'function') ? getBiologicalDayStr() : new Date().toDateString();
@@ -921,6 +1084,105 @@ function initAiBootScreen() {
     localStorage.setItem('SL_BootShownDay', bioDay);
     triggerAiMonarchComment();
 }
+
+function getActiveBuffsList(now, currentDayStr, maxHP) {
+    if (!p) return [];
+    const minsLeft = (untilTs) => {
+        let m = Math.max(1, Math.ceil((untilTs - now) / 60000));
+        return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m`;
+    };
+
+    let buffs = [];
+    if (isMercyActive()) buffs.push({ lbl: 'Piedra de la Misericordia', time: minsLeft(p.mercyUntil), alert: false, info: 'Caída nocturna extendida hasta las 2:00 AM y protección vital activa.' });
+    if (p.magmaOverheal && p.hp > maxHP) buffs.push({ lbl: `Sobrecarga de Magma (${Math.round((p.hp / maxHP) * 100)}%)`, time: 'ACTIVO', alert: false, info: 'Tu HP supera temporalmente el límite máximo normal.' });
+    if (p.cryoBuffUntil && now < p.cryoBuffUntil) buffs.push({ lbl: 'Suero de Cero Absoluto', time: minsLeft(p.cryoBuffUntil), alert: false, info: 'Reduce al 50% todo daño recibido.' });
+    if (p.stealthModeUntil && now < p.stealthModeUntil) buffs.push({ lbl: 'Habilidad: Sigilo', time: minsLeft(p.stealthModeUntil), alert: false, info: 'Inmune a daño ambiental, 0 fatiga inicial y golpe Crítico x3 a Jefe.' });
+    if (p.voidXpBuffUntil && now < p.voidXpBuffUntil) buffs.push({ lbl: 'Sangre Corrupta (EXP x2)', time: minsLeft(p.voidXpBuffUntil), alert: false, info: 'Duplica la experiencia obtenida al sellar misiones.' });
+    if (p._arcPrismUntil && now < p._arcPrismUntil) buffs.push({ lbl: 'Sincronización Prismática', time: minsLeft(p._arcPrismUntil), alert: false, info: 'EXP x1.5 activa en todas tus misiones.' });
+    if (p._arcGildedUntil && now < p._arcGildedUntil) buffs.push({ lbl: 'Tesorería del Arquitecto', time: minsLeft(p._arcGildedUntil), alert: false, info: 'Impuesto de oro anulado (cobras el 100%).' });
+    if (p.entropyBuffUntil && now < p.entropyBuffUntil) buffs.push({ lbl: 'Reloj de Ceniza', time: minsLeft(p.entropyBuffUntil), alert: false, info: 'Desplegar misiones regenera +8 SP en lugar de gastar.' });
+    if (p.spDiscountUntil && now < p.spDiscountUntil) buffs.push({ lbl: 'Estado Zen', time: minsLeft(p.spDiscountUntil), alert: false, info: 'Costo de fatiga (SP) reducido al 50%.' });
+    if (p.bypassFatigue) buffs.push({ lbl: 'Bypass de Fatiga', time: '1 USO', alert: false, info: 'Tu próxima misión o sesión Focus costará 0 SP.' });
+    if (p.starStreamNext || (p.starStreamCharges && p.starStreamCharges > 0)) buffs.push({ lbl: 'Patrocinio Star Stream', time: `${p.starStreamCharges || 1} CARGA(S)`, alert: false, info: 'Oro x3 + 90 G libres de impuestos en tus próximas recompensas.' });
+    if (p.whiteTigerBounty) buffs.push({ lbl: 'Permiso Tigre Blanco', time: '1 USO', alert: false, info: 'Próxima misión o mazmorra paga 100% Oro + 110 G y 2 minerales.' });
+    if (p.zeroMpDrainUntil && now < p.zeroMpDrainUntil) buffs.push({ lbl: 'Esencia de Sombra Líquida', time: minsLeft(p.zeroMpDrainUntil), alert: false, info: 'Tus Comandantes consumen 0 MP/min temporalmente.' });
+    if (p.halfMpDrainUntil && now < p.halfMpDrainUntil) buffs.push({ lbl: 'Mineral de Alta Pureza', time: minsLeft(p.halfMpDrainUntil), alert: false, info: 'Drenaje de MP de sombras reducido al 50%.' });
+    if (p.sovereignCritDiscount) buffs.push({ lbl: 'Autoridad del Soberano', time: '1 USO', alert: false, info: 'La próxima Habilidad Activa de tus Sombras cuesta -50% MP.' });
+    if (p.beruSpeedUntil && now < p.beruSpeedUntil) buffs.push({ lbl: 'Modo Berserker (Beru)', time: minsLeft(p.beruSpeedUntil), alert: false, info: 'Bono de oro activo y validación rápida.' });
+    if (p.ironImmunityUntil && now < p.ironImmunityUntil) buffs.push({ lbl: 'Bastión Inmune', time: minsLeft(p.ironImmunityUntil), alert: false, info: '100% inmune a perder vida mientras dure el efecto.' });
+    if (p.hazardImmunityUntil && now < p.hazardImmunityUntil) buffs.push({ lbl: 'Incienso de Glicinas', time: minsLeft(p.hazardImmunityUntil), alert: false, info: 'Inmune a veneno, fuego y presión ambiental.' });
+    if (p.demonBloodUntil && now < p.demonBloodUntil) buffs.push({ lbl: 'Sangre de Demonio Noble', time: minsLeft(p.demonBloodUntil), alert: false, info: 'Al sellar misiones absorbes +25 HP y +200 MP adicionales.' });
+    if (p.ambrosiaHalfTimeUses && p.ambrosiaHalfTimeUses > 0) buffs.push({ lbl: 'Néctar de Gobernantes', time: `${p.ambrosiaHalfTimeUses} USOS`, alert: false, info: 'Tus próximas misiones solo requieren 50% del tiempo.' });
+    if (p.phoenixFeatherActive === currentDayStr) buffs.push({ lbl: 'Pluma del Fénix', time: 'HOY', alert: false, info: 'Evita una muerte hoy y te revive con 50 HP.' });
+    if (p.streakShieldActive === currentDayStr) buffs.push({ lbl: 'Escudo de Racha', time: 'HOY', alert: false, info: 'Protege tu Racha Perfecta al cierre del día.' });
+    if (p.contractActive === currentDayStr) buffs.push({ lbl: 'Contrato de Sangre', time: 'HOY', alert: true, info: 'Completa todo el Tablón hoy para ganar +280 G y +2 CM (o -50 HP si fallas).' });
+    if (p.nightPassActive === currentDayStr && typeof isNightVigilActiveNow === 'function' && isNightVigilActiveNow()) buffs.push({ lbl: 'Pase de Vigilia Nocturna', time: 'HASTA 11:20 PM', alert: false, info: 'Cero sangrado y recompensas al 100% hasta las 11:20 PM.' });
+    if (p.nextBossCrit) buffs.push({ lbl: 'Golpe Crítico Preparado', time: '1 USO', alert: false, info: 'Tu próximo ataque directo a Jefe inflige daño crítico multiplicado.' });
+    if (p.nextSlashWiden) buffs.push({ lbl: 'Zona Vital Ensanchada', time: '1 USO', alert: false, info: 'Tu próximo Corte Dimensional tendrá la zona crítica más ancha.' });
+    if (p.nextSlashSlow) buffs.push({ lbl: 'Corte Ralentizado', time: '1 USO', alert: false, info: 'La aguja de tu próximo Corte Dimensional irá más lenta.' });
+    if (p.sageTeaFocusMp) buffs.push({ lbl: 'Infusión del Sabio', time: '1 USO', alert: false, info: 'Tu próxima sesión en Cámara de Focus otorgará +180 MP extra.' });
+    if (p.redBeaconArmed) buffs.push({ lbl: 'Baliza Carmesí Armada', time: 'LISTA', alert: true, info: 'Presiona REESCANEAR en el Sonar para activar Portales de alto rango.' });
+    return buffs;
+}
+
+function renderActiveBuffsStrip(now, currentDayStr, maxHP) {
+    let trig = document.getElementById('sl-buff-pill-trigger');
+    if (!trig) return;
+
+    let buffs = getActiveBuffsList(now, currentDayStr, maxHP);
+    let hasAlert = buffs.some(b => b.alert);
+    let sig = `${buffs.length}_${hasAlert ? 1 : 0}`;
+    if (trig.dataset.sig === sig) return;
+    trig.dataset.sig = sig;
+
+    if (buffs.length === 0) {
+        trig.classList.remove('has-buffs', 'has-alert');
+        trig.innerHTML = '';
+        return;
+    }
+
+    trig.classList.add('has-buffs');
+    trig.classList.toggle('has-alert', hasAlert);
+    trig.innerHTML = `<span class="sl-buff-mini-diamond"></span><span>${buffs.length}</span>`;
+}
+
+window.openActiveBuffsModal = function() {
+    let now = Date.now();
+    let currentDayStr = (typeof getBiologicalDayStr === 'function') ? getBiologicalDayStr() : new Date().toDateString();
+    let maxHP = (typeof calculateHunterMaxHP === 'function') ? calculateHunterMaxHP() : 100;
+    let buffs = getActiveBuffsList(now, currentDayStr, maxHP);
+    if (buffs.length === 0) return;
+
+    let modal = document.getElementById('active-buffs-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'active-buffs-modal';
+        modal.className = 'modal';
+        document.body.appendChild(modal);
+    }
+
+    let rowsHtml = buffs.map(b => `
+        <div class="sl-buff-modal-row ${b.alert ? 'row-alert' : ''}">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:3px;">
+                <span style="font-weight:700; color:#ffffff; font-size:0.88em;">${b.lbl}</span>
+                <span style="font-family:'Share Tech Mono', monospace; font-size:0.68em; color:${b.alert ? '#fda4af' : '#7dd3fc'};">${b.time}</span>
+            </div>
+            <div style="font-size:0.78em; color:#cbd5e1; line-height:1.35;">${b.info}</div>
+        </div>
+    `).join('');
+
+    modal.innerHTML = `
+        <div class="modal-content sl-system-window" style="max-width:400px;">
+            <div class="sl-anime-box-header" style="margin-bottom:10px;">
+                <div class="sl-anime-excl-box"><div class="sl-anime-excl-circle">!</div></div>
+                <div class="sl-anime-title-box">EFECTOS ACTIVOS</div>
+            </div>
+            <div style="max-height:56vh; overflow-y:auto; margin:10px 0;">${rowsHtml}</div>
+            <button class="btn btn-main" style="width:100%;" onclick="closeModal('active-buffs-modal')">CERRAR</button>
+        </div>
+    `;
+    modal.style.display = 'flex';
+};
 
 function updateHUD() {
     if (!p) return;
@@ -946,14 +1208,12 @@ function updateHUD() {
         systemNotify(`¡ASCENSIÓN AL NIVEL ${p.level}! Vitalidad restaurada al 100% (+2 CM).`, "gold");
     }
 
-    p.arcticShield = Math.min(800, Math.max(0, Math.floor(p.arcticShield || 0)));
+       p.arcticShield = Math.min(800, Math.max(0, Math.floor(p.arcticShield || 0)));
     let shieldVal = p.arcticShield;
-    let displayHp = (p.hp % 1 === 0) ? p.hp : p.hp.toFixed(1);
-    let isTenacityActive = (p.hp > 0 && p.hp <= maxHP * 0.30);
 
     safeSetText('lvl-display', p.level);
     safeSetText('xp-text', `${Math.floor(p.xp)}/${p.maxXp}`);
-    safeSetText('hp-text', `${displayHp}/${maxHP}${isTenacityActive ? ' [TENACIDAD]' : ''}`);
+    animateHPDisplayTo(p.hp, maxHP);
     safeSetText('sp-text', `${Math.floor(p.sp)}/100`);
     safeSetText('gold-display', Math.floor(p.gold));
     safeSetText('crystal-display', Math.floor(p.crystals || 0));
@@ -988,32 +1248,72 @@ function updateHUD() {
         goldTxtEl.style.textShadow = '';
     }
     
-    let xpBar = document.getElementById('xp-bar'); 
+        let isStealthOn = !!(p.stealthModeUntil && now < p.stealthModeUntil);
+    let isTenacityOn = (!p.penaltyActive && p.hp > 0 && p.hp <= maxHP * 0.30);
+    let isGildedOn = !!(p._arcGildedUntil && now < p._arcGildedUntil);
+    let isEclipseOn = !!(p._arcEclipseActive && now < p._arcEclipseActive);
+    let isPrismOrVoid = !!(p._arcPrismUntil && now < p._arcPrismUntil) || !!(p.voidXpBuffUntil && now < p.voidXpBuffUntil);
+    let isCryoOn = !!(p.cryoBuffUntil && now < p.cryoBuffUntil);
+    let isMagmaOn = !!(p.magmaOverheal && p.hp > maxHP);
+    let isZeroMpOn = !!(p.zeroMpDrainUntil && now < p.zeroMpDrainUntil);
+
+    document.body.classList.toggle('stealth-camouflage-active', isStealthOn);
+    document.body.classList.toggle('tenacity-glitch-active', isTenacityOn);
+
+    let headerEl = document.querySelector('.header');
+    if (headerEl) headerEl.classList.toggle('arc-sovereign-mode', isGildedOn);
+
+    let sysBarAnim = document.querySelector('.sys-log');
+    if (sysBarAnim) {
+        sysBarAnim.classList.toggle('arc-celestial-pulse', isGildedOn);
+        sysBarAnim.classList.toggle('arc-anomaly-pulse', isEclipseOn);
+    }
+
+    let stealthSlot = document.getElementById('sl-stealth-banner-slot');
+    if (stealthSlot) {
+        if (isStealthOn) {
+            let stMins = Math.max(1, Math.ceil((p.stealthModeUntil - now) / 60000));
+            let stSig = `stealth_${stMins}`;
+            if (stealthSlot.dataset.sig !== stSig) {
+                stealthSlot.dataset.sig = stSig;
+                stealthSlot.innerHTML = `<div class="sl-stealth-hud-banner"><span>[ HABILIDAD: SIGILO ACTIVO ]</span><span>${stMins}M // CRÍT x3</span></div>`;
+            }
+        } else if (stealthSlot.innerHTML !== '') {
+            stealthSlot.dataset.sig = '';
+            stealthSlot.innerHTML = '';
+        }
+    }
+
+    let xpBar = document.getElementById('xp-bar');
     if (xpBar) {
         xpBar.style.width = `${Math.min(100, (p.xp / p.maxXp) * 100)}%`;
-        xpBar.classList.remove('arc-st-01');
+        xpBar.classList.toggle('arc-st-01', isPrismOrVoid);
         xpBar.style.background = '';
         xpBar.style.boxShadow = '';
     }
+
     let hpBar = document.getElementById('hp-bar');
     let hpWrapEl = document.getElementById('hp-wrap');
     if (hpWrapEl) {
         hpWrapEl.classList.toggle('mercy-emerald-halo', isMercyActive());
-        hpWrapEl.classList.toggle('pulse-danger', p.hp <= 30);
+        hpWrapEl.classList.toggle('pulse-danger', p.hp <= 30 && !isMagmaOn);
+        hpWrapEl.classList.toggle('overheal-magma', isMagmaOn);
+        hpWrapEl.classList.toggle('cryo-aura', isCryoOn && !isMagmaOn && !isMercyActive());
     }
     if (hpBar) {
-        hpBar.style.width = `${Math.max(0, Math.min(100, (p.hp / maxHP) * 100))}%`;
-        hpBar.classList.toggle('arc-st-02', !!(p._arcEclipseActive && now < p._arcEclipseActive));
+        hpBar.classList.toggle('arc-st-02', isEclipseOn);
     }
 
     let currentMP = p.mp !== undefined ? p.mp : 0;
     let hasUnlockedAnyShadow = p.shadowArmy && ['igris', 'tank', 'iron', 'tusk', 'beru'].some(k => p.shadowArmy[k] && p.shadowArmy[k].unlocked);
 
     animateMPDisplayTo(currentMP, maxMP);
-    let mpBar = document.getElementById('mp-bar'); 
+    let mpBar = document.getElementById('mp-bar');
     if (mpBar) {
-        mpBar.classList.toggle('arc-st-04', !!(p.zeroMpDrainUntil && now < p.zeroMpDrainUntil));
+        mpBar.classList.toggle('arc-st-04', isZeroMpOn);
     }
+
+    renderActiveBuffsStrip(now, currentDayStr, maxHP);
 
     // Mostrar la barra de MP desde Nivel 1 (igual que en el Episodio 3 del anime)
     let mpColEl = document.getElementById('sl-mp-col');
@@ -1162,14 +1462,79 @@ function _bindFocusChamberGuard() {
         } else if (_focusTabLeftAt) {
             let awayS = Math.floor((Date.now() - _focusTabLeftAt) / 1000);
             _focusTabLeftAt = null;
-            if (awayS >= 20 && awayS <= 600) {
+            if (awayS >= 30 && awayS <= 600) {
                 studyStartedAt += (awayS + 60) * 1000;
+                if (p && p.activeStudySession) {
+                    p.activeStudySession.startedAt = studyStartedAt;
+                    saveData();
+                }
                 systemNotify(`[OJO DE KANDIARU]: Saliste ${awayS}s durante la Cámara de Focus. Tiempo descontado + 1 min de penalización.`, "danger");
             }
         }
     });
 }
 _bindFocusChamberGuard();
+
+function _runStudyTimerLoop() {
+    clearInterval(studyTimer);
+    let stopBtn = document.getElementById('btn-study-stop');
+    let timerText = document.getElementById('study-timer-text');
+    let optsEl = document.getElementById('study-options');
+    let closeBtn = document.getElementById('btn-study-close');
+
+    if (optsEl) optsEl.style.display = 'none';
+    if (closeBtn) closeBtn.style.display = 'none';
+    if (stopBtn) {
+        stopBtn.style.display = 'block';
+        stopBtn.className = 'btn btn-red';
+        stopBtn.innerText = 'INTERRUMPIR SESIÓN (-10 HP)';
+    }
+    if (timerText) {
+        timerText.style.color = '#ffffff';
+        timerText.style.textShadow = '0 0 14px #00e5ff';
+    }
+
+    const tickFocus = () => {
+        let sec = Math.max(0, Math.floor((Date.now() - studyStartedAt) / 1000));
+        if (sec >= totalStudyTime * 60) {
+            sec = totalStudyTime * 60;
+            studySessionCompleted = true;
+            if (timerText) {
+                timerText.style.color = '#e0f2fe';
+                timerText.style.textShadow = '0 0 18px #00e5ff';
+            }
+            if (stopBtn) {
+                stopBtn.className = 'btn btn-main';
+                stopBtn.innerText = 'SELLAR NÚCLEO DE ENFOQUE (+MP)';
+            }
+            clearInterval(studyTimer);
+            systemNotify("Inmersión Cognitiva completada. Sella tu núcleo para absorber el maná.", "gold");
+        }
+        let m = String(Math.floor(sec / 60)).padStart(2, '0');
+        let s = String(sec % 60).padStart(2, '0');
+        if (timerText) timerText.innerText = `${m}:${s}`;
+    };
+
+    tickFocus();
+    studyTimer = setInterval(tickFocus, 1000);
+}
+
+function restoreActiveStudySession() {
+    if (!p || !p.activeStudySession || p.penaltyActive) return;
+    let st = p.activeStudySession;
+    let ageMins = (Date.now() - st.startedAt) / 60000;
+    if (ageMins > 180) {
+        p.activeStudySession = null;
+        saveData();
+        return;
+    }
+    totalStudyTime = st.mins || 25;
+    studyStartedAt = st.startedAt;
+    studySessionCompleted = (ageMins >= totalStudyTime);
+    openModal('study-modal');
+    _runStudyTimerLoop();
+}
+window.addEventListener('load', () => setTimeout(restoreActiveStudySession, 550));
 
 function startStudy(mins) {
     if (p.penaltyActive) {
@@ -1178,18 +1543,20 @@ function startStudy(mins) {
     }
 
     if (studySessionCompleted && totalStudyTime === mins) {
+        p.activeStudySession = null;
+        saveData();
         closeModal('study-modal');
-        let baseXP = totalStudyTime === 5 ? 50 : 180; 
+        let baseXP = totalStudyTime === 5 ? 50 : 180;
         let baseGold = totalStudyTime === 5 ? 20 : 80;
         openSealModal({ type: 'study', mins: totalStudyTime, xp: baseXP, gold: baseGold });
         return;
     }
-    
-    clearInterval(studyTimer); 
-    totalStudyTime = mins; 
+
+    clearInterval(studyTimer);
+    totalStudyTime = mins;
     studySessionCompleted = false;
 
-    let spCost = mins === 5 ? 15 : 40; 
+    let spCost = mins === 5 ? 15 : 40;
     if (p.bypassFatigue) {
         spCost = 0;
         p.bypassFatigue = false;
@@ -1200,73 +1567,38 @@ function startStudy(mins) {
         spCost = Math.floor(spCost * 0.5);
     }
 
-    if (spCost > 0 && p.sp < spCost) { 
-        p.hp = Math.max(0, p.hp - 15); 
-        updateHUD(); 
-        systemNotify("Estamina mental insuficiente para la inmersión. -15 HP.", "danger"); 
+    if (spCost > 0 && p.sp < spCost) {
+        p.hp = Math.max(0, p.hp - 15);
+        updateHUD();
+        systemNotify("Estamina mental insuficiente para la inmersión. -15 HP.", "danger");
         if (p.hp <= 0 && typeof triggerDeath === 'function') {
             triggerDeath("Colapso físico al forzar una sesión de estudio cognitiva sin SP.", "routine");
         }
-        return; 
+        return;
     }
 
-    p.sp = Math.min(100, p.sp - spCost); 
-    updateHUD(); 
-    saveData();
-    
-    document.getElementById('study-options').style.display = 'none'; 
-    document.getElementById('btn-study-close').style.display = 'none'; 
-    
-    let stopBtn = document.getElementById('btn-study-stop');
-    if (stopBtn) {
-        stopBtn.style.display = 'block';
-        stopBtn.className = 'btn btn-red';
-        stopBtn.innerText = 'INTERRUMPIR SESIÓN (-10 HP)';
-    }
-    
-    let timerText = document.getElementById('study-timer-text');
-    if (timerText) {
-        timerText.style.color = "#ffffff"; 
-        timerText.style.textShadow = "0 0 14px #00e5ff";
-    }
-    
+    p.sp = Math.min(100, p.sp - spCost);
     studyStartedAt = Date.now();
-    
-    studyTimer = setInterval(() => {
-        let sec = Math.max(0, Math.floor((Date.now() - studyStartedAt) / 1000));
-        
-        if (sec >= totalStudyTime * 60) { 
-            sec = totalStudyTime * 60; 
-            studySessionCompleted = true;
-            if (timerText) {
-                timerText.style.color = "#e0f2fe"; 
-                timerText.style.textShadow = "0 0 18px #00e5ff"; 
-            }
-            if (stopBtn) {
-                stopBtn.className = 'btn btn-main';
-                stopBtn.innerText = 'SELLAR NÚCLEO DE ENFOQUE (+MP)';
-            }
-            clearInterval(studyTimer); 
-            systemNotify("Inmersión Cognitiva completada. Sella tu núcleo para absorber el maná.", "gold"); 
-        }
-        
-        let m = String(Math.floor(sec / 60)).padStart(2, '0'); 
-        let s = String(sec % 60).padStart(2, '0'); 
-        if (timerText) timerText.innerText = `${m}:${s}`;
-    }, 1000); 
+    p.activeStudySession = { startedAt: studyStartedAt, mins: mins };
+    updateHUD();
+    saveData();
+    _runStudyTimerLoop();
 }
+
 function stopStudy() {
-    clearInterval(studyTimer); 
-    
-    document.getElementById('study-options').style.display = 'block'; 
-    document.getElementById('btn-study-close').style.display = 'block'; 
+    clearInterval(studyTimer);
+
+    document.getElementById('study-options').style.display = 'block';
+    document.getElementById('btn-study-close').style.display = 'block';
     document.getElementById('btn-study-stop').style.display = 'none';
-    
+
     let elapsedSecs = Math.floor((Date.now() - studyStartedAt) / 1000);
     let requiredSecs = Math.floor((totalStudyTime * 60) * 0.9);
     let beruBypass = p && p.beruSpeedUntil && Date.now() < p.beruSpeedUntil;
 
-    closeModal('study-modal'); 
+    p.activeStudySession = null;
+    saveData();
+    closeModal('study-modal');
 
     if (!studySessionCompleted && !beruBypass && elapsedSecs < requiredSecs) {
         p.hp = Math.max(0, p.hp - 10);
@@ -1278,17 +1610,17 @@ function stopStudy() {
         }
         return;
     }
-    
+
     studySessionCompleted = false;
-    let baseXP = totalStudyTime === 5 ? 50 : 180; 
-    let baseGold = totalStudyTime === 5 ? 20 : 80; 
-    
+    let baseXP = totalStudyTime === 5 ? 50 : 180;
+    let baseGold = totalStudyTime === 5 ? 20 : 80;
+
     if (typeof openSealModal === 'function') {
-        openSealModal({ 
+        openSealModal({
             type: 'study',
             mins: totalStudyTime,
-            xp: baseXP, 
-            gold: baseGold 
+            xp: baseXP,
+            gold: baseGold
         });
     }
 }
@@ -1362,13 +1694,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof triggerAiMonarchComment === 'function') triggerAiMonarchComment();
     }, 1200);
 
-// Rotar comentarios de la IA cada 45 segundos solo cuando la app está visible en pantalla
-    setInterval(() => {
-        if (document.hidden) return;
-        const _sb = document.querySelector('.sys-log'); if (typeof triggerAiMonarchComment === 'function' && p && !p.penaltyActive && (!_sb || !_sb.classList.contains('sys-log-collapsed'))) {
-            triggerAiMonarchComment();
-        }
-    }, 45000);
+scheduleAiRotation(AI_ROTATION_NORMAL_MS);
 });
 /* ==========================================================================
    6. CINEMÁTICA OFICIAL DE CAMBIO DE CLASE Y DESPERTAR DE TÍTULOS (MANHWA)
@@ -1520,7 +1846,7 @@ function playJobChangeCinematic(leadText = "TU CLASE HA CAMBIADO", oldName = "NI
         if (Math.floor(p.hp) === 1 && _once('km_04')) {
             p.hp = Math.min((typeof calculateHunterMaxHP === 'function' ? calculateHunterMaxHP() : 100), p.hp + 33);
             updateHUD();
-            systemNotify(_k('W01JU0lP TiBTRUNSRVRBOiBFTCBWQVRpQ0lOSU8gREUgTE9TIERFQklMRVNdIFR1IGNvcmF6w7NuIHNlIG5pZWdhIGEgbW9yaXIuICszMyBIUCBkZSBlbWVyZ2VuY2lhLg=='), 'gold');
+            systemNotify(_k('W01JU0lPTiBTRUNSRVRBOiBFTCBWQVRJQ0lOSU8gREUgTE9TIERFQklMRVNdIFR1IGNvcmF6w7NuIHNlIG5pZWdhIGEgbW9yaXIuICszMyBIUCBkZSBlbWVyZ2VuY2lhLg=='), 'gold');
         }
 
         if (Math.floor(p.gold) === 777 && _once('km_05')) {
@@ -1836,3 +2162,93 @@ window.finishDayZeroPrologue = function() {
         if (typeof switchTab === "function") switchTab('routine', 0);
     }, 650);
 };
+/* ==========================================================================
+   18. MOTOR CLIENTE WEB PUSH VAPID (NOTIFICACIONES CON APP CERRADA)
+   ========================================================================== */
+// Pega aquí tu llave pública VAPID generada con: npx web-push generate-vapid-keys
+const MONARCH_VAPID_PUBLIC_KEY = "PEGA_AQUI_TU_VAPID_PUBLIC_KEY";
+
+function _urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const out = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) out[i] = rawData.charCodeAt(i);
+    return out;
+}
+
+window.enableMonarchWebPush = async function() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        return systemNotify("Este navegador no soporta Web Push nativo.", "danger");
+    }
+    if (!MONARCH_VAPID_PUBLIC_KEY || MONARCH_VAPID_PUBLIC_KEY.includes("PEGA_AQUI")) {
+        return systemNotify("Pega tu VAPID_PUBLIC_KEY en js/ui.js y en las variables de Vercel para activar Push.", "info");
+    }
+
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') {
+        return systemNotify("Permiso de notificaciones denegado en el sistema.", "danger");
+    }
+
+    try {
+        const reg = await navigator.serviceWorker.ready;
+        let sub = await reg.pushManager.getSubscription();
+        if (!sub) {
+            sub = await reg.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: _urlBase64ToUint8Array(MONARCH_VAPID_PUBLIC_KEY)
+            });
+        }
+        p.webPushSub = sub.toJSON();
+        saveData();
+        if (typeof renderStatusRadarProfile === 'function') renderStatusRadarProfile();
+
+        // Enviar prueba diferida 8 segundos para que puedas apagar la pantalla y comprobarlo
+        await window.scheduleCloudPush('test_push', 'SISTEMA DEL MONARCA', 'Conexión Web Push verificada en segundo plano.', 8, 'sl-push-test');
+        systemNotify("Push activado. Apaga tu pantalla: recibirás una notificación de prueba en 8 segundos.", "gold");
+    } catch (e) {
+        systemNotify("Error al suscribir Web Push: " + e.message, "danger");
+    }
+};
+
+window.scheduleCloudPush = async function(groupKey, title, body, delaySec = 0, tag = 'sl-push') {
+    if (!p || !p.webPushSub || location.hostname === 'localhost' || location.hostname === '127.0.0.1') return;
+    try {
+        const res = await fetch('/api/push-schedule', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ subscription: p.webPushSub, title, body, delaySec, tag })
+        });
+        const data = await res.json();
+        if (data && data.messageId) {
+            if (!p._cloudPushIds) p._cloudPushIds = {};
+            if (!Array.isArray(p._cloudPushIds[groupKey])) p._cloudPushIds[groupKey] = [];
+            p._cloudPushIds[groupKey].push(data.messageId);
+            saveData();
+        }
+    } catch (e) {}
+};
+
+window.cancelCloudPush = async function(groupKey) {
+    if (!p || !p._cloudPushIds || !p._cloudPushIds[groupKey] || p._cloudPushIds[groupKey].length === 0) return;
+    const ids = p._cloudPushIds[groupKey];
+    delete p._cloudPushIds[groupKey];
+    saveData();
+    if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') return;
+    try {
+        await fetch('/api/push-cancel', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ messageIds: ids })
+        });
+    } catch (e) {}
+};
+window.addEventListener('load', () => {
+    const splash = document.getElementById('sl-splash-screen');
+    if (!splash) return;
+    const isDayZero = (typeof p !== 'undefined' && p && !p.dayZeroCompleted);
+    setTimeout(() => {
+        splash.classList.add('splash-hide');
+        setTimeout(() => { if (splash.parentNode) splash.remove(); }, 480);
+    }, isDayZero ? 180 : 850);
+});

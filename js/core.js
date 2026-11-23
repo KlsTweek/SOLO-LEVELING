@@ -502,20 +502,18 @@ function playSystemSound(type = 'info', fromNotification = false) {
     if (document.hidden) return;
     _unlockAudioContext();
 
-    if ((type === 'type' || type === 'step_arrow') && audioCtx && audioCtx.state === 'running') {
-        const now = audioCtx.currentTime;
-        if (type === 'type') {
-            _holoChime(now, 1480, 1920, 0.028, 0.025, 'sine', 0);
-        } else {
-            _holoChime(now, 880, 1320, 0.055, 0.04, 'triangle', 0);
-            _subThump(now, 140, 55, 0.06, 0.08, 0);
-        }
-        return;
-    }
-
     let audioFileName = 'system-notification.mp3';
-    if (type === 'monarch_awakening' || type === 'dungeon_major' || type === 'gold' || type === 'success') {
+    let vol = 0.85;
+
+    if (type === 'type' || type === 'click') {
+        audioFileName = 'notification-clic.mp3';
+        vol = 0.6;
+    } else if (type === 'check' || type === 'step_arrow') {
+        audioFileName = 'system-check.mp3';
+        vol = 0.72;
+    } else if (type === 'monarch_awakening' || type === 'dungeon_major' || type === 'gold' || type === 'success') {
         audioFileName = 'system-levelup.mp3';
+        vol = 0.88;
     }
 
     try {
@@ -525,11 +523,11 @@ function playSystemSound(type = 'info', fromNotification = false) {
             sfx.preload = 'auto';
             _sfxPool[audioFileName] = sfx;
         }
-        sfx.volume = 0.85;
+        sfx.volume = vol;
         sfx.currentTime = 0;
         sfx.play().catch(() => {
             if (audioCtx && audioCtx.state === 'running') {
-                _holoChime(audioCtx.currentTime, 660, 990, 0.12, 0.05, 'triangle', 0);
+                _holoChime(audioCtx.currentTime, type === 'type' ? 1480 : 660, type === 'type' ? 1920 : 990, 0.08, 0.04, 'triangle', 0);
             }
         });
     } catch (e) {}
@@ -623,7 +621,7 @@ function isMercyActive() {
 }
 
 /* ==========================================================================
-   6. CHEQUEO DIARIO BIOLÓGICO (5:00 AM, RACHAS, RESACA Y BONO CIRCADIANO)
+   6. CHEQUEO DIARIO BIOLÓGICO (4:30 AM, RACHAS, RESACA Y BONO CIRCADIANO)
    ========================================================================== */
 function checkDaily(forcedDayStr = null) {
     let evalDayStr = forcedDayStr || getBiologicalDayStr();
@@ -631,62 +629,9 @@ function checkDaily(forcedDayStr = null) {
     if (p.lastLogin !== evalDayStr) {
         let yestDay = new Date(p.lastLogin).getDay();
         let maxH = (typeof calculateHunterMaxHP === "function") ? calculateHunterMaxHP() : 100;
-        let didFailRoutine = false;
+        let maxM = p.stats ? Math.floor(1000 + ((p.stats.int - 1) * 1000)) : 1000;
 
-        if (typeof getTodayMissions === "function") {
-            let expMissions = getTodayMissions(yestDay).length;
-            let compMissions = p.completedToday ? p.completedToday.length : 0;
-            let missed = Math.max(0, expMissions - compMissions);
-
-            if (missed === 0 && expMissions > 0) {
-                p.perfectDays++;
-                if (p.contractActive === p.lastLogin) {
-                    p.contractActive = null;
-                    p.gold += 250;
-                    p.crystals = (p.crystals || 0) + 2;
-                    if (typeof systemNotify === "function") {
-                        systemNotify("¡Contrato de Sangre cumplido al cierre del día! +250 G y +2 CM.", "gold");
-                    }
-                }
-                if (typeof systemNotify === "function") {
-                    systemNotify(`Racha Perfecta: ${p.perfectDays} días invicto.`, "gold");
-                }
-                // Solo se cura al 100% si fuiste perfecto y no estuviste castigado.
-                p.hp = Math.max(1, maxH);
-            } else if (p.streakShieldActive === p.lastLogin || p.vigilProtectedDay === p.lastLogin) {
-                let wasVigil = (p.vigilProtectedDay === p.lastLogin);
-                p.streakShieldActive = null;
-                p.vigilProtectedDay = null;
-                p.contractActive = null;
-                p.hp = Math.max(1, maxH);
-                if (typeof systemNotify === "function") {
-                    systemNotify(wasVigil
-                        ? "Pase de Vigilia Nocturna completado: Tu Racha Perfecta fue resguardada tras tu regreso nocturno."
-                        : "Decreto de Soberanía consumido: Tu Racha Perfecta fue protegida anoche sin recibir daño.", "gold");
-                }
-            } else {
-                didFailRoutine = true;
-                p.perfectDays = 0;
-                
-                if (p.contractActive === p.lastLogin) {
-                    p.contractActive = null;
-                    p.hp -= 50;
-                    if (typeof systemNotify === "function") {
-                        systemNotify("Violación del Contrato de Sangre del Arquitecto: -50 HP.", "danger");
-                    }
-                }
-                if (missed > 0) {
-                    p.hp -= (missed * 15);
-                    if (typeof systemNotify === "function") {
-                        systemNotify(`Castigo Nocturno: Dejaste ${missed} misión(es) inconclusa(s) ayer (-${missed * 15} HP).`, "danger");
-                    }
-                }
-                if (p.hp <= 0) {
-                    triggerDeath("Fallo acumulado en la rutina obligatoria diaria o Contrato de Sangre.", "routine");
-                }
-            }
-        }
-
+        p.hp = Math.max(1, maxH);
         p.sp = 100;
         p.arcticShield = 0;
         p.sleepingUntilMorning = null;
@@ -694,42 +639,119 @@ function checkDaily(forcedDayStr = null) {
         p.sleepActiveUsageSecs = 0;
         p.nightPassActive = null;
 
-        if (p.titles && p.titles.some(t => t.id === "t_demon_hunter") && p.hp > 0) {
+        if (p.titles && p.titles.some(t => t.id === "t_demon_hunter")) {
             p.hp = Math.min(maxH, p.hp + 5);
         }
 
-        // Etapa 1 o Etapa 4 al amanecer (4:30 AM): Bono Circadiano vs Resaca del Sistema (normal o x2 por trampa)
-        if (p.sleepCheatNextMorning) {
-            p.sleepCheatNextMorning = false;
-            p.sleepDebt = false;
-            p.earlySleepBonusPending = false;
-            p.hp = Math.min(p.hp, Math.floor(maxH * 0.25)); // Se queda con el HP actual o se recorta al 25%, lo que sea menor
-            p.sp = 20;
-            p.mp = Math.floor((p.mp || 0) * 0.25);
-            if (typeof systemNotify === "function") {
-                systemNotify("RESACA DOBLE POR ENGAÑO (x2): Rompiste el Modo Hibernación anoche. Amaneces con 25% HP, 80 de Fatiga y -75% MP.", "danger");
-            }
-        } else if (p.sleepDebt) {
-            let hasSteelTitle = p.titles && p.titles.some(t => t.id === "t_adversity");
-            let penaltyRatio = hasSteelTitle ? 0.65 : 0.50;
-            p.hp = Math.min(p.hp, Math.floor(maxH * penaltyRatio)); // Recorta sobre la vida que le haya quedado
-            p.sp = hasSteelTitle ? 55 : 40;
-            p.mp = Math.floor((p.mp || 0) * penaltyRatio);
-            p.sleepDebt = false;
-            p.earlySleepBonusPending = false;
-            if (typeof systemNotify === "function") {
-                systemNotify("Resaca del Sistema: Te acostaste después de las 10:00 PM sin hibernar. Tu cuerpo amanece agotado y debilitado.", "danger");
-            }
-        } else if (p.earlySleepBonusPending) {
-            p.earlySleepBonusPending = false;
-            p.arcticShield = Math.min(800, (p.arcticShield || 0) + 35);
-            p.circadianXpBuffUntil = Date.now() + 3600000;
-            if (!didFailRoutine) p.hp = maxH; // Solo cura full si fuiste perfecto
-            if (typeof systemNotify === "function") {
-                systemNotify("SINCRONIZACIÓN CIRCADIANA: Dormiste a tiempo. Amaneces con 0 Fatiga, +35 Escudo y +10% EXP por 1 Hora.", "gold");
+             const recordStreakDay = (dayKey, status) => {
+            if (!Array.isArray(p.streakHistory)) p.streakHistory = [];
+            let existing = p.streakHistory.find(d => d.day === dayKey);
+            if (existing) existing.status = status;
+            else p.streakHistory.push({ day: dayKey, status: status });
+            if (p.streakHistory.length > 14) p.streakHistory = p.streakHistory.slice(-14);
+        };
+
+        if (typeof getTodayMissions === "function") {
+            let expMissions = getTodayMissions(yestDay).length + 1;
+            let compMissions = (p.completedToday ? p.completedToday.length : 0) + (p.studyCompletedToday ? 1 : 0);
+            let missed = Math.max(0, expMissions - compMissions);
+
+            if (missed === 0 && expMissions > 0) {
+                p.perfectDays++;
+                recordStreakDay(p.lastLogin, 'perfect');
+                if (p.contractActive === p.lastLogin) {
+                    p.contractActive = null;
+                    p.gold += 250;
+                    p.crystals = (p.crystals || 0) + 2;
+                    if (typeof systemNotify === "function") systemNotify("¡Contrato de Sangre cumplido al cierre del día! +250 G y +2 CM.", "gold");
+                }
+                if (typeof systemNotify === "function") systemNotify(`Racha Perfecta: ${p.perfectDays} días invicto.`, "gold");
+            } else if (p.streakShieldActive === p.lastLogin || p.vigilProtectedDay === p.lastLogin) {
+                let wasVigil = (p.vigilProtectedDay === p.lastLogin);
+                p.streakShieldActive = null;
+                p.vigilProtectedDay = null;
+                p.contractActive = null;
+                recordStreakDay(p.lastLogin, 'protected');
+                if (typeof systemNotify === "function") {
+                    systemNotify(wasVigil
+                        ? "Pase de Desvelo completado: Tu Racha Perfecta fue resguardada tras tu regreso nocturno."
+                        : "Decreto de Soberanía consumido: Tu Racha Perfecta fue protegida anoche sin recibir daño.", "gold");
+                }
+            } else {
+                recordStreakDay(p.lastLogin, 'missed');
+                if (p.contractActive === p.lastLogin) {
+                    p.contractActive = null;
+                    p.hp -= 50;
+                    if (typeof systemNotify === "function") systemNotify("Violación del Contrato de Sangre del Arquitecto: -50 HP.", "danger");
+                }
+
+                if (missed > 0) {
+                    let hpPen = missed * 20;
+                    let spPen = Math.min(70, missed * 15);
+                    let goldPen = Math.floor((p.gold || 0) * Math.min(0.60, missed * 0.15));
+                    let mpPen = Math.floor((p.mp || 0) * Math.min(0.75, missed * 0.20));
+
+                    p.hp = +(p.hp - hpPen).toFixed(1);
+                    p.sp = Math.max(20, p.sp - spPen);
+                    loseGold(goldPen);
+                    p.mp = Math.max(0, (p.mp || 0) - mpPen);
+
+                    if (typeof systemNotify === "function") {
+                        systemNotify(`CASTIGO POR INCUMPLIMIENTO (${missed} misión/es fallida/s): -${hpPen} HP, +${spPen} Fatiga, -${goldPen} G y -${mpPen} MP.`, "danger");
+                    }
+                }
+
+                p.perfectDays = 0;
+                if (p.hp <= 0) {
+                    p.hp = 0;
+                    triggerDeath("Colapso vital por incumplimiento de las misiones diarias obligatorias.", "routine");
+                }
             }
         }
 
+        if (!p.penaltyActive) {
+            if (p.sleepCheatNextMorning) {
+                p.sleepCheatNextMorning = false;
+                p.sleepDebt = false;
+                p.lateNightSevereDebt = false;
+                p.earlySleepBonusPending = false;
+                p.hp = Math.max(10, Math.floor(p.hp * 0.25));
+                p.sp = 15;
+                p.mp = Math.floor((p.mp || 0) * 0.20);
+                let cheatGoldLoss = Math.floor((p.gold || 0) * 0.25);
+                loseGold(cheatGoldLoss);
+                if (typeof systemNotify === "function") {
+                    systemNotify(`RESACA DOBLE POR ENGAÑO (x2): Amaneces con ${p.hp} HP, 85 de Fatiga, -80% MP y -${cheatGoldLoss} G.`, "danger");
+                }
+            } else if (p.sleepDebt || p.lateNightSevereDebt) {
+                let isSevere = !!p.lateNightSevereDebt;
+                let hasSteelTitle = p.titles && p.titles.some(t => t.id === "t_adversity");
+                let hpFactor = isSevere ? (hasSteelTitle ? 0.40 : 0.30) : (hasSteelTitle ? 0.60 : 0.45);
+                let spFloor  = isSevere ? 20 : (hasSteelTitle ? 50 : 35);
+                let mpFactor = isSevere ? 0.25 : 0.45;
+                let goldTax  = Math.floor((p.gold || 0) * (isSevere ? 0.20 : 0.10));
+
+                p.hp = Math.max(10, Math.floor(p.hp * hpFactor));
+                p.sp = Math.min(p.sp, spFloor);
+                p.mp = Math.floor((p.mp || 0) * mpFactor);
+                p.gold = Math.max(0, (p.gold || 0) - goldTax);
+                p.sleepDebt = false;
+                p.lateNightSevereDebt = false;
+                p.earlySleepBonusPending = false;
+                if (typeof systemNotify === "function") {
+                    systemNotify(`RESACA DEL SISTEMA${isSevere ? ' (DESVELO PASADAS LAS 11:00 PM)' : ''}: Amaneces con ${p.hp} HP, ${100 - p.sp} de Fatiga, -${Math.round((1 - mpFactor) * 100)}% MP y -${goldTax} G.`, "danger");
+                }
+            } else if (p.earlySleepBonusPending) {
+                p.earlySleepBonusPending = false;
+                p.arcticShield = Math.min(800, (p.arcticShield || 0) + 35);
+                p.mp = Math.min(maxM, (p.mp || 0) + 150);
+                p.circadianXpBuffUntil = Date.now() + 3600000;
+                if (typeof systemNotify === "function") {
+                    systemNotify("SINCRONIZACIÓN CIRCADIANA: Dormiste temprano. Amaneces con +35 Escudo, +150 MP y +10% EXP por 1 Hora.", "gold");
+                }
+            }
+        }
+ 
         p.completedToday = [];
         p.activeMissions = {};
         p.studyCompletedToday = false;
@@ -845,8 +867,7 @@ function triggerDeath(reason, source = "routine") {
         if (typeof updateHUD === "function") updateHUD();
         if (typeof syncRaidVitalsUI === "function") syncRaidVitalsUI();
         if (typeof systemNotify === "function") {
-            systemNotify("¡MANTO DE ASHBORN! Las sombras absorbieron el golpe letal usando -350 MP. Vida anclada en 40 HP.", "purple");
-        }
+            systemNotify("¡MANTO DE ASHBORN! Las sombras absorbieron el golpe letal usando -700 MP. Vida anclada en 40 HP.", "purple");        }
         return;
     }
 
@@ -883,6 +904,18 @@ function confirmAcceptDeath() {
     let rescueBox = document.getElementById('raid-min-rescue');
     if (rescueBox) rescueBox.style.display = 'none';
     executeFinalDeath(pendingDeathReason || "Colapso en Mazmorra.", pendingDeathSource || "dungeon");
+}
+
+// Registra TODO el oro perdido (castigos, resacas, sangrado nocturno) en el Muro de la Vergüenza
+function loseGold(amount) {
+    if (!p) return 0;
+    if (!p.history) p.history = { deaths: 0, goldLost: 0, itemsBroken: 0 };
+    let before = Math.max(0, p.gold || 0);
+    let amt = Math.max(0, Math.floor(amount || 0));
+    p.gold = Math.max(0, before - amt);
+    let lost = before - p.gold;
+    if (lost > 0) p.history.goldLost = (p.history.goldLost || 0) + lost;
+    return lost;
 }
 
 function executeFinalDeath(reason, source = "routine") {
@@ -1105,12 +1138,12 @@ function animateHPFastDrop(targetHP, maxHealth, onZeroCallback) {
         return;
     }
 
-    let steps = 25;
+    let steps = 15; // Reducido para que la bajada sea más imperceptible
     let dropStep = diff / steps;
     let count = 0;
 
     let hpBar = document.getElementById('hp-bar');
-    if (hpBar) hpBar.style.boxShadow = '0 0 22px #ff0033';
+    // Sin brillo rojo molesto en la barra para evitar distracciones constantes
 
     window.hpFastDropTimer = setInterval(() => {
         if (!p || p.penaltyActive) {
@@ -1130,20 +1163,18 @@ function animateHPFastDrop(targetHP, maxHealth, onZeroCallback) {
         if (count >= steps || p.hp <= targetHP) {
             clearInterval(window.hpFastDropTimer);
             p.hp = Math.max(0, +(targetHP).toFixed(2));
-            if (hpBar) hpBar.style.boxShadow = '';
             if (typeof updateHUD === "function") updateHUD();
             if (typeof saveData === "function") saveData();
             if (p.hp <= 0 && typeof onZeroCallback === "function") {
                 onZeroCallback();
             }
         }
-    }, 35);
+    }, 75); // Más lento y espaciado para que no parpadee bruscamente
 }
 
 function restoreMonarchV1Compensation() {
     if (!p || p.monarchV1Restored) return;
     p.monarchV1Restored = true;
-    // Si es una cuenta nueva (Nivel 1 sin muertes previas), iniciar en 0 G limpios
     if ((p.level || 1) <= 1 && (!p.history || !p.history.deaths)) {
         saveData();
         return;
@@ -1201,10 +1232,10 @@ window.openNightVigilModal = function() {
 
     let usesLeft = ensureNightVigilQuota();
     if (isNightVigilActiveNow(now)) {
-        return systemNotify("Ya tienes el Pase de Vigilia Nocturna activo hoy (válido hasta las 11:20 PM).", "info");
+        return systemNotify("Ya tienes el Pase de Desvelo activo hoy (válido hasta las 11:20 PM).", "info");
     }
     if (usesLeft <= 0) {
-        return systemNotify("Has agotado tus 2 Pases de Vigilia Nocturna de esta semana. Se recargarán la próxima semana.", "danger");
+        return systemNotify("Has agotado tus 2 Pases de Desvelo de esta semana. Se recargarán la próxima semana.", "danger");
     }
 
     let ov = document.getElementById('sl-vigil-pass-overlay');
@@ -1224,14 +1255,14 @@ window.openNightVigilModal = function() {
                         <span class="sl-baroque-corner br">${cornerSVG}</span>
                         <div class="sl-holo-header-row" style="margin-bottom:6px;">
                             <div class="sl-excl-square">!</div>
-                            <div class="sl-title-rect">PASE DE VIGILIA NOCTURNA</div>
+                            <div class="sl-title-rect">PASE DE DESVELO</div>
                         </div>
                         <div class="sl-holo-subbracket" id="vigil-quota-subbracket" style="letter-spacing:1px;">[SALVOCONDUCTO SEMANAL: ${usesLeft}/2 DISPONIBLES]</div>
                         <p style="color:#e9d5ff; font-size:0.88em; line-height:1.45; margin-bottom:12px;">
-                            Autorización especial para noches en que regresas tarde (El Boquerón / Santa Tecla) y necesitas tiempo para cenar y ordenar hasta las <b>11:20 PM</b>:
+                            Autorización especial para noches en que regresas tarde y necesitas tiempo para cenar y ordenar hasta las <b>11:20 PM</b>:
                         </p>
                         <div style="text-align:left; background:rgba(16,4,34,0.92); border:1px solid #c084fc; padding:10px 12px; font-size:0.8em; color:#f3e8ff; line-height:1.5; margin-bottom:12px;">
-                            <div>• <b style="color:#39ff14;">PROTECCIÓN HASTA LAS 11:20 PM:</b> Congela el sangrado de las 9:15 PM y la corrosión de las 10:00 PM hasta las 11:20 PM.</div>
+                            <div>• <b style="color:#39ff14;">PROTECCIÓN HASTA LAS 11:20 PM:</b> Congela el sangrado de las 9:20 PM y la corrosión de las 10:00 PM hasta las 11:20 PM.</div>
                             <div>• <b style="color:#00e5ff;">MISIONES AL 100%:</b> Te permite sellar misiones antes de las 11:20 PM cobrando 100% EXP y Oro.</div>
                             <div>• <b style="color:#f0abfc;">SIN RESACA SI DUERMES A TIEMPO:</b> Activa el Modo Hibernación antes de las 11:20 PM para amanecer con 0 Resaca y Racha intacta.</div>
                         </div>
@@ -1277,7 +1308,7 @@ window.confirmActivateNightVigil = function() {
     saveData();
     if (typeof updateHUD === "function") updateHUD();
     if (typeof renderRoutine === "function") renderRoutine();
-    systemNotify(`Pase de Vigilia Nocturna activado [${reason}]. Tienes hasta las 11:20 PM sin sangrado ni castigo para cenar, sellar misiones y dormir (${p.nightVigilUsesLeft}/2 restantes esta semana).`, "purple");
+    systemNotify(`Pase de Desvelo activado [${reason}]. Tienes hasta las 11:20 PM sin sangrado ni castigo para cenar, sellar misiones y dormir (${p.nightVigilUsesLeft}/2 restantes esta semana).`, "purple");
 };
 
 
@@ -1294,24 +1325,26 @@ function activateNightSleepMode() {
         return;
     }
 
-
     p.sleepingUntilMorning = bioDayStr;
     p.sleepModeActivatedAt = Date.now();
     p.sleepActiveUsageSecs = 0;
 
     let minsNow = (h < 5 ? h + 24 : h) * 60 + m;
-    let effectiveCurfewMins = 22 * 60;
+    let effectiveCurfewMins = 22 * 60; // 10:00 PM límite normal para dormir sin resaca
     if (p.tankCurfewDelayDay === bioDayStr) effectiveCurfewMins += 45;
-    if (p.nightPassActive === bioDayStr || p.movieNightCurfewDay === bioDayStr) effectiveCurfewMins = 23 * 60 + 20;
+    if (p.nightPassActive === bioDayStr || p.movieNightCurfewDay === bioDayStr) effectiveCurfewMins = 23 * 60 + 20; // 11:20 PM con pase
     if (isMercyActive()) effectiveCurfewMins = 26 * 60;
 
     if (minsNow <= (21 * 60 + 30)) {
         p.earlySleepBonusPending = true;
         p.sleepDebt = false;
-    } else if (minsNow < effectiveCurfewMins) {
+        p.lateNightSevereDebt = false;
+    } else if (minsNow <= effectiveCurfewMins) {
         p.sleepDebt = false;
+        p.lateNightSevereDebt = false;
     } else {
         p.sleepDebt = true;
+        if (minsNow >= 23 * 60) p.lateNightSevereDebt = true;
     }
 
     saveData();
@@ -1320,9 +1353,9 @@ function activateNightSleepMode() {
     if (typeof renderStatusRadarProfile === "function") renderStatusRadarProfile();
 
     let debtWarning = p.sleepDebt
-        ? " (Te acostaste después del toque de queda: el drenaje se detiene hoy, pero la Resaca de mañana permanece activa)."
-        : " (Tienes 10 minutos de gracia para apagar la pantalla; si sigues usando el Sistema después de 10 min, se revocará con castigo x2).";
-    systemNotify("MODO HIBERNACIÓN ACTIVADO: Drenaje nocturno congelado hasta las 5:00 AM" + debtWarning, "purple");
+        ? " (Activaste Hibernación tarde: el drenaje se congela ahora, pero mañana sufrirás Resaca por desvelo)."
+        : " (Tienes 10 minutos de gracia para apagar la pantalla; si sigues usando el Sistema se revocará con castigo x2).";
+    systemNotify("MODO HIBERNACIÓN ACTIVADO: Signos vitales congelados hasta las 4:30 AM" + debtWarning, "purple");
 }
 
 function wakeUpFromSleepMode() {
@@ -1330,8 +1363,8 @@ function wakeUpFromSleepMode() {
     let now = new Date();
     let h = now.getHours();
     let curMinWake = h * 60 + now.getMinutes();
-    if (curMinWake < 270 && curMinWake >= 1260) {
-        if (!confirm("ADVERTENCIA: Aún es horario nocturno. Si rompes tu Modo Hibernación ahora, perderás la protección nocturna y comenzará el desgaste. ¿Despertar de todos modos?")) {
+    if (curMinWake < 270 || curMinWake >= 1200) {
+        if (!confirm("ADVERTENCIA: Aún es horario nocturno. Si rompes tu Modo Hibernación ahora, perderás la protección nocturna y comenzará el desangrado continuo. ¿Despertar de todos modos?")) {
             return;
         }
     }
@@ -1354,16 +1387,19 @@ function triggerSleepCheatPenalty(bioDayStr) {
     p.sleepCheatDoubleDay = bioDayStr;
     p.sleepCheatNextMorning = true;
     p.sleepDebt = true;
+    p.lateNightSevereDebt = true;
 
-    p.hp = Math.max(10, +(p.hp - 20).toFixed(1));
-    p.sp = Math.max(0, p.sp - 20);
+    p.hp = Math.max(10, +(p.hp - 25).toFixed(1));
+    p.sp = Math.max(0, p.sp - 25);
+    p.mp = Math.max(0, Math.floor((p.mp || 0) * 0.70));
+    loseGold(Math.max(15, Math.floor((p.gold || 0) * 0.10)));
 
     saveData();
     if (typeof updateHUD === "function") updateHUD();
     if (typeof renderRoutine === "function") renderRoutine();
     if (typeof renderStatusRadarProfile === "function") renderStatusRadarProfile();
     if (typeof systemNotify === "function") {
-        systemNotify("ALERTA DE ENGAÑO: Activaste el Modo Hibernación pero sigues despierto utilizando el Sistema. Protección revocada y efectos secundarios de desvelo DUPLICADOS (x2).", "danger");
+        systemNotify("ALERTA DE ENGAÑO: Rompiste el Modo Hibernación. Protección revocada y desangrado nocturno DUPLICADO (x2).", "danger");
     }
 }
 
@@ -1375,26 +1411,34 @@ document.addEventListener('pointerdown', (e) => {
     }
 }, { passive: true });
 
+let _nightBleedTickCount = 0;
+let _lastBleedStepMs = 0;
+let _goldBleedCarry = 0;
+
 function evaluateNightCurfew(isClockJump = false) {
     if (!p) return;
     restoreMonarchV1Compensation();
     if (p.penaltyActive) return;
 
     let now = new Date();
+    let nowMs = now.getTime();
     let h = now.getHours();
     let m = now.getMinutes();
     let s = now.getSeconds();
     let bioDayStr = getBiologicalDayStr(now);
 
-        let currentMinsDay = h * 60 + m;
-    if (currentMinsDay >= 270 && currentMinsDay < 1200) return;
-
+    let currentMinsDay = h * 60 + m;
+    if (currentMinsDay >= 270 && currentMinsDay < 1200) {
+        _lastBleedStepMs = 0;
+        return;
+    }
 
     if (isSleepingNow(now)) {
+        _lastBleedStepMs = 0;
         if (!document.hidden && (currentMinsDay >= 1200 || currentMinsDay < 270)) {
-            let elapsedSinceActivated = p.sleepModeActivatedAt ? (Date.now() - p.sleepModeActivatedAt) : 0;
+            let elapsedSinceActivated = p.sleepModeActivatedAt ? (nowMs - p.sleepModeActivatedAt) : 0;
             if (elapsedSinceActivated > 600000) {
-                p.sleepActiveUsageSecs = (p.sleepActiveUsageSecs || 0) + 2;
+                p.sleepActiveUsageSecs = (p.sleepActiveUsageSecs || 0) + 1;
                 if (p.sleepActiveUsageSecs >= 16) {
                     triggerSleepCheatPenalty(bioDayStr);
                 }
@@ -1410,113 +1454,135 @@ function evaluateNightCurfew(isClockJump = false) {
         saveData();
         if (typeof renderRoutine === "function") renderRoutine();
         if (typeof systemNotify === "function") {
-            systemNotify("11:20 PM // PASE DE VIGILIA EXPIRADO: Tu tiempo extra nocturno ha concluido. Activa el Modo Hibernación ahora mismo para evitar el desgaste y la Resaca.", "danger");
+            systemNotify("11:20 PM // PASE EXPIRADO: Tu salvoconducto nocturno ha terminado. Activa TERMINAR DÍA ahora mismo o sufrirás desangrado acelerado.", "danger");
         }
     }
 
-    if (isNightVigilActiveNow(now) || (p.stealthModeUntil && Date.now() < p.stealthModeUntil)) return;
+    if (isNightVigilActiveNow(now) || (p.stealthModeUntil && nowMs < p.stealthModeUntil)) {
+        _lastBleedStepMs = 0;
+        return;
+    }
 
-    let startBleedMins = 21 * 60 + 15;
+    let startBleedMins = 21 * 60 + 20; // 9:20 PM
     if (p.tankCurfewDelayDay === bioDayStr) startBleedMins += 45;
     if (p.nightPassActive === bioDayStr || p.movieNightCurfewDay === bioDayStr) startBleedMins = 23 * 60 + 20;
     if (isMercyActive()) startBleedMins = 26 * 60;
 
-        if (continuousMins < startBleedMins || (continuousMins >= 1710 && continuousMins < 1260)) return;
-    if (h >= 5 || (h === 4 && m >= 30)) return;
-
-    let cheatMult = (p.sleepCheatDoubleDay === bioDayStr) ? 2 : 1;
-    let maxHealth = (typeof calculateHunterMaxHP === "function") ? calculateHunterMaxHP() : 100;
-
-    let todayMissions = (typeof getTodayMissions === "function") ? getTodayMissions() : [];
-    let completedArr = Array.isArray(p.completedToday) ? p.completedToday : [];
-    let missedCount = Math.max(0, todayMissions.filter(ms => !completedArr.includes(ms.id)).length);
-
-    let corrosionStartMins = (p.nightPassActive === bioDayStr || p.movieNightCurfewDay === bioDayStr)
-        ? (23 * 60 + 20)
-        : (startBleedMins + 45);
-
-    if (continuousMins < corrosionStartMins) {
-        if (missedCount <= 0) return;
-
-        if (p._bleedPenalty915Day !== bioDayStr) {
-            p._bleedPenalty915Day = bioDayStr;
-            saveData();
-            if (typeof renderRoutine === "function") renderRoutine();
-            if (typeof systemNotify === "function") {
-                systemNotify(`[MISIÓN DIARIA INCOMPLETA]: Tienes ${missedCount} misión(es) pendiente(s). Ha comenzado el desangrado gradual de advertencia; séllalas o hiberna antes de las 10:00 PM.`, "danger");
-            }
-        }
-
-        let progress = Math.max(0, Math.min(1, ((continuousMins - startBleedMins) / 45) * cheatMult));
-        let targetFloor = cheatMult > 1 ? 25 : 45;
-        let expectedHP = maxHealth - ((maxHealth - targetFloor) * progress);
-        if (p.cryoBuffUntil && now.getTime() < p.cryoBuffUntil) {
-            expectedHP = maxHealth - ((maxHealth - expectedHP) * 0.5);
-        }
-        if (p.hp > expectedHP) {
-            p.hp = +(expectedHP).toFixed(1);
-            if (typeof updateHUD === "function") updateHUD();
-        }
+    if (continuousMins < startBleedMins) {
+        _lastBleedStepMs = 0;
         return;
     }
 
-    p.sleepDebt = true;
+    let cheatMult = (p.sleepCheatDoubleDay === bioDayStr) ? 2 : 1;
+    let todayMissions = (typeof getTodayMissions === "function") ? getTodayMissions() : [];
+    let completedArr = Array.isArray(p.completedToday) ? p.completedToday : [];
+    let missedCount = Math.max(0, todayMissions.filter(ms => !completedArr.includes(ms.id)).length) + (p.studyCompletedToday ? 0 : 1);
+
+    let curfew10PM = (p.nightPassActive === bioDayStr || p.movieNightCurfewDay === bioDayStr)
+        ? (23 * 60 + 20)
+        : (22 * 60);
+
+    if (continuousMins < curfew10PM && missedCount <= 0) {
+        _lastBleedStepMs = 0;
+        return;
+    }
+
+    if (p._bleedPenalty915Day !== bioDayStr) {
+        p._bleedPenalty915Day = bioDayStr;
+        saveData();
+        if (typeof renderRoutine === "function") renderRoutine();
+        if (typeof systemNotify === "function") {
+            systemNotify(missedCount > 0
+                ? `[9:20 PM // MISIONES SALTADAS]: Tienes ${missedCount} objetivo(s) con [X]. Ha iniciado el desangrado continuo de HP, Fatiga, MP y Oro.`
+                : `[10:00 PM // TOQUE DE QUEDA]: Sigues despierto fuera de horario. Ha iniciado el desangrado continuo por desvelo.`, "danger");
+        }
+    }
+
+    if (continuousMins >= curfew10PM) p.sleepDebt = true;
+    if (continuousMins >= 23 * 60) p.lateNightSevereDebt = true;
 
     let tankObj = (p.shadowArmy && p.shadowArmy.tank) ? p.shadowArmy.tank : null;
-    let tankReady = p.equippedShadows && p.equippedShadows.includes('tank') && tankObj && (!tankObj.cooldownUntil || now.getTime() > tankObj.cooldownUntil) && (tankObj.usesLeft > 0);
+    let tankReady = p.equippedShadows && p.equippedShadows.includes('tank') && tankObj && (!tankObj.cooldownUntil || nowMs > tankObj.cooldownUntil) && (tankObj.usesLeft > 0);
 
     if (tankReady && p.tankUsedNightStr !== bioDayStr) {
         p.tankUsedNightStr = bioDayStr;
         tankObj.usesLeft = Math.max(0, (tankObj.usesLeft !== undefined ? tankObj.usesLeft : 2) - 1);
         if (typeof systemNotify === "function") {
-            systemNotify(`Tank activó su Pelaje Ártico por esta noche: Pérdida de oro bloqueada y vida anclada (Guardias: ${tankObj.usesLeft}/2).`, "purple");
+            systemNotify(`Tank activó su Pelaje Ártico: Mitiga el desangrado nocturno y ancla tu vida en 25 HP hasta las 11:30 PM (Guardias: ${tankObj.usesLeft}/2).`, "purple");
         }
         if (tankObj.usesLeft <= 0) tankObj.hibernationPending = true;
     }
 
-    let fiveMinBlock = Math.floor((continuousMins - corrosionStartMins) / 5);
-    if (p._lastCorrosionBlockDay !== bioDayStr) {
-        p._lastCorrosionBlockDay = bioDayStr;
-        p._lastCorrosionBlockIdx = -1;
-        if (typeof renderRoutine === "function") renderRoutine();
+    let dt = _lastBleedStepMs > 0 ? Math.min(5, Math.max(0.25, (nowMs - _lastBleedStepMs) / 1000)) : 1.0;
+    _lastBleedStepMs = nowMs;
+    _nightBleedTickCount++;
+
+    let maxHealth = (typeof calculateHunterMaxHP === "function") ? calculateHunterMaxHP() : 100;
+    let maxMP = p.stats ? Math.floor(1000 + ((p.stats.int - 1) * 1000)) : 1000;
+
+    let isPast10PM = (continuousMins >= curfew10PM);
+    let isPast11PM = (continuousMins >= 23 * 60);
+    let isPastMidnight = (continuousMins >= 24 * 60);
+
+    // Drenaje continuo por segundo calibrado para agotar la barra entre las 11:00 PM y las 12:00 AM
+    let hpPerSec = isPastMidnight
+        ? (maxHealth / 600)
+        : (isPast11PM ? (maxHealth / 1500) : (isPast10PM ? (maxHealth / 4200) : (maxHealth / 6000)));
+    let spPerSec = isPastMidnight ? 0.08 : (isPast11PM ? 0.035 : (isPast10PM ? 0.018 : 0.012));
+    let mpPerSec = isPastMidnight
+        ? (maxMP / 480)
+        : (isPast11PM ? (maxMP / 1200) : (isPast10PM ? (maxMP / 2800) : (maxMP / 4200)));
+
+    if (missedCount > 0) {
+        hpPerSec *= (1 + Math.min(0.60, missedCount * 0.08));
+    }
+    if (tankReady) hpPerSec *= 0.45;
+    if (p.cryoBuffUntil && nowMs < p.cryoBuffUntil) hpPerSec *= 0.5;
+
+    let hpLoss = hpPerSec * dt * cheatMult;
+    let spLoss = spPerSec * dt * cheatMult;
+    let mpLoss = mpPerSec * dt * cheatMult;
+
+    // Sin bloqueo en 1 HP: si llega a 0 muere (Tank solo ancla en 25 HP antes de las 11:30 PM)
+    let minAllowedHp = (tankReady && continuousMins < (23 * 60 + 30)) ? 25 : 0;
+    p.hp = Math.max(minAllowedHp, +(p.hp - hpLoss).toFixed(3));
+    p.sp = Math.max(0, +(p.sp - spLoss).toFixed(3));
+    p.mp = Math.max(0, +(Math.max(0, p.mp || 0) - mpLoss).toFixed(2));
+
+    if (!tankReady && p.gold > 0) {
+        let goldRatePerSec = isPastMidnight ? 0.35 : (isPast11PM ? 0.18 : (isPast10PM ? 0.08 : 0.04));
+        _goldBleedCarry += goldRatePerSec * dt * cheatMult;
+        if (_goldBleedCarry >= 1) {
+            let gDrop = Math.floor(_goldBleedCarry);
+            _goldBleedCarry -= gDrop;
+            loseGold(gDrop);
+        }
     }
 
-    if (fiveMinBlock > (p._lastCorrosionBlockIdx !== undefined ? p._lastCorrosionBlockIdx : -1)) {
-        p._lastCorrosionBlockIdx = fiveMinBlock;
+    if (tankReady && p.hp <= 25 && tankObj.hibernationPending) {
+        tankObj.cooldownUntil = nowMs + (24 * 3600000);
+        tankObj.usesLeft = 2;
+        tankObj.hibernationPending = false;
+        p.equippedShadows = p.equippedShadows.filter(x => x !== 'tank');
+    }
 
-        let hpLoss = (tankReady ? 2.5 : 5) * cheatMult;
-        let spLoss = 5 * cheatMult;
-        if (p.cryoBuffUntil && now.getTime() < p.cryoBuffUntil) hpLoss *= 0.5;
+    if (typeof updateHUD === "function") updateHUD();
+    if (_nightBleedTickCount % 10 === 0) saveData();
 
-        let minAllowedHp = (continuousMins < 24 * 60) ? (tankReady ? 25 : 5) : 0;
-        p.hp = Math.max(minAllowedHp, +(p.hp - hpLoss).toFixed(1));
-        p.sp = Math.max(0, p.sp - spLoss);
-
-        let goldBurned = 0;
-        if (!tankReady && p.gold > 10) {
-            goldBurned = Math.max(1, Math.floor(p.gold * 0.03 * cheatMult));
-            p.gold = Math.max(0, p.gold - goldBurned);
-        } else if (tankReady && p.hp <= 25 && tankObj.hibernationPending) {
-            tankObj.cooldownUntil = Date.now() + (24 * 3600000);
-            tankObj.usesLeft = 2;
-            tankObj.hibernationPending = false;
-            p.equippedShadows = p.equippedShadows.filter(x => x !== 'tank');
-        }
-
+    if (p.hp <= 0.05) {
+        p.hp = 0;
         saveData();
-        if (typeof updateHUD === "function") updateHUD();
-        if (typeof renderRoutine === "function") renderRoutine();
-
-        if (p.hp <= 0) {
-            p.hp = 0;
-            if (typeof triggerDeath === "function") {
-                triggerDeath("Colapso biológico por desvelo extremo pasada la medianoche.", "midnight");
-            }
-            return;
+        if (typeof triggerDeath === "function") {
+            triggerDeath("Colapso biológico por desangrado nocturno y desvelo extremo.", "midnight");
         }
+        return;
+    }
 
+    if (_nightBleedTickCount % 180 === 0) {
         if (typeof systemNotify === "function") {
-            systemNotify(`CORROSIÓN NOCTURNA${cheatMult > 1 ? ' (x2 POR ENGAÑO)' : ''}: -${hpLoss} HP, +${spLoss} Fatiga${goldBurned > 0 ? ' y -' + goldBurned + ' G quemados' : ''}. Activa Hibernación y ve a dormir.`, "danger");
+            systemNotify(isPast11PM
+                ? "ALERTA CRÍTICA (11:00 PM - 12:00 AM): Fase letal de desvelo activa. Presiona TERMINAR DÍA antes de que tu HP llegue a 0."
+                : "DESANGRADO NOCTURNO ACTIVO: Tu HP, MP, Fatiga y Oro caen de forma continua. Termina tu día para descansar.", "danger");
         }
     }
 }
@@ -1530,9 +1596,8 @@ function startCurfewClockWatcher() {
         let jumped = (lastEvaluatedClockMin !== -1 && curMinStamp !== lastEvaluatedClockMin);
         lastEvaluatedClockMin = curMinStamp;
         evaluateNightCurfew(jumped);
-    }, 2000);
+    }, 1000);
 }
-
 
 
 function systemTick() {
@@ -1551,21 +1616,20 @@ function systemTick() {
     evaluateNightCurfew(false);
 
     let maxHealth = (typeof calculateHunterMaxHP === "function") ? calculateHunterMaxHP() : 100;
-        let curTotalMins = h * 60 + m;
-    let isNightBleed = ((h === 21 && m >= 15) || h >= 22 || curTotalMins < 270) && !isNightVigilActiveNow(now) && !isSleepingNow(now);
+    let curTotalMins = h * 60 + m;
+    let isNightBleed = ((h === 21 && m >= 20) || h >= 22 || curTotalMins < 270) && !isNightVigilActiveNow(now) && !isSleepingNow(now);
 
     if (!p.penaltyActive && !isNightBleed && p.hp < maxHealth) {
-        // Pasiva del Cazador: Voluntad de Recuperación (+2 HP/hora por nivel)
         let longLvl = (p.hunterSkills && p.hunterSkills.longevity) ? p.hunterSkills.longevity.lvl : 1;
-        let passiveRegen = +((longLvl * 2) / 60).toFixed(2);
-        p.hp = Math.min(maxHealth, +(p.hp + passiveRegen).toFixed(2));
+        let passiveRegen = longLvl / 60; // Desc: +lvl HP por HORA
+        p.hp = Math.min(maxHealth, +(p.hp + passiveRegen).toFixed(4));
     }
 
     if (!p.penaltyActive && p.equippedShadows && p.equippedShadows.includes('beru')) {
         if (!isNightBleed && p.hp < maxHealth) {
             p.hp = Math.min(maxHealth, +(p.hp + 2).toFixed(1));
         }
-        if (p.sp < 100) {
+        if (!isNightBleed && p.sp < 100) {
             p.sp = Math.min(100, p.sp + 2);
         }
         if (!document.hidden && typeof updateHUD === "function") updateHUD();
@@ -1605,14 +1669,8 @@ function initializeSystem() {
         return;
     }
 
-    if (!p.dayZeroCompleted) {
-        if (typeof startDayZeroPrologue === "function") {
-            startDayZeroPrologue();
-            return;
-        }
-    }
-
     if (typeof ensureSevenSlotEquipment === "function") {
+
         ensureSevenSlotEquipment();
     } else if (!p.equipment) {
         p.equipment = { head: null, chest: null, gloves: null, necklace: null, weapon: null, ring: null, boots: null };
@@ -2910,7 +2968,7 @@ function raidTick() {
 
     if ((b === 'poison' || b === 'toxic') && !_hasEq("eq_a_gloves_c") && raidTimeLeft % 3 === 0) {
         let longLvl = (p.hunterSkills && p.hunterSkills.longevity) ? p.hunterSkills.longevity.lvl : 1;
-        let poisonDmg = +(1 * Math.max(0.2, 1 - (longLvl * 0.12))).toFixed(2);
+        let poisonDmg = +(1 * Math.max(0.2, 1 - (longLvl * 0.06))).toFixed(2);
         dealRaidDamage(poisonDmg, "El veneno de la mazmorra consumió tus signos vitales.");
     }
     if (b === 'fire' && !_hasEq("eq_acc_cerberus") && raidTimeLeft % 10 === 0 && p.sp > 5) {
