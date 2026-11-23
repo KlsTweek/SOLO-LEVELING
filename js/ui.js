@@ -665,9 +665,6 @@ function renderStatusRadarProfile() {
                 : `<button class="btn btn-main" style="width:100%; padding:11px; font-size:0.78em;" onclick="activateNightSleepMode()">
                     TERMINAR DÍA Y DORMIR (CONGELAR DRENAJE NOCTURNO)
                    </button>`}
-                        <button class="btn btn-blue" style="width:100%; padding:9px; font-size:0.74em;" onclick="enableMonarchWebPush()">
-                ${(p && p.webPushSub) ? '[ PUSH EN SEGUNDO PLANO: ACTIVO • PROBAR ]' : '[ ACTIVAR NOTIFICACIONES PUSH (APP CERRADA) ]'}
-            </button>
         </div>
     `;
 }
@@ -1107,7 +1104,8 @@ function getActiveBuffsList(now, currentDayStr, maxHP) {
     if (p.whiteTigerBounty) buffs.push({ lbl: 'Permiso Tigre Blanco', time: '1 USO', alert: false, info: 'Próxima misión o mazmorra paga 100% Oro + 110 G y 2 minerales.' });
     if (p.zeroMpDrainUntil && now < p.zeroMpDrainUntil) buffs.push({ lbl: 'Esencia de Sombra Líquida', time: minsLeft(p.zeroMpDrainUntil), alert: false, info: 'Tus Comandantes consumen 0 MP/min temporalmente.' });
     if (p.halfMpDrainUntil && now < p.halfMpDrainUntil) buffs.push({ lbl: 'Mineral de Alta Pureza', time: minsLeft(p.halfMpDrainUntil), alert: false, info: 'Drenaje de MP de sombras reducido al 50%.' });
-    if (p.sovereignCritDiscount) buffs.push({ lbl: 'Autoridad del Soberano', time: '1 USO', alert: false, info: 'La próxima Habilidad Activa de tus Sombras cuesta -50% MP.' });
+   let _hasCmdBuf = p.shadowArmy && ['igris', 'tank', 'iron', 'tusk', 'beru'].some(k => p.shadowArmy[k] && p.shadowArmy[k].unlocked);
+    if (p.sovereignCritDiscount && _hasCmdBuf) buffs.push({ lbl: 'Autoridad del Soberano', time: '1 USO', alert: false, info: 'La próxima Habilidad Activa de tus Sombras cuesta -50% MP.' });
     if (p.beruSpeedUntil && now < p.beruSpeedUntil) buffs.push({ lbl: 'Modo Berserker (Beru)', time: minsLeft(p.beruSpeedUntil), alert: false, info: 'Bono de oro activo y validación rápida.' });
     if (p.ironImmunityUntil && now < p.ironImmunityUntil) buffs.push({ lbl: 'Bastión Inmune', time: minsLeft(p.ironImmunityUntil), alert: false, info: '100% inmune a perder vida mientras dure el efecto.' });
     if (p.hazardImmunityUntil && now < p.hazardImmunityUntil) buffs.push({ lbl: 'Incienso de Glicinas', time: minsLeft(p.hazardImmunityUntil), alert: false, info: 'Inmune a veneno, fuego y presión ambiental.' });
@@ -1902,7 +1900,11 @@ function playJobChangeCinematic(leadText = "TU CLASE HA CAMBIADO", oldName = "NI
    17. PRÓLOGO CINEMATOGRÁFICO: DÍA CERO (DESPERTAR EN EL TEMPLO DE CARTENON)
    ========================================================================== */
 let dayZeroStep = 0;
-let dayZeroPlayerName = " ";
+let dayZeroPlayerName = "Cristian";
+let _dayZeroReplayOnly = false;
+let _dayZeroTypeTimer = null;
+let _dayZeroTypingDone = true;
+let _dayZeroLastTap = 0;
 
 const DAY_ZERO_SEQUENCE = [
     {
@@ -1910,21 +1912,22 @@ const DAY_ZERO_SEQUENCE = [
         header: "NOTIFICACIÓN",
         sub: "[ MISIÓN SECRETA COMPLETADA ]",
         body: "Has cumplido todos los requisitos necesarios para completar la Misión Secreta: «El Valor de los Débiles».",
-        action: "Toca para continuar..."
+        action: "[ TOCA PARA CONTINUAR ]"
     },
     {
         frame: "sl-holo-frame",
         header: "NOTIFICACIÓN",
         sub: "[ SELECCIÓN DE RECEPTÁCULO ]",
         body: "Has obtenido el derecho de convertirte en un JUGADOR.<br><br>¿Aceptas la designación del Sistema?",
-        action: "Toca para continuar..."
+        action: "[ TOCA PARA CONTINUAR ]"
     },
     {
         frame: "sl-holo-frame danger",
         header: "ADVERTENCIA",
         sub: "[ CRONÓMETRO VITAL ACTIVO ]",
         body: "<span class='ct-red-Runic'>NO TE QUEDA MUCHO TIEMPO.</span>",
-        action: "Toca para continuar...",
+        action: "[ TOCA PARA CONTINUAR ]",
+        heartbeat: true,
         sound: "danger"
     },
     {
@@ -1932,6 +1935,8 @@ const DAY_ZERO_SEQUENCE = [
         header: "CRÍTICO",
         sub: "[ AMENAZA BIOLÓGICA ]",
         body: "Si te niegas, tus signos vitales colapsarán y tu corazón se detendrá en <b class='ct-red-Runic' id='dz-crit-timer'>0.02 segundos</b>.<br><br>¿Aceptas ser el Receptáculo?",
+        heartbeat: true,
+        ecg: true,
         type: "choice"
     },
     {
@@ -1944,66 +1949,74 @@ const DAY_ZERO_SEQUENCE = [
     {
         frame: "sl-holo-frame",
         header: "NOTIFICACIÓN",
-        sub: "",
-        body: "[ Felicitaciones por convertirte en un JUGADOR.\u00A0]",
-        action: "Toca para continuar..."
+        sub: "[ DESPERTAR CONFIRMADO ]",
+        body: "[ Felicitaciones por convertirte en un JUGADOR. ]",
+        action: "[ TOCA PARA CONTINUAR ]",
+        sound: "gold"
     },
     {
         frame: "sl-holo-frame",
         header: "NOTIFICACIÓN",
-        sub: "",
+        sub: "[ DIRECTIVA PRINCIPAL ]",
         body: "[ El Sistema asistirá y guiará el crecimiento continuo del Jugador. ]",
-        action: "Toca para continuar..."
+        action: "[ TOCA PARA CONTINUAR ]"
     },
     {
         frame: "sl-holo-frame danger",
         header: "NOTIFICACIÓN",
         sub: "[ CLÁUSULA INQUEBRANTABLE ]",
         body: "[ En caso de no cumplir estrictamente las directivas diarias del Sistema, se aplicará una <b class='ct-red-Runic'>ZONA DE PENALIZACIÓN</b> apropiada. ]",
-        action: "Toca para continuar..."
+        action: "[ TOCA PARA CONTINUAR ]"
     },
     {
         frame: "sl-holo-frame",
         header: "RECOMPENSA",
-        sub: "",
-        body: `
-            ${(typeof UNIQUE_ITEM_SVGS !== 'undefined' && UNIQUE_ITEM_SVGS.box_start)
-                ? `<div style="width:58px; height:58px; margin:0 auto 12px auto;"><svg viewBox="0 0 64 64" width="100%" height="100%">${UNIQUE_ITEM_SVGS.box_start}</svg></div>`
-                : ''}
-            [ Has recibido suministros iniciales: Caja de Despertar y Cupón de Almuerzo han sido materializados en tu Bolsa Dimensional. ]
-        `,
-        action: "Toca para continuar...",
+        sub: "[ SUMINISTROS DE BIENVENIDA ]",
+        body: `[ Has recibido suministros iniciales: <b>Caja de Despertar</b> y <b>Cupón de Almuerzo</b> han sido materializados en tu Bolsa Dimensional. ]`,
+        showBoxIcon: true,
+        action: "[ TOCA PARA CONTINUAR ]",
         sound: "gold"
     },
-            {
+    {
         frame: "sl-holo-frame",
         header: "NUEVO MENSAJE",
-        sub: "",
-        body: `
-            ${(typeof UNIQUE_ITEM_SVGS !== 'undefined' && UNIQUE_ITEM_SVGS.box_start)
-                ? `<div style="width:58px; height:58px; margin:0 auto 12px auto;"><svg viewBox="0 0 64 64" width="100%" height="100%">${UNIQUE_ITEM_SVGS.box_start}</svg></div>`
-                : ''}
-            <div style="margin-bottom:8px; color:#7dd3fc;">[ Jugador: <span id="dz-final-name-disp"></span> ]</div>
-            [ Misión Diaria: «La preparación para volverse fuerte» ha sido asignada. <span style="color:#fb7185;">(NO LEÍDA)</span>. ]
-        `,
+        sub: "[ BUZÓN DEL SISTEMA ]",
+        body: `[ Misión Diaria: «La preparación para volverse fuerte» ha sido asignada. <span style="color:#fb7185;">(NO LEÍDA)</span> ]`,
+        showFinalName: true,
         type: "finish"
     }
 ];
 
-window.startDayZeroPrologue = function() {
+function _ensureDayZeroOverlayEl() {
     let ov = document.getElementById('sl-day-zero-overlay');
-    if (!ov) return;
+    if (!ov) {
+        ov = document.createElement('div');
+        ov.id = 'sl-day-zero-overlay';
+        ov.style.cssText = 'display:none; position:fixed; inset:0; background:#02040a; z-index:14000; justify-content:center; align-items:center; padding:18px;';
+        ov.innerHTML = `<div id="sl-day-zero-content" style="width:100%; max-width:410px;"></div>`;
+        document.body.appendChild(ov);
+    }
+    return ov;
+}
+
+window.startDayZeroPrologue = function(isReplay = false) {
+    _dayZeroReplayOnly = !!isReplay;
+    let ov = _ensureDayZeroOverlayEl();
+    ov.style.opacity = '1';
     ov.style.display = 'flex';
+    ov.classList.remove('dz-heartbeat-bg', 'dz-accept-flash');
     dayZeroStep = 0;
-    
-    // Sincronizar el nombre guardado previamente si existe
     if (p && p.playerName) dayZeroPlayerName = p.playerName;
-    
     renderDayZeroStep();
 };
 
+window.replayDayZeroPrologue = function() {
+    window.startDayZeroPrologue(true);
+};
+
 window.renderDayZeroStep = function() {
-    let ov = document.getElementById('sl-day-zero-overlay');
+    clearInterval(_dayZeroTypeTimer);
+    let ov = _ensureDayZeroOverlayEl();
     let cont = document.getElementById('sl-day-zero-content');
     if (!ov || !cont) return;
 
@@ -2015,37 +2028,55 @@ window.renderDayZeroStep = function() {
     let stepData = DAY_ZERO_SEQUENCE[dayZeroStep];
     let cornerSVG = (typeof getBaroqueCornerSVG === "function") ? getBaroqueCornerSVG() : '';
 
+    ov.classList.toggle('dz-heartbeat-bg', !!stepData.heartbeat);
+
     if (stepData.sound && typeof playSystemSound === "function") {
         playSystemSound(stepData.sound);
     } else if (typeof playSystemSound === "function" && dayZeroStep > 0) {
-        playSystemSound('step_arrow');
+        playSystemSound('type');
     }
+
+    let ecgHtml = stepData.ecg
+        ? `<svg class="dz-ecg-line" viewBox="0 0 260 32"><polyline class="dz-ecg-path" points="0,16 70,16 86,16 96,4 106,28 116,10 124,16 175,16 186,8 196,24 205,16 260,16"/></svg>`
+        : '';
+
+    let iconHtml = stepData.showBoxIcon && typeof UNIQUE_ITEM_SVGS !== 'undefined' && UNIQUE_ITEM_SVGS.box_start
+        ? `<div style="width:54px; height:54px; margin:0 auto 10px auto;"><svg viewBox="0 0 64 64" width="100%" height="100%">${UNIQUE_ITEM_SVGS.box_start}</svg></div>`
+        : '';
+
+    let finalNameHtml = stepData.showFinalName
+        ? `<div style="margin-bottom:8px; color:#7dd3fc; font-family:'Share Tech Mono', monospace; font-size:0.86em;">[ JUGADOR: ${dayZeroPlayerName.toUpperCase()} ]</div>`
+        : '';
 
     let innerContent = "";
     if (stepData.type === "choice") {
         innerContent = `
-            <div style="display:flex; gap:8px; margin-top:16px;">
-                <button class="btn btn-main" style="flex:1;" onclick="advanceDayZeroStep()">ACEPTAR</button>
+            <div style="display:flex; gap:8px; margin-top:16px;" onclick="event.stopPropagation()">
+                <button class="btn btn-main" style="flex:1;" onclick="acceptDayZeroAwakening()">ACEPTAR</button>
                 <button class="btn btn-red" id="dz-btn-reject" style="flex:1;" onclick="handleDayZeroReject()">RECHAZAR</button>
             </div>
         `;
     } else if (stepData.type === "input") {
         innerContent = `
-            <input type="text" id="dz-name-input" class="sl-name-bestow-input" value="${p.playerName || 'Cristian'}" style="margin:16px auto 12px auto; max-width:240px;">
-            <button class="btn btn-main" style="width:100%;" onclick="confirmDayZeroRegistration()">CONFIRMAR REGISTRO</button>
+            <div onclick="event.stopPropagation()">
+                <input type="text" id="dz-name-input" class="sl-name-bestow-input" value="${(p && p.playerName) || dayZeroPlayerName || 'Cristian'}" style="margin:14px auto 12px auto; max-width:240px;">
+                <button class="btn btn-main" style="width:100%;" onclick="confirmDayZeroRegistration()">CONFIRMAR REGISTRO</button>
+            </div>
         `;
     } else if (stepData.type === "finish") {
         innerContent = `
-            <button class="btn btn-main" style="width:100%; margin-top:16px; padding:14px; font-size:1em;" onclick="finishDayZeroPrologue()">INGRESAR AL DOMINIO DEL MONARCA</button>
+            <button class="btn btn-main" style="width:100%; margin-top:16px; padding:13px; font-size:0.92em;" onclick="event.stopPropagation(); finishDayZeroPrologue()">
+                ${_dayZeroReplayOnly ? 'VOLVER AL SISTEMA' : 'ABRIR MISIÓN DIARIA'}
+            </button>
         `;
     } else {
         innerContent = `
-            <div class="sl-holo-footer-hint" style="margin-top:16px; cursor:pointer;" onclick="advanceDayZeroStep()">${stepData.action}</div>
+            <div class="sl-holo-footer-hint" id="dz-tap-hint" style="margin-top:16px; opacity:0.35;">${stepData.action}</div>
         `;
     }
 
     cont.innerHTML = `
-        <div class="${stepData.frame} sl-day-zero-fade" style="width:100%; cursor:default;" ${(!stepData.type) ? 'onclick="advanceDayZeroStep()"' : ''}>
+        <div class="${stepData.frame}" style="width:100%;" ${(!stepData.type) ? 'onclick="handleDayZeroTap()"' : ''}>
             <div class="sl-holo-rail top"><span class="rail-core"></span></div>
             <div class="sl-holo-glass">
                 <div class="sl-holo-inner-box" style="padding:22px 18px; text-align:center;">
@@ -2057,10 +2088,11 @@ window.renderDayZeroStep = function() {
                         <div class="sl-excl-square">!</div>
                         <div class="sl-title-rect">${stepData.header}</div>
                     </div>
-                    ${stepData.sub ? `<div class="sl-holo-subbracket" style="margin-bottom:14px;">${stepData.sub}</div>` : ''}
-                    <div style="font-family:'Share Tech Mono', monospace; font-size:0.95em; color:#e2e8f0; line-height:1.5; margin-bottom:8px; word-break:break-word;">
-                        ${stepData.body}
-                    </div>
+                    ${stepData.sub ? `<div class="sl-holo-subbracket" style="margin-bottom:10px;">${stepData.sub}</div>` : ''}
+                    ${ecgHtml}
+                    ${iconHtml}
+                    ${finalNameHtml}
+                    <div id="dz-body-text" style="font-family:'Share Tech Mono', monospace; font-size:0.92em; color:#e2e8f0; line-height:1.55; min-height:2.4em; word-break:break-word;"></div>
                     ${innerContent}
                 </div>
             </div>
@@ -2068,20 +2100,75 @@ window.renderDayZeroStep = function() {
         </div>
     `;
 
-        if (stepData.type === "input") {
+    let bodyEl = document.getElementById('dz-body-text');
+    let hintEl = document.getElementById('dz-tap-hint');
+    let hasHtmlTags = /<[^>]+>/.test(stepData.body);
+
+    if (hasHtmlTags || stepData.type === 'input') {
+        if (bodyEl) bodyEl.innerHTML = stepData.body;
+        _dayZeroTypingDone = true;
+        if (hintEl) hintEl.style.opacity = '0.9';
+    } else if (bodyEl) {
+        _dayZeroTypingDone = false;
+        let idx = 0;
+        let fullStr = stepData.body;
+        _dayZeroTypeTimer = setInterval(() => {
+            idx += 2;
+            bodyEl.textContent = fullStr.slice(0, idx);
+            if (idx >= fullStr.length) {
+                clearInterval(_dayZeroTypeTimer);
+                _dayZeroTypingDone = true;
+                if (hintEl) hintEl.style.opacity = '0.95';
+            }
+        }, 22);
+    }
+
+    if (stepData.type === "input") {
         setTimeout(() => {
             let inp = document.getElementById('dz-name-input');
             if (inp) { inp.focus(); inp.select(); }
-        }, 150);
-    } else if (stepData.type === "finish") {
-        let nameDisp = document.getElementById('dz-final-name-disp');
-        if (nameDisp) nameDisp.innerText = dayZeroPlayerName.toUpperCase();
+        }, 280);
     }
+};
+
+window.handleDayZeroTap = function() {
+    let now = Date.now();
+    if (now - _dayZeroLastTap < 280) return;
+    _dayZeroLastTap = now;
+
+    let stepData = DAY_ZERO_SEQUENCE[dayZeroStep];
+    if (!stepData) return;
+
+    if (!_dayZeroTypingDone) {
+        clearInterval(_dayZeroTypeTimer);
+        _dayZeroTypingDone = true;
+        let bodyEl = document.getElementById('dz-body-text');
+        let hintEl = document.getElementById('dz-tap-hint');
+        if (bodyEl) bodyEl.innerHTML = stepData.body;
+        if (hintEl) hintEl.style.opacity = '0.95';
+        return;
+    }
+
+    advanceDayZeroStep();
 };
 
 window.advanceDayZeroStep = function() {
     dayZeroStep++;
     renderDayZeroStep();
+};
+
+window.acceptDayZeroAwakening = function() {
+    let ov = document.getElementById('sl-day-zero-overlay');
+    if (ov) {
+        ov.classList.remove('dz-heartbeat-bg');
+        ov.classList.add('dz-accept-flash');
+    }
+    if (typeof playSystemSound === 'function') playSystemSound('gold');
+    if (navigator.vibrate) navigator.vibrate([40, 40, 120]);
+    setTimeout(() => {
+        if (ov) ov.classList.remove('dz-accept-flash');
+        advanceDayZeroStep();
+    }, 360);
 };
 
 window.handleDayZeroReject = function() {
@@ -2111,7 +2198,7 @@ window.confirmDayZeroRegistration = function() {
     if (inp && inp.value.trim()) {
         dayZeroPlayerName = inp.value.trim();
     }
-    if (p) {
+    if (!_dayZeroReplayOnly && p) {
         p.playerName = dayZeroPlayerName;
         if (typeof saveData === "function") saveData();
         if (typeof renderStatusRadarProfile === "function") renderStatusRadarProfile();
@@ -2120,48 +2207,33 @@ window.confirmDayZeroRegistration = function() {
 };
 
 window.finishDayZeroPrologue = function() {
+    clearInterval(_dayZeroTypeTimer);
     let ov = document.getElementById('sl-day-zero-overlay');
     if (!ov) return;
 
-    if (p) {
+    if (!_dayZeroReplayOnly && p) {
         p.dayZeroCompleted = true;
-        if (!p.inventory) p.inventory = [];
-        let hasStartBox = p.inventory.some(i => i.id === "box_start");
-        if (!hasStartBox) {
-            p.inventory.push({
-                id: "box_start",
-                icon: "🎁",
-                title: "Caja de Despertar",
-                desc: "Contiene provisiones básicas para el nuevo jugador.",
-                rank: "B",
-                type: "box"
-            });
-            p.inventory.push({
-                id: "lunch_ticket",
-                icon: "🥗",
-                title: "Cupón de Almuerzo",
-                desc: "Regenera 40 SP de forma pausada. Válido únicamente de 11:15 AM a 2:00 PM.",
-                rank: "B",
-                type: "item"
-            });
-        }
         if (typeof saveData === "function") saveData();
     }
 
     if (typeof playSystemSound === "function") playSystemSound('monarch_awakening');
 
-    ov.style.transition = "opacity 0.6s ease";
+    ov.style.transition = "opacity 0.55s ease";
     ov.style.opacity = "0";
     setTimeout(() => {
-        ov.remove();
-        let todayBootKey = new Date().toDateString();
-        localStorage.setItem('SL_BootShownDay', todayBootKey);
-        if (typeof initializeSystem === "function") {
-            initializeSystem();
+        ov.style.display = 'none';
+        ov.style.opacity = '1';
+        ov.classList.remove('dz-heartbeat-bg', 'dz-accept-flash');
+        if (!_dayZeroReplayOnly) {
+            let todayBootKey = (typeof getBiologicalDayStr === 'function') ? getBiologicalDayStr() : new Date().toDateString();
+            localStorage.setItem('SL_BootShownDay', todayBootKey);
+            if (typeof initializeSystem === "function") initializeSystem();
+            if (typeof switchTab === "function") switchTab('routine', 0, true);
         }
-        if (typeof switchTab === "function") switchTab('routine', 0);
-    }, 650);
+        _dayZeroReplayOnly = false;
+    }, 560);
 };
+
 /* ==========================================================================
    18. MOTOR CLIENTE WEB PUSH VAPID (NOTIFICACIONES CON APP CERRADA)
    ========================================================================== */
@@ -2243,8 +2315,29 @@ window.cancelCloudPush = async function(groupKey) {
         });
     } catch (e) {}
 };
+async function _silentSyncWebPush() {
+    if (!p || !('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    if (location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.protocol !== 'https:') return;
+    if (!MONARCH_VAPID_PUBLIC_KEY || MONARCH_VAPID_PUBLIC_KEY.includes('PEGA_AQUI')) return;
+    if (Notification.permission !== 'granted') return;
+    try {
+        const reg = await navigator.serviceWorker.ready;
+        let sub = await reg.pushManager.getSubscription();
+        if (!sub) {
+            sub = await reg.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: _urlBase64ToUint8Array(MONARCH_VAPID_PUBLIC_KEY)
+            });
+        }
+        p.webPushSub = sub.toJSON();
+        saveData();
+    } catch (e) {}
+}
+
 window.addEventListener('load', () => {
+    setTimeout(_silentSyncWebPush, 1200);
     const splash = document.getElementById('sl-splash-screen');
+
     if (!splash) return;
     const isDayZero = (typeof p !== 'undefined' && p && !p.dayZeroCompleted);
     setTimeout(() => {

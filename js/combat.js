@@ -574,7 +574,7 @@ function stopSealChannel(e) {
         let bar = document.getElementById('channel-bar-fill');
         let lbl = document.getElementById('channel-bar-label');
         if (bar) bar.style.width = '0%';
-        if (lbl) lbl.innerText = 'SINCRONIZACIÓN INTERRUMPIDA (MANTÉN PRESIONADO)';
+        if (lbl) lbl.innerText = 'INTERRUMPIDO (MANTÉN PRESIONADO)';
     }
 }
 
@@ -862,9 +862,15 @@ function executeSealSuccess(isCrit = false) {
         systemNotify("Concesión Tigre Blanco liquidada: 100% Oro bruto sin impuestos (+110 G extra) y 2 minerales extraídos.", "gold");
     }
 
+        let hasAnyCmd = p.shadowArmy && ['igris', 'tank', 'iron', 'tusk', 'beru'].some(k => p.shadowArmy[k] && p.shadowArmy[k].unlocked);
     if (isCrit) {
-        p.sovereignCritDiscount = true;
-        systemNotify(`¡CORTE CRÍTICO PERFECTO! +15% EXP, +${mpGain} MP y la próxima Habilidad Activa de tus Sombras costará -50% MP.`, "gold");
+        if (hasAnyCmd) {
+            p.sovereignCritDiscount = true;
+            systemNotify(`¡CORTE CRÍTICO PERFECTO! +15% EXP, +${mpGain} MP y la próxima Habilidad Activa de tus Sombras costará -50% MP.`, "gold");
+        } else {
+            p.sp = Math.min(100, (p.sp || 0) + 5);
+            systemNotify(`¡CORTE CRÍTICO PERFECTO! +15% EXP, +${mpGain} MP y -5 Fatiga por precisión absoluta.`, "gold");
+        }
     } else {
         systemNotify(`Sincronización completada. Incursión sellada (+${mpGain} MP).`, "success");
     }
@@ -1157,13 +1163,140 @@ function _setGuardedHtml(el, html) {
     el.innerHTML = html;
 }
 
-function renderShadowSanctuary() {
-    ensureShadowStructure();
-    let maxSlots = getMaxShadowSlots();
+const COMMANDER_REVEAL_RULES = {
+    igris: { teaserLvl: 35, canExtract: () => (p.level || 1) >= 40, teaserHint: 'Presencia carmesí detectada tras el Cambio de Clase (Niv. 40).' },
+    tank:  { teaserLvl: 43, canExtract: () => (p.level || 1) >= 48 || (p.stats && p.stats.str >= 3.8) || (Array.isArray(p.clearedDungeons) && p.clearedDungeons.includes('dung_red_ice')), teaserHint: 'Fluctuación glacial detectada en territorio Hyakki (Niv. 48 o Portal Rojo).' },
+    iron:  { teaserLvl: 47, canExtract: () => (p.level || 1) >= 52 || (p.stats && p.stats.str >= 4.0), teaserHint: 'Eco de acero colosal resonando en el vacío (Niv. 52 o STR 4.00).' },
+    tusk:  { teaserLvl: 67, canExtract: () => (p.level || 1) >= 72 || (p.stats && p.stats.int >= 4.5) || (typeof hasEquippedItem === 'function' && hasEquippedItem('eq_w_kargalgan')), teaserHint: 'Cántico ígneo de los Altos Orcos aproximándose (Niv. 72 u Orbe de Avaricia).' },
+    beru:  { teaserLvl: 77, canExtract: () => !!p.jejuCleared || (p.level || 1) >= 90, teaserHint: 'Instinto depredador de Rango S proveniente del sur (Isla de Jeju Niv. 82).' }
+};
+
+function _renderPreMonarchHunterCore(altarEl, cmdCont, infCont) {
+    if (typeof ensureHunterSkills === 'function') ensureHunterSkills();
+    const tabGacha = document.getElementById('tab-gacha');
+    if (tabGacha) {
+        tabGacha.querySelectorAll('.section-header').forEach((h, i) => {
+            if (i === 0) {
+                let sp = h.querySelector('span');
+                if (sp) sp.textContent = 'Núcleo del Cazador';
+                let btn = h.querySelector('button');
+                if (btn) btn.style.display = 'none';
+            } else {
+                h.style.display = 'none';
+            }
+        });
+        let slotsGrid = tabGacha.querySelector('.army-slots-grid-3');
+        if (slotsGrid) slotsGrid.style.display = 'none';
+    }
+
+    let lvl = p.level || 1;
+    let pct = Math.min(100, Math.floor((lvl / 40) * 100));
     let now = Date.now();
 
-    // 1. TRONO SUPERIOR (Único lugar donde las animaciones están activas)
+    if (altarEl) {
+        altarEl.classList.add('resting-compact');
+        _setGuardedHtml(altarEl, `
+            <div class="altar-info-bar" style="margin-top:0; width:100%; padding:14px; text-align:left;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                    <span style="font-size:0.86em; font-weight:700; color:#ffffff; letter-spacing:1px;">[ CLASE: NINGUNA ]</span>
+                    <span style="font-family:'Share Tech Mono', monospace; font-size:0.74em; color:#7dd3fc;">CAMBIO DE CLASE: NIV. ${lvl}/40</span>
+                </div>
+                <div class="bar-wrap" style="height:6px; margin-bottom:8px;">
+                    <div class="bar-fill xp-bar" style="width:${pct}%;"></div>
+                </div>
+                <div style="font-size:0.76em; color:#94a3b8; line-height:1.4;">
+                    Aún no has despertado la autoridad sobre las sombras. Perfecciona tus habilidades de Cazador hasta alcanzar el <b style="color:#e0f2fe;">Nivel 40</b>.
+                </div>
+            </div>
+        `);
+    }
+
+    if (cmdCont && typeof HUNTER_SKILLS_META !== 'undefined' && p.hunterSkills) {
+        const buildSkillCard = (k) => {
+            let meta = HUNTER_SKILLS_META[k];
+            let sk = p.hunterSkills[k];
+            if (!meta || !sk) return '';
+            let isMax = sk.lvl >= meta.maxLvl;
+            let spct = isMax ? 100 : Math.min(100, Math.floor(((sk.xp || 0) / Math.max(1, sk.maxXp || 50)) * 100));
+            let cdRem = (sk.cdUntil && now < sk.cdUntil) ? Math.ceil((sk.cdUntil - now) / 1000) : 0;
+            let actBtn = meta.type === 'active'
+                ? `<button class="btn ${cdRem > 0 ? 'btn-blue' : 'btn-main'}" style="width:100%; margin-top:8px; padding:7px !important; font-size:0.7em !important;" onclick="castHunterSkill('${k}')">${cdRem > 0 ? `ENFRIAMIENTO (${cdRem}s)` : `ACTIVAR (-${meta.mpCost} MP)`}</button>`
+                : '';
+            return `
+            <div class="card" style="flex-direction:column; align-items:stretch; padding:11px 13px !important; margin-bottom:8px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                    <span style="font-weight:700; color:#ffffff; font-size:0.9em;">${meta.name} <span style="color:#7dd3fc;">Nv.${sk.lvl}/${meta.maxLvl}</span></span>
+                    <span style="font-family:'Share Tech Mono', monospace; font-size:0.68em; color:#94a3b8;">${isMax ? 'MÁX' : `${sk.xp}/${sk.maxXp}`}</span>
+                </div>
+                <div class="bar-wrap" style="height:4px; margin-bottom:6px;"><div class="bar-fill xp-bar" style="width:${spct}%;"></div></div>
+                <div style="font-size:0.76em; color:#cbd5e1; line-height:1.38;">${meta.desc(sk.lvl)}</div>
+                ${actBtn}
+            </div>`;
+        };
+
+        let activesHtml = ['sprint', 'vital_strike', 'bloodlust', 'rulers_touch'].map(buildSkillCard).join('');
+        let passivesHtml = ['longevity', 'tenacity', 'dagger_mastery'].map(buildSkillCard).join('');
+
+        let teaserHtml = '';
+        if (lvl >= 35) {
+            teaserHtml = `
+            <div class="card" style="flex-direction:column; align-items:center; text-align:center; padding:16px !important; margin-top:14px; border-color:rgba(125,211,252,0.75) !important;">
+                <div style="font-family:'Share Tech Mono', monospace; font-size:0.7em; color:#7dd3fc; letter-spacing:1.4px; margin-bottom:6px;">[ ANOMALÍA DETECTADA A ${40 - lvl} NIVELES ]</div>
+                <div style="width:86px; height:86px; margin-bottom:6px;">${getCommanderSVG('min_unknown', 'idle')}</div>
+                <div style="font-weight:700; color:#ffffff; font-size:0.95em;">??? // CABALLERO CARMESÍ</div>
+                <div style="font-size:0.76em; color:#94a3b8; margin-top:4px;">Una presencia hostil aguarda tras el Cambio de Clase (Nivel 40).</div>
+            </div>`;
+        }
+
+        _setGuardedHtml(cmdCont, `
+            <div style="font-family:'Exo 2', sans-serif; font-size:0.78em; font-weight:700; color:#e0f2fe; letter-spacing:1.4px; margin:8px 0;">[ HABILIDADES ACTIVAS ]</div>
+            ${activesHtml}
+            <div style="font-family:'Exo 2', sans-serif; font-size:0.78em; font-weight:700; color:#7dd3fc; letter-spacing:1.4px; margin:14px 0 8px 0;">[ HABILIDADES PASIVAS ]</div>
+            ${passivesHtml}
+            ${teaserHtml}
+        `);
+    }
+
+    if (infCont) {
+        infCont.innerHTML = '';
+        infCont.dataset.renderSig = '';
+    }
+}
+
+function renderShadowSanctuary() {
+    ensureShadowStructure();
+    let now = Date.now();
     let altarEl = document.getElementById('shadow-altar-showcase');
+    let cmdCont = document.getElementById('commanders-list-container');
+    let infCont = document.getElementById('infantry-list-container');
+    let minCont = document.getElementById('min-sanctuary-container');
+    if (minCont) { minCont.style.display = 'none'; minCont.innerHTML = ''; }
+
+    let hasAnyUnlockedCmd = ['igris', 'tank', 'iron', 'tusk', 'beru'].some(k => p.shadowArmy[k] && p.shadowArmy[k].unlocked);
+    if ((p.level || 1) < 40 && !hasAnyUnlockedCmd) {
+        _renderPreMonarchHunterCore(altarEl, cmdCont, infCont);
+        return;
+    }
+
+    // Restaurar estructura completa del Trono a partir de Nivel 40
+    const tabGacha = document.getElementById('tab-gacha');
+    if (tabGacha) {
+        tabGacha.querySelectorAll('.section-header').forEach((h, i) => {
+            h.style.display = 'flex';
+            if (i === 0) {
+                let sp = h.querySelector('span');
+                if (sp) sp.textContent = 'Trono de las Sombras';
+                let btn = h.querySelector('button');
+                if (btn) btn.style.display = 'inline-block';
+            }
+        });
+        let slotsGrid = tabGacha.querySelector('.army-slots-grid-3');
+        if (slotsGrid) slotsGrid.style.display = 'grid';
+    }
+
+    let maxSlots = getMaxShadowSlots();
+
+    // 1. TRONO SUPERIOR
     if (altarEl) {
         let activeCmdId = (p.equippedShadows && p.equippedShadows.length > 0)
             ? (p.equippedShadows.includes(currentShowcaseCmd) ? currentShowcaseCmd : p.equippedShadows[0])
@@ -1201,15 +1334,15 @@ function renderShadowSanctuary() {
                         <button class="btn btn-main" style="flex:1; padding:8px; font-size:0.76em;" onclick="castCommanderActive('${activeCmdId}')">${meta.activeName} (-${effCost} MP)</button>
                         <button class="btn btn-blue" style="flex:1; padding:8px; font-size:0.76em;" onclick="toggleEquipCommander('${activeCmdId}')">GUARDAR EN SOMBRA</button>
                     </div>
-                                </div>`);
+                </div>`);
         } else {
             altarEl.classList.add('resting-compact');
             let firstUnlockedCmd = Object.keys(COMMANDERS_META).find(k => p.shadowArmy[k] && p.shadowArmy[k].unlocked);
             let surgeBtnHtml = firstUnlockedCmd
                 ? `<button class="btn btn-main" style="padding:8px 14px; font-size:0.78em; flex-shrink:0;" onclick="toggleEquipCommander('${firstUnlockedCmd}')">¡SURGE!</button>`
-                : `<button class="btn btn-blue" style="padding:8px 12px; font-size:0.72em; flex-shrink:0; opacity:0.5; cursor:not-allowed;" disabled>${getHoloLockSVG(12, "#94a3b8")} NIV.40</button>`;
+                : `<button class="btn btn-blue" style="padding:8px 12px; font-size:0.72em; flex-shrink:0; opacity:0.5; cursor:not-allowed;" disabled>${getHoloLockSVG(12, "#94a3b8")} SELLADO</button>`;
 
-                        _setGuardedHtml(altarEl, `
+            _setGuardedHtml(altarEl, `
                 <div class="altar-info-bar" style="margin-top:0; display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 14px; width:100%;">
                     <div style="text-align:left;">
                         <div style="font-size:0.9em; font-weight:700; color:#cbd5e1; letter-spacing:1px;">TRONO EN REPOSO ABSOLUTO</div>
@@ -1220,7 +1353,7 @@ function renderShadowSanctuary() {
         }
     }
 
-    // 2. RANURAS DE COMANDANTES DESPLEGADOS (Estáticas sin animación)
+    // 2. RANURAS DE COMANDANTES DESPLEGADOS
     for (let i = 1; i <= 3; i++) {
         let slotEl = document.getElementById(`slot-shadow-${i}`);
         if (!slotEl) continue;
@@ -1252,19 +1385,10 @@ function renderShadowSanctuary() {
         }
     }
 
-
-// 3. Ocultar el contenedor viejo de Min Byung-Gyu (ahora vive como la 6.ª tarjeta de la cuadrícula)
-    let minCont = document.getElementById('min-sanctuary-container');
-    if (minCont) {
-        minCont.style.display = 'none';
-        minCont.innerHTML = '';
-    }
-
-    // 4. PANTEÓN DE COMANDANTES: TARJETAS 3D GIRATORIAS + 6.ª TARJETA DE MIN BYUNG-GYU
-    let cmdCont = document.getElementById('commanders-list-container');
+    // 3. PANTEÓN PROGRESIVO (-5 NIVELES DE ANTICIPACIÓN)
     if (cmdCont) {
-        let discountBanner = p.sovereignCritDiscount
-            ? `<div style="margin-bottom:12px; padding:8px 12px; background:rgba(14,165,233,0.12); border:1px solid rgba(125,211,252,0.5); color:#e0f2fe; font-size:0.8em; font-weight:600; text-align:center;">AUTORIDAD DEL SOBERANO: Tu próxima Habilidad Activa cuesta <b style="color:#7dd3fc;">-50% MP</b> por tu último Corte Crítico.</div>`
+        let discountBanner = (p.sovereignCritDiscount && hasAnyUnlockedCmd)
+            ? `<div style="margin-bottom:12px; padding:8px 12px; background:rgba(14,165,233,0.12); border:1px solid rgba(125,211,252,0.5); color:#e0f2fe; font-size:0.8em; font-weight:600; text-align:center;">AUTORIDAD DEL SOBERANO: Tu próxima Habilidad Activa cuesta <b style="color:#7dd3fc;">-50% MP</b>.</div>`
             : '';
 
         let gridHtml = `<div class="sl-cmd-portrait-grid">`;
@@ -1272,8 +1396,42 @@ function renderShadowSanctuary() {
         Object.keys(COMMANDERS_META).forEach(key => {
             let meta = COMMANDERS_META[key];
             let st = p.shadowArmy[key];
-            let isEquipped = p.equippedShadows.includes(key);
+            let rule = COMMANDER_REVEAL_RULES[key];
+            let canExtractNow = rule ? rule.canExtract() : true;
+            let showTeaser = rule ? ((p.level || 1) >= rule.teaserLvl) : true;
+
+            // Oculto por completo si aún faltan más de 5 niveles y no está desbloqueado
+            if (!st.unlocked && !canExtractNow && !showTeaser) return;
+
             let isSelected = (selectedCommanderInspectId === key);
+
+            // Modo Teaser misterioso (entre -5 y -1 niveles antes de cumplir el requisito)
+            if (!st.unlocked && !canExtractNow) {
+                gridHtml += `
+                <div class="sl-cmd-portrait-card locked-card ${isSelected ? 'is-flipped' : ''}" onclick="toggleCommanderCardInspect('${key}')">
+                    <div class="sl-cmd-flip-inner">
+                        <div class="sl-cmd-face-front">
+                            <span class="sl-cmd-mini-badge locked">PRÓXIMO</span>
+                            <div class="sl-cmd-portrait-figure static-shadow-pose">
+                                ${getCommanderSVG('min_unknown', 'idle')}
+                            </div>
+                            <div class="sl-cmd-portrait-name">??? <span style="color:#64748b; font-size:0.82em;">SELLADO</span></div>
+                        </div>
+                        <div class="sl-cmd-face-back">
+                            <div class="sl-cmd-back-head">
+                                <span style="font-size:0.74em; font-weight:700; color:#cbd5e1;">PRESENCIA OCULTA</span>
+                                <span style="font-family:'Share Tech Mono', monospace; font-size:0.6em; color:#7dd3fc;">${meta.reqText}</span>
+                            </div>
+                            <div class="sl-cmd-back-scroll" style="color:#94a3b8; font-size:0.74em;">
+                                ${rule.teaserHint}
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+                return;
+            }
+
+            let isEquipped = p.equippedShadows.includes(key);
             let isCooldown = (key === 'tank' && st.cooldownUntil && now < st.cooldownUntil);
             let shortName = meta.name.replace('Comandante ', '').split(' ')[0].toUpperCase();
             let effCost = getEffectiveActiveCost(key);
@@ -1282,31 +1440,22 @@ function renderShadowSanctuary() {
             let activeTab = selectedCommanderBackTab[key] || 'passive';
 
             let topBadge = '';
-            if (!st.unlocked) {
-                topBadge = `<span class="sl-cmd-mini-badge locked">${getHoloLockSVG(11, "#94a3b8")}</span>`;
-            } else if (isEquipped) {
-                topBadge = `<span class="sl-cmd-mini-badge active">EN CAMPO</span>`;
-            } else if (isCooldown) {
-                topBadge = `<span class="sl-cmd-mini-badge locked">24H</span>`;
-            }
+            if (!st.unlocked) topBadge = `<span class="sl-cmd-mini-badge locked">${getHoloLockSVG(11, "#94a3b8")}</span>`;
+            else if (isEquipped) topBadge = `<span class="sl-cmd-mini-badge active">EN CAMPO</span>`;
+            else if (isCooldown) topBadge = `<span class="sl-cmd-mini-badge locked">24H</span>`;
 
             let skillContentHtml = (activeTab === 'active')
                 ? `<div style="color:#e0f2fe; font-weight:700; font-size:0.74em; margin-bottom:3px;">${meta.activeName.toUpperCase()} (-${effCost}MP)</div><div>${dynTxt.active}</div>`
                 : `<div style="color:#7dd3fc; font-weight:700; font-size:0.72em; margin-bottom:3px;">DRENAJE: -${meta.mpDrain} MP/MIN</div><div>${dynTxt.passive}</div>`;
 
-            let dockHtml = '';
-            if (!st.unlocked) {
-                dockHtml = `
-                <div class="sl-cmd-action-dock" style="grid-template-columns: 1fr;" onclick="event.stopPropagation()">
+            let dockHtml = !st.unlocked
+                ? `<div class="sl-cmd-action-dock" style="grid-template-columns: 1fr;" onclick="event.stopPropagation()">
                     <div class="sl-dock-chip primary-chip" onclick="unlockCommanderWithCrystals('${key}')">${getHoloLockSVG(10, "#ffffff")} EXTRAER (4 CM)</div>
-                </div>`;
-            } else {
-                dockHtml = `
-                <div class="sl-cmd-action-dock" onclick="event.stopPropagation()">
+                   </div>`
+                : `<div class="sl-cmd-action-dock" onclick="event.stopPropagation()">
                     <div class="sl-dock-chip ${isEquipped ? '' : 'primary-chip'}" onclick="${isCooldown ? '' : `toggleEquipCommander('${key}')`}">${isCooldown ? 'REPOSO' : (isEquipped ? 'GUARDAR' : '¡SURGE!')}</div>
                     <div class="sl-dock-chip" onclick="upgradeCommander('${key}')">+NV (${upCost}CM)</div>
-                </div>`;
-            }
+                   </div>`;
 
             let cardStateClass = `${isEquipped ? 'equipped-card' : ''} ${isSelected ? 'is-flipped' : ''} ${!st.unlocked ? 'locked-card' : ''}`.trim();
 
@@ -1315,9 +1464,7 @@ function renderShadowSanctuary() {
                 <div class="sl-cmd-flip-inner">
                     <div class="sl-cmd-face-front">
                         ${topBadge}
-                        <div class="sl-cmd-portrait-figure static-shadow-pose">
-                            ${getCommanderSVG(key, 'idle')}
-                        </div>
+                        <div class="sl-cmd-portrait-figure static-shadow-pose">${getCommanderSVG(key, 'idle')}</div>
                         <div class="sl-cmd-portrait-name">${shortName} <span style="color:#7dd3fc; font-size:0.85em;">NV.${st.level || 1}</span></div>
                     </div>
                     <div class="sl-cmd-face-back">
@@ -1338,22 +1485,19 @@ function renderShadowSanctuary() {
             </div>`;
         });
 
-        // 6.ª TARJETA: MIN BYUNG-GYU (Aparece con ? a 2 niveles de Isla de Jeju [Niv. 80+], con su figura al despejar Jeju, y con contornos apagados tras liberarlo)
+        // 6.ª TARJETA: MIN BYUNG-GYU (Aparece a -5 niveles de Isla de Jeju: Niv. 77+)
         let minObj = (p.shadowArmy && p.shadowArmy.min) ? p.shadowArmy.min : { unlocked: false, usedForever: false };
-        let showMinCard = (p.level >= 80) || p.jejuCleared || minObj.unlocked || minObj.usedForever;
+        let showMinCard = (p.level >= 77) || p.jejuCleared || minObj.unlocked || minObj.usedForever;
 
         if (showMinCard) {
             let isMinSelected = (selectedCommanderInspectId === 'min');
             if (minObj.usedForever) {
-                // Estado 3: Alma liberada (contornos apagados, sin botones, historia al voltear)
                 gridHtml += `
                 <div class="sl-cmd-portrait-card liberated-soul-card ${isMinSelected ? 'is-flipped' : ''}" onclick="toggleCommanderCardInspect('min')">
                     <div class="sl-cmd-flip-inner">
                         <div class="sl-cmd-face-front">
                             <span class="sl-cmd-mini-badge locked">LIBERADO</span>
-                            <div class="sl-cmd-portrait-figure static-shadow-pose">
-                                ${getCommanderSVG('min', 'idle')}
-                            </div>
+                            <div class="sl-cmd-portrait-figure static-shadow-pose">${getCommanderSVG('min', 'idle')}</div>
                             <div class="sl-cmd-portrait-name">MIN BYUNG-GYU</div>
                         </div>
                         <div class="sl-cmd-face-back">
@@ -1368,15 +1512,12 @@ function renderShadowSanctuary() {
                     </div>
                 </div>`;
             } else if (p.jejuCleared || minObj.unlocked) {
-                // Estado 2: Isla de Jeju despejada (Trofeo Rango S o 1 Único Uso para el logro oculto)
                 gridHtml += `
                 <div class="sl-cmd-portrait-card equipped-card ${isMinSelected ? 'is-flipped' : ''}" onclick="toggleCommanderCardInspect('min')">
                     <div class="sl-cmd-flip-inner">
                         <div class="sl-cmd-face-front">
                             <span class="sl-cmd-mini-badge active">1 ÚNICO USO</span>
-                            <div class="sl-cmd-portrait-figure static-shadow-pose">
-                                ${getCommanderSVG('min', 'idle')}
-                            </div>
+                            <div class="sl-cmd-portrait-figure static-shadow-pose">${getCommanderSVG('min', 'idle')}</div>
                             <div class="sl-cmd-portrait-name">MIN BYUNG-GYU <span style="color:#7dd3fc; font-size:0.82em;">R-S</span></div>
                         </div>
                         <div class="sl-cmd-face-back">
@@ -1394,15 +1535,12 @@ function renderShadowSanctuary() {
                     </div>
                 </div>`;
             } else {
-                // Estado 1: A 1-2 niveles de desbloquear Isla de Jeju (Signo de interrogación grande)
                 gridHtml += `
                 <div class="sl-cmd-portrait-card locked-card ${isMinSelected ? 'is-flipped' : ''}" onclick="toggleCommanderCardInspect('min')">
                     <div class="sl-cmd-flip-inner">
                         <div class="sl-cmd-face-front">
                             <span class="sl-cmd-mini-badge locked">ISLA JEJU</span>
-                            <div class="sl-cmd-portrait-figure static-shadow-pose">
-                                ${getCommanderSVG('min_unknown', 'idle')}
-                            </div>
+                            <div class="sl-cmd-portrait-figure static-shadow-pose">${getCommanderSVG('min_unknown', 'idle')}</div>
                             <div class="sl-cmd-portrait-name">??? <span style="color:#64748b; font-size:0.82em;">RANGO S</span></div>
                         </div>
                         <div class="sl-cmd-face-back">
@@ -1420,12 +1558,10 @@ function renderShadowSanctuary() {
         }
 
         gridHtml += `</div>`;
-
         _setGuardedHtml(cmdCont, discountBanner + gridHtml);
-        applyShadowOffsetsToDOM(cmdCont);
     }
-// 5. LEGIÓN DE INFANTERÍA COMPACTA + EXPEDICIONES A PORTALES DESPEJADOS
-    let infCont = document.getElementById('infantry-list-container');
+
+    // 4. LEGIÓN DE INFANTERÍA + EXPEDICIONES
     if (infCont) {
         if (!p.infantryDisabled) p.infantryDisabled = {};
         let totalUnits = Object.values(p.infantry || {}).reduce((a, b) => a + b, 0);
@@ -1512,7 +1648,7 @@ function renderShadowSanctuary() {
             </div>`;
         });
 
-                _setGuardedHtml(infCont, expHtml + rowsHtml);
+        _setGuardedHtml(infCont, expHtml + rowsHtml);
     }
 }
 
@@ -1889,8 +2025,13 @@ function unlockCommanderWithCrystals(cmdId) {
     let st = p.shadowArmy[cmdId];
     let meta = COMMANDERS_META[cmdId];
     if (!st || !meta) return;
-    if (st.unlocked) {
+        if (st.unlocked) {
         systemNotify(`${meta.name} ya forma parte de tu ejército.`, "info");
+        return;
+    }
+    let rule = COMMANDER_REVEAL_RULES[cmdId];
+    if (rule && !rule.canExtract()) {
+        systemNotify(`Requisito canon bloqueado para ${meta.name}: ${meta.reqText}.`, "danger");
         return;
     }
     let now = Date.now();

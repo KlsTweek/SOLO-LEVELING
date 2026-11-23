@@ -1404,93 +1404,149 @@ window.executeAlchemicalSmelting = function(scrollId, bonusTotal) {
     }, 900);
 };
 
-/* 5B. INTERFAZ PERSONALIZADA: APERTURA DE COFRES Y RELICARIOS SARCÓFAGO */
+/* 5B. INTERFAZ PERSONALIZADA: APERTURA DE COFRES CON RULETA Y ONDA EXPANSIVA */
 function openSarcophagusChestModal(idx) {
     let boxItem = p.inventory[idx];
     if (!boxItem) return;
 
     let isSS = boxItem.rank === 'SS';
-    let isS = boxItem.rank === 'S';
     let theme = isSS ? "monarch-purple" : "";
 
     let html = `
-        <div class="sl-sarcophagus-box chest-shake" id="sl-chest-visual-box">
-            ${getIconFor(boxItem)}
+        <div class="sl-sarcophagus-stage">
+            <div class="sl-sarcophagus-ring" id="sl-chest-ring"></div>
+            <div class="sl-sarcophagus-burst" id="sl-chest-burst"></div>
+            <div class="sl-sarcophagus-box chest-float" id="sl-chest-visual-box">
+                ${getIconFor(boxItem)}
+            </div>
         </div>
-        <div style="font-family:'Share Tech Mono', monospace; font-size:0.78em; color:#7dd3fc; margin-bottom:12px; white-space:nowrap;" id="sl-chest-status-txt">
-            [ RANGO DEL CONTENEDOR: ${boxItem.rank || 'B'} // LISTO PARA DESELLAR ]
+        <div style="font-family:'Share Tech Mono', monospace; font-size:0.78em; color:#7dd3fc; margin-bottom:10px;" id="sl-chest-status-txt">
+            [ RANGO ${boxItem.rank || 'B'} // SELLO INTACTO ]
         </div>
         <div id="sl-chest-reward-slot" style="display:none; margin-bottom:12px;"></div>
-        <button class="btn btn-main" style="width:100%; padding:12px;" id="btn-open-sarcophagus" onclick="executeSarcophagusUnseal(${idx})">
-            ROMPER SELLO DIMENSIONAL
-        </button>
+        <div style="display:flex; gap:8px;" id="sl-chest-action-row">
+            <button class="btn btn-blue" style="flex:0.7;" onclick="closeArtifactRitualModal()">GUARDAR</button>
+            <button class="btn btn-main" style="flex:1.5; padding:11px;" id="btn-open-sarcophagus" onclick="executeSarcophagusUnseal(${idx})">
+                ROMPER SELLO
+            </button>
+        </div>
     `;
-    createArtifactRitualShell(boxItem.title.toUpperCase(), "[ APERTURA DE RELICARIO DEL SISTEMA ]", html, theme);
+    createArtifactRitualShell(boxItem.title.toUpperCase(), "[ RELICARIO DIMENSIONAL DEL SISTEMA ]", html, theme);
 }
 
 window.executeSarcophagusUnseal = function(idx) {
     let boxItem = p.inventory[idx];
     if (!boxItem) return;
 
-    let btn = document.getElementById('btn-open-sarcophagus');
+    let actionRow = document.getElementById('sl-chest-action-row');
     let statusTxt = document.getElementById('sl-chest-status-txt');
     let visualBox = document.getElementById('sl-chest-visual-box');
+    let ring = document.getElementById('sl-chest-ring');
+    let burst = document.getElementById('sl-chest-burst');
     let rewardSlot = document.getElementById('sl-chest-reward-slot');
-    if (btn) btn.style.display = 'none';
-    if (statusTxt) statusTxt.innerText = "[ DESINTEGRANDO SELLOS RÚNICOS... ]";
 
+    if (actionRow) actionRow.style.display = 'none';
+    if (ring) ring.classList.add('charging');
+    if (visualBox) {
+        visualBox.classList.remove('chest-float');
+        visualBox.classList.add('chest-charging');
+    }
+    if (statusTxt) statusTxt.innerText = "[ CANALIZANDO MANÁ EN EL SELLO... ]";
+    if (typeof playSystemSound === 'function') playSystemSound('step_arrow');
+
+    let poolItems = [];
+    let extraMsg = "";
+    if (boxItem.rank === 'SS') {
+        poolItems = shopDB.filter(x => x.rank === 'S' || x.rank === 'SS');
+        extraMsg = " + 2 Cristales de Maná (CM)";
+    } else if (boxItem.rank === 'S') {
+        const sIds = ["c_mercy", "c_magma_heart", "c_void_blood", "c_hourglass", "c7", "p7", "v6"];
+        poolItems = sIds.map(id => shopDB.find(x => x.id === id)).filter(Boolean);
+    } else {
+        const bIds = ["c1", "c_hp_mid", "c_med", "c2", "c3", "p1", "p3", "c_mp_pot"];
+        poolItems = bIds.map(id => shopDB.find(x => x.id === id)).filter(Boolean);
+    }
+    let finalRw = poolItems[Math.floor(Math.random() * poolItems.length)] || shopDB[0];
+
+    // Fase 1 -> Fase 2: Ruleta holográfica de candidatos
     setTimeout(() => {
-        let rw = null;
-        let extraMsg = "";
-        if (boxItem.rank === 'SS') {
-            p.crystals = (p.crystals || 0) + 2;
-            let ssPool = shopDB.filter(x => x.rank === 'S' || x.rank === 'SS');
-            rw = ssPool[Math.floor(Math.random() * ssPool.length)];
-            extraMsg = " + 2 Cristales de Maná (CM)";
-        } else if (boxItem.rank === 'S') {
-            let sPool = ["c_mercy", "c_magma_heart", "c_void_blood", "c_hourglass", "c7", "p7", "v6"];
-            let pickId = sPool[Math.floor(Math.random() * sPool.length)];
-            rw = shopDB.find(x => x.id === pickId) || shopDB[0];
-        } else {
-            let bPool = ["c1", "c_hp_mid", "c_med", "c2", "c3", "p1", "p3"];
-            let pickId = bPool[Math.floor(Math.random() * bPool.length)];
-            rw = shopDB.find(x => x.id === pickId) || shopDB[0];
+        if (visualBox) {
+            visualBox.classList.remove('chest-charging');
+            visualBox.classList.add('chest-roulette');
         }
+        if (statusTxt) statusTxt.innerText = "[ MATERIALIZANDO ARTEFACTO... ]";
 
-        p.inventory.splice(idx, 1);
-        if (rw) p.inventory.push({...rw, type: rw.type || 'item'});
-        finalizeInventoryConsumption(null);
+        let spinIdx = 0;
+        let spinTotal = 10;
+        let spinTimer = setInterval(() => {
+            let previewItem = poolItems[spinIdx % poolItems.length];
+            if (visualBox && previewItem) visualBox.innerHTML = getIconFor(previewItem);
+            if (statusTxt && previewItem) statusTxt.innerText = `[ ${previewItem.title.toUpperCase()} ]`;
+            if (typeof playSystemSound === 'function') playSystemSound('type');
+            spinIdx++;
 
-        if (visualBox && rw) {
-            visualBox.classList.remove('chest-shake');
-            visualBox.style.borderColor = '#39ff14';
-            visualBox.style.boxShadow = '0 0 32px rgba(57,255,20,0.75)';
-            visualBox.innerHTML = getIconFor(rw);
-        }
-        if (statusTxt && rw) {
-            statusTxt.style.color = '#39ff14';
-            statusTxt.innerText = `[ RAREZA OBTENIDA: RANGO ${rw.rank || 'S'} ]`;
-        }
-        if (rewardSlot && rw) {
-            rewardSlot.style.display = 'block';
-            rewardSlot.innerHTML = `
-                <div style="font-size:1.15em; font-weight:700; color:#ffffff; text-shadow:0 0 10px #00e5ff;">${rw.title}${extraMsg}</div>
-                <div style="font-size:0.8em; color:#bae6fd; margin-top:4px;">${rw.desc}</div>
-            `;
-        }
-        if (btn) {
-            btn.style.display = 'block';
-            btn.innerText = "GUARDAR EN LA BOLSA";
-            btn.onclick = () => closeArtifactRitualModal();
-        }
-    }, 650);
+            if (spinIdx >= spinTotal) {
+                clearInterval(spinTimer);
+                if (boxItem.rank === 'SS') p.crystals = (p.crystals || 0) + 2;
+                p.inventory.splice(idx, 1);
+                if (finalRw) p.inventory.push({ ...finalRw, type: finalRw.type || 'item' });
+                finalizeInventoryConsumption(null);
+
+                if (ring) ring.classList.remove('charging');
+                if (burst) burst.classList.add('fire-burst');
+                if (visualBox && finalRw) {
+                    visualBox.classList.remove('chest-roulette');
+                    visualBox.classList.add('chest-revealed');
+                    visualBox.innerHTML = getIconFor(finalRw);
+                }
+                if (statusTxt && finalRw) {
+                    statusTxt.style.color = '#ffffff';
+                    statusTxt.innerText = `[ ARTEFACTO OBTENIDO • RANGO ${finalRw.rank || 'B'} ]`;
+                }
+                if (rewardSlot && finalRw) {
+                    rewardSlot.style.display = 'block';
+                    rewardSlot.innerHTML = `
+                        <div style="font-size:1.12em; font-weight:700; color:#ffffff; text-shadow:0 0 12px #00e5ff;">${finalRw.title}${extraMsg}</div>
+                        <div style="font-size:0.8em; color:#bae6fd; margin-top:4px; line-height:1.4;">${finalRw.desc}</div>
+                    `;
+                }
+                if (actionRow) {
+                    actionRow.style.display = 'flex';
+                    actionRow.innerHTML = `<button class="btn btn-main" style="width:100%; padding:11px;" onclick="closeArtifactRitualModal()">GUARDAR EN LA BOLSA</button>`;
+                }
+                if (typeof playSystemSound === 'function') playSystemSound('gold');
+                if (navigator.vibrate) navigator.vibrate([60, 40, 140]);
+            }
+        }, 95);
+    }, 420);
 };
 
-/* 6. RITUAL VISUAL HOLOGRÁFICO DE CARTENON PARA CONSUMIBLES Y MICRO-MISIONES */
+/* 6. RITUAL VISUAL HOLOGRÁFICO CON CONTADOR REAL POR ACTIVIDAD */
+const REAL_ACTION_DURATIONS = {
+    c_posture: 60,
+    c_breathing: 60,
+    c_eye_drops: 30,
+    c_cold_splash: 45,
+    c_adrenaline: 35,
+    c_sage_tea: 45,
+    c_cartenon_candle: 20,
+    c_giant_serum: 45,
+    c_baran_drop: 20,
+    p_iron_trial: 90,
+    p_zone_purge: 60
+};
+
+let _ritualMicroInterval = null;
+
 function openCartenonConsumableRitual(item, effectSummaryHtml, onConfirm, isPhysicalMicro = false) {
+    if (_ritualMicroInterval) { clearInterval(_ritualMicroInterval); _ritualMicroInterval = null; }
+
+    let totalSecs = isPhysicalMicro ? (REAL_ACTION_DURATIONS[item.id] || 60) : 0;
+    const fmtTimer = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+
     let timerHtml = isPhysicalMicro
-        ? `<div id="ritual-micro-timer" style="font-family:'Share Tech Mono', monospace; font-size:1.8em; color:#00e5ff; margin:8px 0;">00:15</div>
-           <div style="font-size:0.78em; color:#bae6fd; margin-bottom:10px;">Ejecuta la directiva física en la vida real mientras el Sistema escanea tu pulso...</div>`
+        ? `<div id="ritual-micro-timer" style="font-family:'Share Tech Mono', monospace; font-size:1.9em; color:#00e5ff; margin:8px 0; text-shadow:0 0 12px rgba(0,229,255,0.65);">${fmtTimer(totalSecs)}</div>
+           <div style="font-size:0.78em; color:#bae6fd; margin-bottom:10px;">Ejecuta la acción física real durante el tiempo completo del contador...</div>`
         : '';
 
     let html = `
@@ -1500,31 +1556,43 @@ function openCartenonConsumableRitual(item, effectSummaryHtml, onConfirm, isPhys
             ${effectSummaryHtml}
         </div>
         ${timerHtml}
-        <button class="btn btn-main" id="btn-ritual-confirm" style="width:100%; padding:11px;">ASIMILAR EN EL NÚCLEO</button>
+        <div style="display:flex; gap:8px;">
+            <button class="btn btn-blue" style="flex:0.65;" onclick="if(typeof _ritualMicroInterval!=='undefined'){clearInterval(_ritualMicroInterval); _ritualMicroInterval=null;} closeArtifactRitualModal()">CANCELAR</button>
+            <button class="btn btn-main" id="btn-ritual-confirm" style="flex:1.5; padding:11px;">ASIMILAR EN EL NÚCLEO</button>
+        </div>
     `;
     createArtifactRitualShell("RITUAL DE ASIMILACIÓN", `[ ARTEFACTO RANGO ${item.rank || 'A'} ACTIVADO ]`, html);
 
     let btn = document.getElementById('btn-ritual-confirm');
     if (isPhysicalMicro && btn) {
         btn.disabled = true;
-        btn.style.opacity = '0.5';
-        let rem = 15;
+        btn.style.opacity = '0.45';
+        let endsAt = Date.now() + (totalSecs * 1000);
         let tEl = document.getElementById('ritual-micro-timer');
-        let iv = setInterval(() => {
-            rem--;
-            if (tEl) tEl.innerText = `00:${String(Math.max(0, rem)).padStart(2, '0')}`;
+
+        _ritualMicroInterval = setInterval(() => {
+            if (!document.getElementById('sl-artifact-ritual-overlay')) {
+                clearInterval(_ritualMicroInterval);
+                _ritualMicroInterval = null;
+                return;
+            }
+            let rem = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+            if (tEl) tEl.innerText = fmtTimer(rem);
             if (rem <= 0) {
-                clearInterval(iv);
-                if (tEl) { tEl.style.color = '#39ff14'; tEl.innerText = '¡SINCRONIZADO!'; }
+                clearInterval(_ritualMicroInterval);
+                _ritualMicroInterval = null;
+                if (tEl) { tEl.style.color = '#ffffff'; tEl.innerText = 'SINCRONIZADO'; }
                 btn.disabled = false;
                 btn.style.opacity = '1';
                 btn.innerText = 'RECLAMAR BONIFICACIÓN FÍSICA';
+                if (typeof playSystemSound === 'function') playSystemSound('check');
             }
-        }, 1000);
+        }, 250);
     }
 
     if (btn) {
         btn.onclick = () => {
+            if (_ritualMicroInterval) { clearInterval(_ritualMicroInterval); _ritualMicroInterval = null; }
             closeArtifactRitualModal();
             if (typeof onConfirm === "function") onConfirm();
         };

@@ -47,7 +47,8 @@ window.incrementHydrationGlass = function() {
     p.sp = Math.min(100, (p.sp || 0) + 2);
     if (typeof playSystemSound === 'function') playSystemSound('check');
 
-    if (p.hydrationGlasses >= 8) {
+    let isFinished = (p.hydrationGlasses >= 8);
+    if (isFinished) {
         if (!p.completedToday) p.completedToday = [];
         if (!p.completedToday.includes('m_hydration')) {
             p.completedToday.push('m_hydration');
@@ -68,7 +69,20 @@ window.incrementHydrationGlass = function() {
 
     saveData();
     if (typeof updateHUD === 'function') updateHUD();
-    renderRoutine();
+
+    let liveBracket = document.getElementById('mission-live-timer-m_hydration');
+    let nextTxt = `[${p.hydrationGlasses}/8]`;
+    if (liveBracket && !isFinished) {
+        if (typeof setBracketCounterFlip === 'function') {
+            setBracketCounterFlip(liveBracket, 'mission_m_hydration', nextTxt);
+        } else {
+            liveBracket.textContent = nextTxt;
+        }
+        let hydBtn = document.getElementById('btn-hydration-glass');
+        if (hydBtn) hydBtn.textContent = `REGISTRAR VASO DE AGUA (${p.hydrationGlasses}/8)`;
+    } else {
+        renderRoutine();
+    }
 };
 
 function syncMissingMissionsWithSW() {
@@ -480,7 +494,7 @@ let currentDayStr = (typeof getBiologicalDayStr === "function") ? getBiologicalD
                 ${isDone
                     ? `<div class="sl-mission-sealed-msg" style="color:#e0f2fe;">[Misión sellada en el registro de hoy]</div>`
                     : (isHydration
-                        ? `<button class="btn" onclick="incrementHydrationGlass()">REGISTRAR VASO DE AGUA (${p.hydrationGlasses || 0}/8)</button>`
+                        ? `<button class="btn" id="btn-hydration-glass" onclick="incrementHydrationGlass()">REGISTRAR VASO DE AGUA (${p.hydrationGlasses || 0}/8)</button>`
                                                 : (isActive
                             ? `${m.id.startsWith('sched_') ? `<button class="btn btn-blue" style="margin-bottom:8px;" onclick="toggleClassOledShield(true, '${m.id}', '${m.title.replace(/'/g, "\\'")}')">[ ESCUDO OLED: PONER EN BOLSILLO ]</button>` : ''}<button class="btn" onclick="finishRoutineMission('${m.id}')">${isTelemetry ? 'FINALIZAR Y REGISTRAR TIEMPO REAL' : 'SELLAR MISIÓN (' + minsPassed + '/' + reqMins + 'm)'}</button>`
                             : `<button class="btn" onclick="selectedRoutineMissionId=null; deployRoutineMission('${m.id}')">${isTelemetry ? 'INICIAR CRONÓMETRO REAL' : 'DESPLEGAR MISIÓN (' + reqMins + 'm)'}</button>`))}

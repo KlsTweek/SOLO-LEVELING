@@ -163,35 +163,35 @@ window.getAvailableInfantryCount = function(typeKey) {
 };
 
 const HUNTER_SKILLS_META = {
-    // --- HABILIDADES PASIVAS ---
+    // --- HABILIDADES PASIVAS (PROGRESIÓN LARGA + PODER ESCALADO) ---
     longevity: {
         id: 'longevity', type: 'passive', name: 'Voluntad de Recuperación', maxLvl: 5,
-        desc: (lvl) => `Bendición de Kandiaru: Regenera +${lvl} HP cada hora y reduce el daño de veneno/sangrado un ${lvl * 6}%. (Sube al completar misiones físicas o emergencias).`
+        desc: (lvl) => `Bendición de Kandiaru: Regenera +${lvl * 2} HP cada hora y reduce el daño de veneno/sangrado un ${lvl * 8}%. (Sube con misiones físicas o emergencias).`
     },
     tenacity: {
         id: 'tenacity', type: 'passive', name: 'Tenacidad', maxLvl: 3,
-        desc: (lvl) => `El que Vence a la Adversidad: Cuando tu HP baja del ${20 + (lvl * 5)}%, el daño recibido se reduce un 30% y tu ataque sube +${10 + (lvl * 5)}%. (Sube al combatir con baja vida).`
+        desc: (lvl) => `El que Vence a la Adversidad: Cuando tu HP baja del ${25 + (lvl * 5)}%, el daño recibido se reduce un 35% y tu ataque sube +${15 + (lvl * 8)}%. (Sube al combatir con baja vida).`
     },
     dagger_mastery: {
         id: 'dagger_mastery', type: 'passive', name: 'Maestría en Armas Cortas', maxLvl: 10,
-        desc: (lvl) => `Técnica de Asesino: Aumenta tu daño directo un +${lvl * 2}% y ensancha +${(lvl * 0.8).toFixed(1)}% la barra crítica del Corte Dimensional. (Sube con cada Corte y golpe a Jefes).`
+        desc: (lvl) => `Técnica de Asesino: Aumenta tu daño directo un +${(lvl * 3.5).toFixed(1)}% y ensancha +${(lvl * 1.2).toFixed(1)}% la barra crítica del Corte Dimensional. (Sube con cada Corte y golpe a Jefes).`
     },
     // --- HABILIDADES ACTIVAS EQUILIBRADAS ---
     sprint: {
         id: 'sprint', type: 'active', name: 'Sprint (Quicksilver)', maxLvl: 5, mpCost: 45, cdSec: 35,
-        desc: (lvl) => `En Mazmorra: Reduce un ${8 + (lvl * 2)}% el tiempo restante de la fase actual y da +15% Evasión por 30s. En Rutina: Adelanta ${1 + Math.floor((lvl - 1) * 0.5)} min tus misiones activas (Potenciado +1m por Botas).`
+        desc: (lvl) => `En Mazmorra: Reduce un ${12 + (lvl * 3)}% el tiempo restante de la fase actual y da +20% Evasión por 45s. En Rutina: Adelanta ${2 + lvl} min tus misiones activas (Potenciado +2m por Botas).`
     },
     vital_strike: {
         id: 'vital_strike', type: 'active', name: 'Tajo Vital (Mutilación)', maxLvl: 5, mpCost: 60, cdSec: 12,
-        desc: (lvl) => `En Choque de Jefe: Estocada al punto débil que inflige x${(1.35 + (lvl * 0.10)).toFixed(2)} de daño crítico inmediato y drena +${3 + lvl} HP. Fuera de Mazmorra: Ensancha +10% tu próximo Corte (Potenciado por Guanteletes).`
+        desc: (lvl) => `En Choque de Jefe: Estocada al punto débil que inflige x${(1.55 + (lvl * 0.15)).toFixed(2)} de daño crítico inmediato y drena +${5 + (lvl * 2)} HP. Fuera de Mazmorra: Ensancha +15% tu próximo Corte (Potenciado por Guanteletes).`
     },
     bloodlust: {
         id: 'bloodlust', type: 'active', name: 'Intención Asesina (Sed de Sangre)', maxLvl: 3, mpCost: 85, cdSec: 45,
-        desc: (lvl) => `En Mazmorra / Jefe: Paraliza de terror a los enemigos por ${5 + (lvl * 2)}s (0 daño recibido) y reduce un ${6 + (lvl * 2)}% la vida del Jefe actual (Potenciado por Casco).`
+        desc: (lvl) => `En Mazmorra / Jefe: Paraliza de terror a los enemigos por ${7 + (lvl * 3)}s (0 daño recibido) y reduce un ${10 + (lvl * 3)}% la vida del Jefe actual (Potenciado por Casco).`
     },
     rulers_touch: {
         id: 'rulers_touch', type: 'active', name: 'Toque del Gobernante', maxLvl: 5, mpCost: 95, cdSec: 40,
-        desc: (lvl) => `Telequinesis soberana: En Mazmorra golpea con fuerza gravitatoria (-${30 + (lvl * 12)} HP al Jefe). Fuera de Mazmorra: Reclama expediciones listas y condensa +${5 + (lvl * 2)} G (Potenciado por Anillo/Collar).`
+        desc: (lvl) => `Telequinesis soberana: En Mazmorra golpea con fuerza gravitatoria (-${45 + (lvl * 18)} HP al Jefe). Fuera de Mazmorra: Reclama expediciones listas y condensa +${10 + (lvl * 4)} G (Potenciado por Anillo/Collar).`
     }
 };
 window.HUNTER_SKILLS_META = HUNTER_SKILLS_META;
@@ -200,14 +200,24 @@ function ensureHunterSkills() {
     if (!p) return;
     if (!p.hunterSkills) {
         p.hunterSkills = {
-            longevity:      { lvl: 1, xp: 0, maxXp: 5 },
-            tenacity:       { lvl: 1, xp: 0, maxXp: 4 },
-            dagger_mastery: { lvl: 1, xp: 0, maxXp: 6 },
-            sprint:         { lvl: 1, xp: 0, maxXp: 5, cdUntil: 0 },
-            vital_strike:   { lvl: 1, xp: 0, maxXp: 5, cdUntil: 0 },
-            bloodlust:      { lvl: 1, xp: 0, maxXp: 4, cdUntil: 0 },
-            rulers_touch:   { lvl: 1, xp: 0, maxXp: 6, cdUntil: 0 }
+            longevity:      { lvl: 1, xp: 0, maxXp: 50 },
+            tenacity:       { lvl: 1, xp: 0, maxXp: 40 },
+            dagger_mastery: { lvl: 1, xp: 0, maxXp: 60 },
+            sprint:         { lvl: 1, xp: 0, maxXp: 50, cdUntil: 0 },
+            vital_strike:   { lvl: 1, xp: 0, maxXp: 50, cdUntil: 0 },
+            bloodlust:      { lvl: 1, xp: 0, maxXp: 40, cdUntil: 0 },
+            rulers_touch:   { lvl: 1, xp: 0, maxXp: 60, cdUntil: 0 }
         };
+        p.hunterSkillsRebalancedV10 = true;
+    } else if (!p.hunterSkillsRebalancedV10) {
+        p.hunterSkillsRebalancedV10 = true;
+        Object.keys(p.hunterSkills).forEach(k => {
+            let sk = p.hunterSkills[k];
+            if (sk && (sk.maxXp || 5) < 25) {
+                sk.maxXp = (sk.maxXp || 5) * 10;
+            }
+        });
+        saveData();
     }
 }
 window.ensureHunterSkills = ensureHunterSkills;
@@ -222,7 +232,7 @@ window.gainHunterSkillXP = function(skillId, amount = 1) {
     if (sk.xp >= sk.maxXp) {
         sk.xp -= sk.maxXp;
         sk.lvl++;
-        sk.maxXp = Math.floor(sk.maxXp * 1.5) + 3;
+        sk.maxXp = Math.floor(sk.maxXp * 1.45) + 25;
         saveData();
         if (typeof systemNotify === "function") {
             systemNotify(`[HABILIDAD ASCENDIDA]: ¡[${meta.name}] ha subido al Nivel ${sk.lvl}!`, "gold");
@@ -263,24 +273,24 @@ window.castHunterSkill = function(skillId) {
     let maxHP = (typeof calculateHunterMaxHP === "function") ? calculateHunterMaxHP() : 100;
 
     if (skillId === 'sprint') {
-        let pctCut = (8 + (sk.lvl * 2) + (hasBoots ? 4 : 0)) / 100;
-        p.adrenalineDodgeUntil = now + 30000;
+        let pctCut = (12 + (sk.lvl * 3) + (hasBoots ? 5 : 0)) / 100;
+        p.adrenalineDodgeUntil = now + 45000;
         if (typeof activeDungeon !== 'undefined' && activeDungeon && !waitingForValidation) {
             raidTimeLeft = Math.max(2, Math.floor(raidTimeLeft * (1 - pctCut)));
             updateRaidTimerUI();
-            pushRaidLog(`[HABILIDAD: SPRINT Nv.${sk.lvl}] Impulso veloz (-${Math.round(pctCut * 100)}% tiempo de fase y +15% Evasión).`, "#7dd3fc");
+            pushRaidLog(`[HABILIDAD: SPRINT Nv.${sk.lvl}] Impulso veloz (-${Math.round(pctCut * 100)}% tiempo de fase y +20% Evasión).`, "#7dd3fc");
             triggerArenaChoreography('hunter');
-            systemNotify(`[Sprint Nv.${sk.lvl}]: Reloj de fase acelerado un ${Math.round(pctCut * 100)}% y +15% Evasión por 30s.`, "info");
+            systemNotify(`[Sprint Nv.${sk.lvl}]: Reloj de fase acelerado un ${Math.round(pctCut * 100)}% y +20% Evasión por 45s.`, "info");
         } else {
-            let minsAdv = 1 + Math.floor((sk.lvl - 1) * 0.5) + (hasBoots ? 1 : 0);
+            let minsAdv = 2 + sk.lvl + (hasBoots ? 2 : 0);
             let count = window.advanceNonTelemetryMissions(minsAdv);
             systemNotify(count > 0
-                ? `[Sprint Nv.${sk.lvl}]: Tus misiones en curso avanzaron +${minsAdv} min y ganaste +15% Evasión.`
-                : `[Sprint Nv.${sk.lvl}]: Reflejos acelerados (+15% Evasión por 30s).`, "info");
+                ? `[Sprint Nv.${sk.lvl}]: Tus misiones en curso avanzaron +${minsAdv} min y ganaste +20% Evasión.`
+                : `[Sprint Nv.${sk.lvl}]: Reflejos acelerados (+20% Evasión por 45s).`, "info");
         }
     } else if (skillId === 'vital_strike') {
-        let mult = 1.35 + (sk.lvl * 0.10) + (hasGloves ? 0.15 : 0);
-        let heal = 3 + sk.lvl + (hasGloves ? 2 : 0);
+        let mult = 1.55 + (sk.lvl * 0.15) + (hasGloves ? 0.20 : 0);
+        let heal = 5 + (sk.lvl * 2) + (hasGloves ? 3 : 0);
         if (typeof activeDungeon !== 'undefined' && activeDungeon && waitingForValidation) {
             let baseAtk = Math.floor((28 + (p.stats.str * 16)) * mult);
             clashBossHP = Math.max(0, clashBossHP - baseAtk);
@@ -296,8 +306,8 @@ window.castHunterSkill = function(skillId) {
             systemNotify(`[Tajo Vital Nv.${sk.lvl}]: +${heal} HP, Zona Vital ensanchada en tu próximo Corte y Crítico listo.`, "gold");
         }
     } else if (skillId === 'bloodlust') {
-        let durSec = 5 + (sk.lvl * 2) + (hasHelm ? 3 : 0);
-        let bossShredPct = (6 + (sk.lvl * 2)) / 100;
+        let durSec = 7 + (sk.lvl * 3) + (hasHelm ? 3 : 0);
+        let bossShredPct = (10 + (sk.lvl * 3)) / 100;
         p.ironImmunityUntil = now + (durSec * 1000);
         if (typeof activeDungeon !== 'undefined' && activeDungeon) {
             if (waitingForValidation && clashBossHP > 0) {
@@ -311,23 +321,23 @@ window.castHunterSkill = function(skillId) {
             systemNotify(`[Intención Asesina Nv.${sk.lvl}]: Aura intimidante activa (Inmune a perder HP por ${durSec}s).`, "purple");
         }
     } else if (skillId === 'rulers_touch') {
-        let dmg = 30 + (sk.lvl * 12) + (hasJewel ? 15 : 0);
+        let dmg = 45 + (sk.lvl * 18) + (hasJewel ? 20 : 0);
         if (typeof activeDungeon !== 'undefined' && activeDungeon) {
             if (waitingForValidation) {
                 clashBossHP = Math.max(0, clashBossHP - dmg);
                 updateClashUI();
                 if (clashBossHP <= 0) finishBossClash();
             } else {
-                raidTimeLeft = Math.max(2, raidTimeLeft - (3 + sk.lvl));
+                raidTimeLeft = Math.max(2, raidTimeLeft - (5 + sk.lvl * 2));
                 updateRaidTimerUI();
             }
-            if (Math.random() < 0.25 && typeof rollLootDrop === "function") rollLootDrop(false);
+            if (Math.random() < 0.30 && typeof rollLootDrop === "function") rollLootDrop(false);
             pushRaidLog(`[TOQUE DEL GOBERNANTE Nv.${sk.lvl}] Fuerza telequinética impacta la sala (-${dmg} HP).`, "#7dd3fc");
         } else {
             if (p.activeExpedition && Date.now() >= p.activeExpedition.endsAt && typeof claimInfantryExpedition === "function") {
                 claimInfantryExpedition();
             }
-            let gGain = 5 + (sk.lvl * 2) + (hasJewel ? 3 : 0);
+            let gGain = 10 + (sk.lvl * 4) + (hasJewel ? 5 : 0);
             p.gold += gGain;
             systemNotify(`[Toque del Gobernante Nv.${sk.lvl}]: Telequinesis condensó +${gGain} G en tu Bolsa.`, "gold");
         }
@@ -338,7 +348,10 @@ window.castHunterSkill = function(skillId) {
     if (typeof syncRaidVitalsUI === "function") syncRaidVitalsUI();
     let skModal = document.getElementById('hunter-skills-modal');
     if (skModal && skModal.style.display === 'flex') openHunterSkillsModal();
+    if (typeof renderShadowSanctuary === 'function') renderShadowSanctuary();
 };
+
+
 
 let _expandedHunterSkills = {};
 window.toggleHunterSkillDesc = function(skillId) {
