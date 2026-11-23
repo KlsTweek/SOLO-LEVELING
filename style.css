@@ -42,7 +42,7 @@
     box-sizing: border-box;
     margin: 0;
     padding: 0;
-    font-family: 'Roboto Slab', 'Zilla Slab', serif;
+    font-family: 'Exo 2', 'Rajdhani', sans-serif;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
 }
@@ -181,9 +181,11 @@ body.stealth-camouflage-active {
 }
 
 @keyframes slSystemGlitch {
-    0%   { filter: brightness(1.8) drop-shadow(-3px 0 #00ffff) drop-shadow(3px 0 #9d00ff); transform: translateX(-2px); }
-    40%  { filter: brightness(1.4) drop-shadow(2px 0 #00d2ff); transform: translateX(2px); }
-    100% { filter: brightness(1); transform: translateX(0); }
+    0%   { opacity: 0.92; filter: brightness(1.45) drop-shadow(-2px 0 rgba(0,229,255,0.9)) drop-shadow(2px 0 rgba(255,42,85,0.75)); clip-path: inset(0 0 0 0); }
+    22%  { clip-path: inset(12% 0 58% 0); transform: translate3d(-2px, 0, 0); }
+    42%  { clip-path: inset(54% 0 14% 0); transform: translate3d(2px, 0, 0); filter: brightness(1.25) drop-shadow(2px 0 rgba(0,229,255,0.85)); }
+    65%  { clip-path: inset(0 0 0 0); transform: translate3d(-1px, 0, 0); opacity: 0.96; }
+    100% { clip-path: inset(0 0 0 0); transform: translate3d(0, 0, 0); filter: brightness(1); opacity: 1; }
 }
 
 .sl-holo-rail {
@@ -428,7 +430,7 @@ body.stealth-camouflage-active {
 }
 /* 4. CABECERA PERMANENTE (HUD), CÁPSULAS VITALES Y ANILLO DE FATIGA */
 .header {
-    padding: 12px 16px !important;
+    padding: 9px 14px 8px 14px !important;
     position: sticky;
     top: 0;
     z-index: 900;
@@ -465,9 +467,10 @@ body.stealth-camouflage-active .header {
 }
 
 @keyframes stealthStaticFlicker {
-    0%, 92%, 96%, 100% { opacity: 1; filter: none; }
-    94% { opacity: 0.65; filter: drop-shadow(-2px 0 #00e5ff) drop-shadow(2px 0 #d946ef); }
-    98% { opacity: 0.8; transform: translateX(1px); }
+    0%, 88%, 93%, 100% { opacity: 1; filter: none; transform: translate3d(0, 0, 0); }
+    90% { opacity: 0.78; filter: drop-shadow(-1.5px 0 rgba(0,229,255,0.85)) drop-shadow(1.5px 0 rgba(192,132,252,0.85)); transform: skewX(-1.5deg); }
+    91.5% { opacity: 0.92; transform: skewX(1deg); }
+    95% { opacity: 0.85; filter: brightness(1.2); }
 }
 
 .sys-log {
@@ -477,13 +480,13 @@ body.stealth-camouflage-active .header {
     border-radius: 2px; 
     font-family: 'Share Tech Mono', monospace;
     font-size: 0.8em;
-    margin-bottom: 12px; 
+        margin-bottom: 8px; 
     color: var(--neon-blue);
     display: flex;
     gap: 8px;
     align-items: center; 
     text-transform: uppercase;
-    min-height: 46px;
+    min-height: 36px;
     overflow: hidden;
     touch-action: pan-x;
     will-change: transform, opacity;
@@ -608,8 +611,8 @@ body.stealth-camouflage-active .header {
         -9px 0 20px -5px rgba(49, 46, 129, 0.65),
         9px 0 20px -5px rgba(49, 46, 129, 0.65),
         inset 0 0 14px rgba(0, 140, 255, 0.14) !important;
-    padding: 16px 14px 14px 14px !important;
-    margin-top: 12px;
+        padding: 12px 12px 10px 12px !important;
+    margin-top: 8px;
     border-radius: 1px;
     overflow: visible !important;
 }
@@ -838,10 +841,10 @@ body.stealth-camouflage-active .sl-anime-vitals-box {
 .economy-bar {
     display: flex;
     justify-content: space-between;
-    margin-top: 12px;
+    margin-top: 8px;
     background: rgba(3, 12, 28, 0.75) !important;
     border: 1px solid rgba(186, 230, 253, 0.45) !important;
-    padding: 7px 14px !important;
+    padding: 5px 12px !important;
     font-weight: 700;
     font-size: 0.95em !important;
     border-radius: 1px !important;
@@ -1016,54 +1019,191 @@ body.stealth-camouflage-active .sl-anime-vitals-box {
    BLOQUE 2/4: SONAR DE PORTALES, INVENTARIO/ANATOMÍA Y SANTUARIO DE SOMBRAS
    ========================================================================== */
 
-/* 6. SONAR RADAR CIRCULAR DE LA ASOCIACIÓN DE CAZADORES */
+/* 6. VISOR SONAR DIMENSIONAL REMASTERIZADO (ASOCIACIÓN DE CAZADORES) */
+.sl-sonar-frame-outer {
+    position: relative;
+    margin: 6px 0 22px 0;
+}
+
+.sl-sonar-window {
+    position: relative;
+    background:
+        repeating-linear-gradient(118deg, transparent 0 20px, rgba(125, 211, 252, 0.04) 20px 21px, transparent 21px 52px),
+        radial-gradient(circle at 50% 25%, rgba(14, 116, 144, 0.24) 0%, rgba(3, 10, 22, 0.97) 78%),
+        #030916;
+    border: 1.2px solid rgba(147, 197, 253, 0.85);
+    padding: 14px 12px 14px 12px;
+    box-shadow: 0 10px 32px rgba(0, 0, 0, 0.9), inset 0 0 26px rgba(0, 170, 255, 0.16);
+}
+
+.sl-sonar-window::before {
+    content: "";
+    position: absolute;
+    inset: 6px;
+    border: 1px solid rgba(224, 242, 254, 0.35);
+    pointer-events: none;
+}
+
+.sl-sonar-key-strip {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 4px;
+    background: rgba(2, 8, 20, 0.88);
+    border: 1px solid rgba(125, 211, 252, 0.35);
+    padding: 5px 8px;
+    margin-bottom: 10px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.68em;
+    color: #94a3b8;
+}
+
+.sl-key-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 1px 4px;
+    border-radius: 1px;
+    color: #64748b;
+}
+
+.sl-key-pill.has-key {
+    color: #ffffff;
+    background: rgba(14, 165, 233, 0.22);
+    border: 1px solid rgba(125, 211, 252, 0.55);
+    text-shadow: 0 0 6px #00e5ff;
+}
+
 .sonar-radar-wrap {
+    position: relative;
+    z-index: 2;
     display: flex;
     flex-direction: column;
     align-items: center;
-    margin-bottom: 20px;
+    margin-bottom: 12px;
+}
+
+.sonar-meta-row {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7em;
+    color: #7dd3fc;
+    letter-spacing: 0.8px;
+    margin-bottom: 8px;
+    padding: 0 4px;
 }
 
 .sonar-screen {
     position: relative;
-    width: 280px;
-    height: 280px;
+    width: 214px;
+    height: 214px;
     border-radius: 50%;
-    background: 
-        radial-gradient(circle, rgba(0, 210, 255, 0.08) 0%, rgba(3, 6, 17, 0.96) 75%),
-        repeating-radial-gradient(circle at 50% 50%, transparent 0, transparent 33px, rgba(0, 210, 255, 0.16) 34px, rgba(0, 210, 255, 0.16) 35px);
-    border: 2px solid var(--neon-main);
-    box-shadow: 0 0 30px rgba(0, 210, 255, 0.25), inset 0 0 35px rgba(0, 210, 255, 0.2);
+    background:
+        radial-gradient(circle, rgba(0, 229, 255, 0.14) 0%, rgba(3, 8, 20, 0.96) 76%),
+        repeating-radial-gradient(circle at 50% 50%, transparent 0, transparent 25px, rgba(56, 189, 248, 0.2) 26px, rgba(56, 189, 248, 0.2) 27px);
+    border: 1.8px solid rgba(186, 230, 253, 0.9);
+    outline: 1px solid rgba(0, 229, 255, 0.35);
+    outline-offset: 4px;
+    box-shadow: 0 0 26px rgba(0, 210, 255, 0.28), inset 0 0 30px rgba(0, 170, 255, 0.22);
     overflow: hidden;
-    margin: 10px auto 18px auto;
+    margin: 4px auto 8px auto;
 }
 
 .sonar-crosshair-h {
     position: absolute; top: 50%; left: 0; width: 100%; height: 1px;
-    background: rgba(0, 210, 255, 0.22); pointer-events: none;
+    background: rgba(125, 211, 252, 0.25); pointer-events: none;
 }
 .sonar-crosshair-v {
     position: absolute; top: 0; left: 50%; width: 1px; height: 100%;
-    background: rgba(0, 210, 255, 0.22); pointer-events: none;
+    background: rgba(125, 211, 252, 0.25); pointer-events: none;
 }
 
 .sonar-sweep-beam {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
     border-radius: 50%;
-    background: conic-gradient(from 0deg, rgba(0, 210, 255, 0.42) 0deg, rgba(0, 210, 255, 0.08) 45deg, transparent 90deg, transparent 360deg);
-    animation: radarSweepSpin 4s linear infinite;
+    background: conic-gradient(from 0deg, rgba(0, 229, 255, 0.45) 0deg, rgba(0, 229, 255, 0.08) 42deg, transparent 85deg, transparent 360deg);
+    animation: radarSweepSpin 3.8s linear infinite;
     pointer-events: none;
     z-index: 2;
 }
+
+.sonar-scan-overlay {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 4;
+    opacity: 0;
+}
+
+.sonar-scan-overlay.scanning-active {
+    opacity: 1;
+    background: conic-gradient(from 0deg, rgba(255, 255, 255, 0.72) 0deg, rgba(0, 229, 255, 0.42) 22deg, rgba(0, 229, 255, 0.06) 72deg, transparent 115deg, transparent 360deg);
+    animation: sonarSingleSweep 1.35s cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
+}
+
+@keyframes sonarSingleSweep {
+    0%   { transform: rotate(0deg); opacity: 0.95; }
+    85%  { opacity: 0.95; }
+    100% { transform: rotate(360deg); opacity: 0; }
+}
+
+.sonar-ping-wave {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 1.5px solid #7dd3fc;
+    box-shadow: 0 0 12px #00e5ff;
+    transform: translate(-50%, -50%) scale(0.2);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 3;
+}
+
+.sonar-ping-wave.ping-active {
+    animation: sonarPingExpand 1.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes sonarPingExpand {
+    0%   { transform: translate(-50%, -50%) scale(0.2); opacity: 0.95; }
+    100% { transform: translate(-50%, -50%) scale(15.5); opacity: 0; }
+}
+
+.sonar-blip.blip-hidden {
+    opacity: 0 !important;
+    transform: translate(-50%, -50%) scale(0.35) !important;
+    pointer-events: none;
+    animation: none !important;
+}
+
+.sonar-blip.blip-lock-in {
+    animation: blipSignalLock 0.42s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+@keyframes blipSignalLock {
+    0%   { opacity: 0; transform: translate(-50%, -50%) scale(1.75); filter: brightness(2.4); }
+    65%  { opacity: 1; transform: translate(-50%, -50%) scale(0.94); filter: brightness(1.3); }
+    100% { opacity: 1; transform: translate(-50%, -50%) scale(1); filter: brightness(1); }
+}
+
+
 @keyframes radarSweepSpin {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
 }
 
 .sonar-center-dot {
-    position: absolute; top: 50%; left: 50%; width: 8px; height: 8px;
-    background: #fff; border-radius: 50%; transform: translate(-50%, -50%);
-    box-shadow: 0 0 10px var(--neon-main); z-index: 3; pointer-events: none;
+    position: absolute; top: 50%; left: 50%; width: 10px; height: 10px;
+    background: #ffffff; border-radius: 50%; transform: translate(-50%, -50%);
+    box-shadow: 0 0 12px #00e5ff; z-index: 3; cursor: pointer;
 }
 
 .sonar-blip {
@@ -1073,52 +1213,150 @@ body.stealth-camouflage-active .sl-anime-vitals-box {
     transform: translate(-50%, -50%);
     border-radius: 50%;
     display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
     font-family: 'Share Tech Mono', monospace;
     font-weight: 700;
     font-size: 0.78em;
-    color: #fff;
+    line-height: 1;
+    color: #ffffff;
     cursor: pointer;
     z-index: 5;
-    transition: transform 0.2s, box-shadow 0.2s;
-    background: rgba(3, 6, 17, 0.9);
-    border: 2px solid var(--neon-main);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    background: rgba(3, 10, 24, 0.94);
+    border: 1.8px solid #7dd3fc;
+    box-shadow: 0 0 12px rgba(0, 229, 255, 0.55);
     animation: blipPulse 2s ease-in-out infinite;
 }
 
 .sonar-blip.selected-blip {
-    transform: translate(-50%, -50%) scale(1.28);
+    transform: translate(-50%, -50%) scale(1.24);
     z-index: 6;
-    box-shadow: 0 0 20px #fff !important;
+    border-color: #ffffff !important;
+    box-shadow: 0 0 18px #ffffff, 0 0 26px #00e5ff !important;
 }
 
-.sonar-blip.blip-E { border-color: var(--color-e); color: var(--color-e); box-shadow: 0 0 12px var(--color-e); }
-.sonar-blip.blip-D { border-color: var(--color-d); color: var(--color-d); box-shadow: 0 0 12px var(--color-d); }
-.sonar-blip.blip-C { border-color: var(--color-c); color: var(--color-c); box-shadow: 0 0 12px var(--color-c); }
-.sonar-blip.blip-B { border-color: var(--color-b); color: var(--color-b); box-shadow: 0 0 12px var(--color-b); }
-.sonar-blip.blip-A { border-color: var(--color-a); color: var(--color-a); box-shadow: 0 0 14px var(--color-a); }
-.sonar-blip.blip-S { border-color: var(--color-s); color: var(--color-s); box-shadow: 0 0 16px var(--color-s); }
-.sonar-blip.blip-SSS { border-color: var(--rank-ss); color: var(--rank-ss); box-shadow: 0 0 20px var(--rank-ss); }
+.sonar-blip.free-blip {
+    border-color: #e0f2fe;
+    background: radial-gradient(circle, rgba(14, 165, 233, 0.42), rgba(3, 10, 24, 0.95));
+    box-shadow: 0 0 14px rgba(0, 229, 255, 0.8);
+}
+
+.sonar-blip.locked-blip {
+    opacity: 0.46;
+    border-style: dashed;
+    border-color: #64748b;
+    color: #94a3b8;
+    box-shadow: none;
+    animation: none;
+}
+
+.sonar-blip.cleared-blip {
+    border-color: #38bdf8;
+}
+
+.sonar-blip.red-gate-blip {
+    border-color: #ff2a55 !important;
+    color: #ffe4e6 !important;
+    background: radial-gradient(circle, rgba(225, 29, 72, 0.45), rgba(20, 3, 10, 0.96)) !important;
+    box-shadow: 0 0 16px rgba(255, 42, 85, 0.85) !important;
+}
 
 .sonar-blip.red-gate-blip::after {
-    content: ''; position: absolute; width: 140%; height: 140%;
-    border-radius: 50%; border: 1.5px dashed var(--danger);
-    animation: spinRift 4s linear infinite;
+    content: ''; position: absolute; width: 136%; height: 136%;
+    border-radius: 50%; border: 1.5px dashed #ff2a55;
+    animation: spinRift 3.5s linear infinite;
+}
+
+.sonar-blip-badge {
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.56em;
+    font-family: 'Share Tech Mono', monospace;
+    padding: 1px 4px;
+    border-radius: 1px;
+    background: #020817;
+    border: 1px solid rgba(125, 211, 252, 0.7);
+    color: #e0f2fe;
+    white-space: nowrap;
+    letter-spacing: 0.4px;
+}
+
+.sonar-blip.red-gate-blip .sonar-blip-badge {
+    border-color: #ff2a55;
+    color: #fda4af;
+}
+
+.sonar-blip.locked-blip .sonar-blip-badge {
+    border-color: #475569;
+    color: #94a3b8;
 }
 
 @keyframes blipPulse {
-    0%, 100% { opacity: 0.85; }
-    50% { opacity: 1; filter: brightness(1.35); }
+    0%, 100% { opacity: 0.86; }
+    50% { opacity: 1; filter: brightness(1.25); }
 }
 
-.sonar-coords-bar {
+.sl-sonar-dossier {
+    position: relative;
+    z-index: 2;
+    background: rgba(2, 8, 22, 0.92);
+    border: 1px solid rgba(147, 197, 253, 0.55);
+    padding: 12px;
+    animation: popIn 0.2s ease-out;
+}
+
+.sl-sonar-dossier.red-dossier {
+    border-color: rgba(255, 42, 85, 0.8);
+    box-shadow: inset 0 0 22px rgba(225, 29, 72, 0.2);
+}
+
+.sl-sonar-phases-track {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin: 8px 0 10px 0;
+}
+
+.sl-sonar-phase-chip {
     font-family: 'Share Tech Mono', monospace;
-    font-size: 0.78em;
-    color: var(--neon-main);
-    letter-spacing: 1px;
+    font-size: 0.68em;
+    padding: 3px 7px;
+    background: rgba(14, 165, 233, 0.12);
+    border: 1px solid rgba(125, 211, 252, 0.38);
+    color: #e0f2fe;
+}
+
+.sl-sonar-rewards-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
     margin-bottom: 12px;
+}
+
+.sl-sonar-rew-box {
+    background: rgba(4, 15, 32, 0.85);
+    border: 1px solid rgba(125, 211, 252, 0.3);
+    padding: 6px 4px;
     text-align: center;
+    font-family: 'Share Tech Mono', monospace;
+}
+
+.sl-sonar-rew-lbl {
+    font-size: 0.58em;
+    color: #94a3b8;
+    display: block;
+    margin-bottom: 2px;
+}
+
+.sl-sonar-rew-val {
+    font-size: 0.84em;
+    font-weight: 700;
+    color: #ffffff;
+    text-shadow: 0 0 6px rgba(0, 229, 255, 0.6);
 }
 
 /* 7. INVENTARIO (6 COLUMNAS), GLIFOS SVG Y DIAGRAMA ANATÓMICO [EQUIPO] */
@@ -1624,7 +1862,7 @@ body.stealth-camouflage-active .sl-anime-vitals-box {
 
 .sl-cmd-face-front {
     align-items: center;
-    padding: 14px 10px 10px 10px;
+    padding: 18px 8px 8px 8px;
 }
 
 .sl-cmd-face-back {
@@ -1668,8 +1906,9 @@ body.stealth-camouflage-active .sl-anime-vitals-box {
 }
 
 .sl-cmd-portrait-figure {
-    width: 118px;
-    height: 118px;
+    width: 108px;
+    height: 108px;
+    padding-top: 6px;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -2946,12 +3185,49 @@ body.penalty-active .nav {
     padding: 2px 4px;
 }
 
-.sl-radar-chart-wrap {
-    width: 100%;
+/* Tira de Racha Visual de 14 Días (Perfil) */
+.sl-streak-14-wrap {
+    margin: 6px 0 4px 0;
+}
+.sl-streak-14-header {
     display: flex;
-    justify-content: center;
+    justify-content: space-between;
     align-items: center;
-    padding: 2px 0;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.66em;
+    color: #94a3b8;
+    margin-bottom: 6px;
+}
+.sl-streak-14-grid {
+    display: grid;
+    grid-template-columns: repeat(14, 1fr);
+    gap: 3px;
+}
+.sl-streak-day-cell {
+    height: 16px;
+    border-radius: 1px;
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(100, 116, 139, 0.35);
+    transition: transform 0.2s ease;
+}
+.sl-streak-day-cell.st-perfect {
+    background: rgba(14, 165, 233, 0.75);
+    border-color: #e0f2fe;
+    box-shadow: 0 0 8px rgba(0, 229, 255, 0.7);
+}
+.sl-streak-day-cell.st-protected {
+    background: rgba(147, 51, 234, 0.65);
+    border-color: #e9d5ff;
+    box-shadow: 0 0 7px rgba(192, 132, 252, 0.6);
+}
+.sl-streak-day-cell.st-missed {
+    background: rgba(225, 29, 72, 0.65);
+    border-color: #fda4af;
+    box-shadow: 0 0 7px rgba(255, 42, 85, 0.6);
+}
+.sl-streak-day-cell.st-today {
+    border-color: #ffffff;
+    animation: activeDotPulse 1.3s infinite alternate;
 }
 
 .sl-status-center-stat {
@@ -3171,13 +3447,23 @@ body.penalty-active .nav {
 }
 
 @keyframes slGoalFatiguePulse {
-    0%, 92%, 96%, 100% {
+    0%, 89%, 94%, 97%, 100% {
         border-color: rgba(224, 242, 254, 0.92);
         box-shadow: 0 0 18px rgba(0, 229, 255, 0.42), inset 0 0 24px rgba(56, 189, 248, 0.22);
+        transform: translate3d(0, 0, 0);
     }
-    94% {
-        border-color: rgba(255, 42, 85, 0.85);
-        box-shadow: -2px 0 14px rgba(255, 42, 85, 0.55), 2px 0 14px rgba(0, 229, 255, 0.65), inset 0 0 20px rgba(255, 42, 85, 0.2);
+    91% {
+        border-color: rgba(255, 42, 85, 0.88);
+        box-shadow: -1.5px 0 14px rgba(255, 42, 85, 0.65), 1.5px 0 14px rgba(0, 229, 255, 0.7), inset 0 0 18px rgba(255, 42, 85, 0.22);
+        transform: translate3d(-1px, 0, 0);
+    }
+    92.5% {
+        transform: translate3d(1px, 0, 0);
+        filter: brightness(1.12);
+    }
+    95.5% {
+        border-color: rgba(251, 113, 133, 0.7);
+        transform: translate3d(0, 0, 0);
     }
 }
 
@@ -3646,9 +3932,10 @@ body.tenacity-glitch-active .sl-anime-vitals-box {
     animation: tenacityScanGlitch 2.8s infinite;
 }
 @keyframes tenacityScanGlitch {
-    0%, 92%, 96%, 100% { transform: translate(0, 0); filter: none; }
-    94% { transform: translate(-1.5px, 0.5px); filter: drop-shadow(2px 0 #ff2a55) drop-shadow(-2px 0 #00e5ff); }
-    98% { transform: translate(1.5px, -0.5px); }
+    0%, 88%, 93%, 97%, 100% { transform: translate3d(0, 0, 0); filter: none; }
+    90% { transform: translate3d(-1px, 0, 0) skewX(-0.8deg); filter: drop-shadow(1.5px 0 rgba(255,42,85,0.85)) drop-shadow(-1.5px 0 rgba(0,229,255,0.75)); }
+    91.5% { transform: translate3d(1.2px, 0, 0) skewX(0.6deg); filter: brightness(1.15); }
+    95% { transform: translate3d(-0.6px, 0, 0); filter: drop-shadow(-1px 0 rgba(255,42,85,0.65)); }
 }
 
 .sl-km-anomaly-pulse {
@@ -3801,4 +4088,264 @@ body.ult-cinematic-playing .sonar-sweep-beam {
 @keyframes activeDotPulse {
     0% { opacity: 0.4; }
     100% { opacity: 1; filter: brightness(1.3); }
+}
+/* ===== INDICADOR ULTRA SUTIL DE EFECTOS ACTIVOS (CENTRO DE ECONOMY-BAR) ===== */
+.sl-buff-mini-trigger {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 1px 8px;
+    border: 1px solid rgba(125, 211, 252, 0.42);
+    background: rgba(14, 165, 233, 0.1);
+    color: #bae6fd;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.72em;
+    letter-spacing: 0.8px;
+    cursor: pointer;
+    border-radius: 1px;
+    text-shadow: 0 0 6px rgba(0, 229, 255, 0.6);
+    transition: all 0.2s ease;
+}
+
+.sl-buff-mini-trigger.has-buffs {
+    display: inline-flex;
+}
+
+.sl-buff-mini-trigger.has-alert {
+    border-color: rgba(251, 113, 133, 0.55);
+    color: #fecdd3;
+    background: rgba(225, 29, 72, 0.12);
+    text-shadow: 0 0 6px rgba(255, 42, 85, 0.65);
+}
+
+.sl-buff-mini-diamond {
+    width: 6px;
+    height: 6px;
+    transform: rotate(45deg);
+    background: currentColor;
+    box-shadow: 0 0 6px currentColor;
+    animation: activeDotPulse 1.8s infinite alternate;
+}
+
+.sl-buff-modal-row {
+    background: rgba(3, 10, 24, 0.92);
+    border: 1px solid rgba(125, 211, 252, 0.32);
+    border-left: 2.5px solid #7dd3fc;
+    padding: 9px 11px;
+    margin-bottom: 8px;
+    text-align: left;
+}
+
+.sl-buff-modal-row.row-alert {
+    border-left-color: #fb7185;
+}
+
+
+/* Mutaciones de barra HP por consumibles mayores (Magma / Cero Absoluto) */
+#hp-wrap.overheal-magma {
+    border-color: #fb923c !important;
+    box-shadow: 0 0 14px rgba(249, 115, 22, 0.85), inset 0 0 6px rgba(251, 146, 60, 0.4) !important;
+}
+#hp-wrap.overheal-magma .sl-capsule-fill {
+    background: #fed7aa !important;
+    box-shadow: 0 0 8px #fb923c, 0 0 16px #ea580c !important;
+}
+
+#hp-wrap.cryo-aura {
+    border-color: #38bdf8 !important;
+    box-shadow: 0 0 14px rgba(56, 189, 248, 0.9), inset 0 0 6px rgba(125, 211, 252, 0.45) !important;
+}
+
+/* Chips de registro rápido en Bitácora de Honor */
+.sl-honor-chips-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 6px;
+}
+
+.sl-honor-chip {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.64em;
+    padding: 4px 8px;
+    background: rgba(4, 15, 32, 0.9);
+    border: 1px solid rgba(125, 211, 252, 0.45);
+    color: #bae6fd;
+    cursor: pointer;
+    border-radius: 1px;
+}
+
+.sl-honor-chip:active {
+    background: rgba(14, 165, 233, 0.35);
+    border-color: #ffffff;
+    color: #ffffff;
+}
+
+/* Escudo OLED Negro Puro para Academia (Evita castigo falso al guardar el teléfono) */
+.sl-class-shield-overlay {
+    position: fixed;
+    inset: 0;
+    background: #000000;
+    z-index: 14500;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 24px;
+    text-align: center;
+}
+
+.sl-class-shield-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    opacity: 0.55;
+}
+
+.sl-class-shield-tag {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.72em;
+    color: #38bdf8;
+    letter-spacing: 2px;
+}
+
+.sl-class-shield-title {
+    font-family: 'Exo 2', sans-serif;
+    font-size: 1.1em;
+    font-weight: 700;
+    color: #94a3b8;
+    letter-spacing: 1px;
+}
+
+.sl-class-shield-timer {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 2.8em;
+    color: #475569;
+    letter-spacing: 3px;
+}
+
+.sl-class-shield-hint {
+    font-size: 0.78em;
+    color: #475569;
+    max-width: 280px;
+    line-height: 1.45;
+}
+/* ===== BARRA COMPACTA DE AMENAZAS PERSONALES ===== */
+.sl-threats-compact-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 11px;
+    background: rgba(4, 12, 26, 0.9);
+    border: 1px solid rgba(125, 211, 252, 0.38);
+    border-left: 2.5px solid #7dd3fc;
+    margin-bottom: 6px;
+    cursor: pointer;
+}
+
+.sl-threats-compact-bar.has-active-threats {
+    border-left-color: #ff2a55;
+    border-color: rgba(251, 113, 133, 0.55);
+}
+
+.sl-threats-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #64748b;
+}
+
+.sl-threats-compact-bar.has-active-threats .sl-threats-dot {
+    background: #ff2a55;
+    box-shadow: 0 0 8px #ff2a55;
+    animation: activeDotPulse 1.1s infinite alternate;
+}
+
+.sl-threats-title {
+    font-family: 'Exo 2', sans-serif;
+    font-size: 0.78em;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    color: #e2e8f0;
+}
+
+.sl-threats-count {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7em;
+    padding: 1px 6px;
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px solid rgba(125, 211, 252, 0.35);
+    color: #7dd3fc;
+}
+
+.sl-threats-chevron {
+    color: #7dd3fc;
+    font-size: 0.9em;
+    transition: transform 0.2s ease;
+}
+
+.sl-threats-compact-bar.is-open .sl-threats-chevron {
+    transform: rotate(180deg);
+}
+
+.sl-threats-drawer {
+    margin-bottom: 10px;
+}
+
+.sl-threats-drawer.collapsed {
+    display: none;
+}
+
+/* ===== SPLASH SCREEN DE APERTURA (ICON-512) ===== */
+.sl-splash-screen {
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(circle at 50% 44%, #110826 0%, #030611 72%, #010207 100%);
+    z-index: 20000;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    transition: opacity 0.45s ease, transform 0.45s ease;
+}
+
+.sl-splash-screen.splash-hide {
+    opacity: 0;
+    transform: scale(1.03);
+    pointer-events: none;
+}
+
+.sl-splash-aura {
+    position: absolute;
+    width: 240px;
+    height: 240px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(168, 85, 247, 0.28) 0%, rgba(0, 229, 255, 0.1) 50%, transparent 72%);
+    filter: blur(18px);
+    pointer-events: none;
+}
+
+.sl-splash-img {
+    position: relative;
+    width: 190px;
+    height: 190px;
+    object-fit: contain;
+    filter: drop-shadow(0 0 22px rgba(168, 85, 247, 0.65));
+    animation: slSplashRise 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.sl-splash-label {
+    position: relative;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.74em;
+    letter-spacing: 3px;
+    color: #bae6fd;
+    text-shadow: 0 0 10px rgba(0, 229, 255, 0.7);
+}
+
+@keyframes slSplashRise {
+    0%   { opacity: 0; transform: translateY(10px) scale(0.94); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
 }

@@ -1,7 +1,7 @@
 /* ==========================================================================
    SW.JS - SERVICE WORKER V9 COMPATIBLE CON VERCEL Y WEBAPK ANDROID
    ========================================================================== */
-const CACHE_NAME = 'monarch-domain-v9.7';
+const CACHE_NAME = 'monarch-domain-v10.0';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -11,7 +11,8 @@ const ASSETS_TO_CACHE = [
   '/icon-512.png',
   '/sounds/system-notification.mp3',
   '/sounds/system-levelup.mp3',
-  '/sounds/notification-clic.mp3',
+    '/sounds/notification-clic.mp3',
+  '/sounds/system-check.mp3',
   '/comandantes/igris-svg.js',
   '/comandantes/tank-svg.js',
   '/comandantes/iron-svg.js',
@@ -102,46 +103,27 @@ self.addEventListener('fetch', (event) => {
 let _swScheduledTimers = {};
 let _swMissingMissionsTimers = [];
 
-function scheduleMissingNotification(title, body, delayMs, tag) {
-  const targetTime = Date.now() + delayMs;
-  if ('TimestampTrigger' in self && self.registration && self.registration.showNotification) {
-    try {
-      self.registration.showNotification(title, {
-        body: body,
-        icon: '/icon-192.png',
-        badge: '/icon-192.png',
-        tag: tag,
-        renotify: true,
-        vibrate: [200, 100, 250],
-        showTrigger: new self.TimestampTrigger(targetTime)
-      }).catch(() => {});
-    } catch (e) {}
-  }
-  const tid = setTimeout(() => {
-    self.registration.showNotification(title, {
-      body: body,
-      icon: '/icon-192.png',
-      badge: '/icon-192.png',
-      vibrate: [220, 100, 280],
-      tag: tag,
-      renotify: true
-    });
-  }, Math.max(1000, delayMs));
-  _swMissingMissionsTimers.push(tid);
+function showSystemPush(title, body, tag, vibrate = [200, 100, 250]) {
+  return self.registration.showNotification(title || 'SISTEMA DEL MONARCA', {
+    body: body || 'Directiva del Sistema actualizada.',
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
+    vibrate: vibrate,
+    tag: tag || 'sl-notif-' + Date.now(),
+    renotify: true
+  });
 }
 
 self.addEventListener('message', (event) => {
   if (!event.data) return;
 
   if (event.data.type === 'SL_POMODORO_NOTIFY') {
-    self.registration.showNotification(event.data.title || 'SISTEMA DEL MONARCA', {
-      body: event.data.body || 'Directiva del Sistema actualizada.',
-      icon: '/icon-192.png',
-      badge: '/icon-192.png',
-      vibrate: [200, 100, 250, 100, 300],
-      tag: event.data.tag || 'sl-pomodoro-' + Date.now(),
-      renotify: true
-    });
+    showSystemPush(
+      event.data.title,
+      event.data.body,
+      event.data.tag || 'sl-pomodoro-' + Date.now(),
+      [200, 100, 250, 100, 300]
+    );
   } else if (event.data.type === 'SL_SCHEDULE_REMINDERS') {
     const idKey = event.data.missionId || 'default';
     if (_swScheduledTimers[idKey]) {
@@ -151,14 +133,12 @@ self.addEventListener('message', (event) => {
     const alerts = Array.isArray(event.data.alerts) ? event.data.alerts : [];
     alerts.forEach((al) => {
       const tid = setTimeout(() => {
-        self.registration.showNotification(al.title || 'SISTEMA DEL MONARCA', {
-          body: al.body || 'Verifica el estado de tu misión en curso.',
-          icon: '/icon-192.png',
-          badge: '/icon-192.png',
-          vibrate: [250, 120, 250, 120, 350],
-          tag: al.tag || 'sl-remind-' + idKey,
-          renotify: true
-        });
+        showSystemPush(
+          al.title || 'SISTEMA DEL MONARCA',
+          al.body || 'Verifica el estado de tu misión en curso.',
+          al.tag || 'sl-remind-' + idKey,
+          [250, 120, 250]
+        );
       }, Math.max(1000, al.delayMs || 60000));
       _swScheduledTimers[idKey].push(tid);
     });
@@ -175,58 +155,29 @@ self.addEventListener('message', (event) => {
     if (missing.length === 0) return;
 
     const previewList = missing.slice(0, 3).join(', ') + (missing.length > 3 ? ` (+${missing.length - 3} más)` : '');
-    const intervalsMins = [40, 85, 135, 190, 250];
+    const intervalsMins = [45, 100, 165];
     intervalsMins.forEach((mins, idx) => {
-      scheduleMissingNotification(
-        `INFO DE MISIÓN // FALTAN ${missing.length} OBJETIVOS`,
-        `Pendientes hoy: ${previewList}. No completar la misión diaria resultará en una penalización apropiada.`,
-        mins * 60000,
-        'sl-missing-ping-' + idx
-      );
-    });
-  }
-});
-
-self.addEventListener('message', (event) => {
-  if (!event.data) return;
-
-  if (event.data.type === 'SL_POMODORO_NOTIFY') {
-    self.registration.showNotification(event.data.title || 'SISTEMA DEL MONARCA', {
-      body: event.data.body || 'Directiva del Sistema actualizada.',
-      icon: '/icon-192.png',
-      badge: '/icon-192.png',
-      vibrate: [200, 100, 250, 100, 300],
-      tag: event.data.tag || 'sl-pomodoro-' + Date.now(),
-      renotify: true
-    });
-  } else if (event.data.type === 'SL_SCHEDULE_REMINDERS') {
-    const idKey = event.data.missionId || 'default';
-    if (_swScheduledTimers[idKey]) {
-      _swScheduledTimers[idKey].forEach((t) => clearTimeout(t));
-    }
-    _swScheduledTimers[idKey] = [];
-    const alerts = Array.isArray(event.data.alerts) ? event.data.alerts : [];
-    alerts.forEach((al) => {
       const tid = setTimeout(() => {
-        self.registration.showNotification(al.title || 'SISTEMA DEL MONARCA', {
-          body: al.body || 'Verifica el estado de tu misión en curso.',
-          icon: '/icon-192.png',
-          badge: '/icon-192.png',
-          vibrate: [250, 120, 250, 120, 350],
-          tag: al.tag || 'sl-remind-' + idKey,
-          renotify: true
-        });
-      }, Math.max(1000, al.delayMs || 60000));
-      _swScheduledTimers[idKey].push(tid);
+        showSystemPush(
+          `INFO DE MISIÓN // FALTAN ${missing.length} OBJETIVOS`,
+          `Pendientes hoy: ${previewList}. No completar la misión diaria resultará en una penalización apropiada.`,
+          'sl-missing-ping-' + idx
+        );
+      }, mins * 60000);
+      _swMissingMissionsTimers.push(tid);
     });
-  } else if (event.data.type === 'SL_CANCEL_REMINDERS') {
-    const idKey = event.data.missionId || 'default';
-    if (_swScheduledTimers[idKey]) {
-      _swScheduledTimers[idKey].forEach((t) => clearTimeout(t));
-      delete _swScheduledTimers[idKey];
-    }
   }
 });
+
+self.addEventListener('push', (event) => {
+  let payload = { title: 'SISTEMA DEL MONARCA', body: 'Tienes una directiva pendiente.', tag: 'sl-webpush' };
+  if (event.data) {
+    try { payload = Object.assign(payload, event.data.json()); }
+    catch (e) { payload.body = event.data.text() || payload.body; }
+  }
+  event.waitUntil(showSystemPush(payload.title, payload.body, payload.tag));
+});
+
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
