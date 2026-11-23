@@ -2166,7 +2166,7 @@ window.finishDayZeroPrologue = function() {
    18. MOTOR CLIENTE WEB PUSH VAPID (NOTIFICACIONES CON APP CERRADA)
    ========================================================================== */
 // Pega aquí tu llave pública VAPID generada con: npx web-push generate-vapid-keys
-const MONARCH_VAPID_PUBLIC_KEY = "PEGA_AQUI_TU_VAPID_PUBLIC_KEY";
+const MONARCH_VAPID_PUBLIC_KEY = "BK1YaarowfMKjIPPx82Ls6NIsESA3VIKs8fCtZelAVytIjJJvagAmW_8WavfrpQpPPYvjG7nsLDty2RxrvgIe28";
 
 function _urlBase64ToUint8Array(base64String) {
     const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
