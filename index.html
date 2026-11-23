@@ -34,22 +34,47 @@
         <div id="sl-day-zero-content" style="width:100%; max-width:410px;"></div>
     </div>    
 
-
-    <!-- CINEMÁTICA ÚNICA: GRIMORIO HOLOGRÁFICO VERDE 3D DE MIN BYUNG-GYU -->
+    <!-- CINEMÁTICA ÚNICA: GRIMORIO SAGRADO 3D DE MIN BYUNG-GYU -->
     <div id="min-grimoire-overlay" style="display: none;">
-        <div class="grimoire-aura"></div>
-        <div class="grimoire-3d-wrap">
-            <div class="grimoire-book">
-                <div class="grimoire-cover left-cover"></div>
-                <div class="grimoire-page page-1">✦</div>
-                <div class="grimoire-page page-2">✚</div>
-                <div class="grimoire-page page-3">✧</div>
-                <div class="grimoire-page page-4">✙</div>
-                <div class="grimoire-cover right-cover"></div>
+        <div class="min-pillar-light"></div>
+        <div class="min-sacred-ring outer-ring"></div>
+        <div class="min-sacred-ring inner-ring"></div>
+        <div class="min-motes-field">
+            <span></span><span></span><span></span><span></span><span></span><span></span>
+        </div>
+
+        <div class="min-book-3d-scene">
+            <div class="min-book-3d">
+                <div class="min-book-cover left">
+                    <div class="min-cover-filigree"></div>
+                </div>
+                <div class="min-book-cover right">
+                    <div class="min-cover-filigree"></div>
+                </div>
+                <div class="min-book-spine"></div>
+                <div class="min-book-block left"></div>
+                <div class="min-book-block right"></div>
+
+                <!-- 6 Hojas rúnicas luminosas pasando en cascada rápida -->
+                <div class="min-flip-page p1"><svg viewBox="0 0 80 110"><rect x="8" y="10" width="64" height="90" fill="none" stroke="#a7f3d0" stroke-width="1"/><circle cx="40" cy="44" r="16" fill="none" stroke="#ffffff" stroke-width="1.2"/><path d="M40 34V54M30 44H50" stroke="#ffffff" stroke-width="1.6"/><line x1="18" y1="74" x2="62" y2="74" stroke="#7dd3fc"/><line x1="22" y1="84" x2="58" y2="84" stroke="#7dd3fc"/></svg></div>
+                <div class="min-flip-page p2"><svg viewBox="0 0 80 110"><rect x="8" y="10" width="64" height="90" fill="none" stroke="#7dd3fc" stroke-width="1"/><polygon points="40,22 60,56 20,56" fill="none" stroke="#ffffff" stroke-width="1.2"/><polygon points="40,66 60,32 20,32" fill="none" stroke="#6ee7b7" stroke-width="1"/><line x1="18" y1="80" x2="62" y2="80" stroke="#e0f2fe"/></svg></div>
+                <div class="min-flip-page p3"><svg viewBox="0 0 80 110"><rect x="8" y="10" width="64" height="90" fill="none" stroke="#a7f3d0" stroke-width="1"/><circle cx="40" cy="46" r="18" fill="none" stroke="#7dd3fc" stroke-dasharray="4 3"/><circle cx="40" cy="46" r="9" fill="none" stroke="#ffffff"/><line x1="18" y1="76" x2="62" y2="76" stroke="#a7f3d0"/><line x1="24" y1="86" x2="56" y2="86" stroke="#a7f3d0"/></svg></div>
+                <div class="min-flip-page p4"><svg viewBox="0 0 80 110"><rect x="8" y="10" width="64" height="90" fill="none" stroke="#ffffff" stroke-width="1"/><path d="M40 22 L48 44 L40 66 L32 44 Z" fill="none" stroke="#6ee7b7" stroke-width="1.3"/><line x1="16" y1="78" x2="64" y2="78" stroke="#7dd3fc"/><line x1="20" y1="88" x2="60" y2="88" stroke="#ffffff"/></svg></div>
+                <div class="min-flip-page p5"><svg viewBox="0 0 80 110"><rect x="8" y="10" width="64" height="90" fill="none" stroke="#7dd3fc" stroke-width="1"/><circle cx="40" cy="44" r="15" fill="none" stroke="#ffffff" stroke-width="1.2"/><path d="M40 34V54M30 44H50" stroke="#6ee7b7" stroke-width="1.8"/><line x1="18" y1="74" x2="62" y2="74" stroke="#ffffff"/></svg></div>
+                <div class="min-flip-page p6"><svg viewBox="0 0 80 110"><rect x="8" y="10" width="64" height="90" fill="none" stroke="#a7f3d0" stroke-width="1"/><polygon points="40,24 58,44 40,64 22,44" fill="none" stroke="#ffffff" stroke-width="1.2"/><line x1="18" y1="76" x2="62" y2="76" stroke="#7dd3fc"/><line x1="22" y1="86" x2="58" y2="86" stroke="#6ee7b7"/></svg></div>
+
+                <div class="min-spine-crest">
+                    <svg viewBox="0 0 40 40" width="38" height="38">
+                        <circle cx="20" cy="20" r="15" fill="rgba(16,185,129,0.22)" stroke="#a7f3d0" stroke-width="1.4"/>
+                        <path d="M20 10V30M10 20H30" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round"/>
+                    </svg>
+                </div>
             </div>
         </div>
+
+        <div class="min-cinematic-tag">[ SANADOR RANGO S // ÚLTIMO MILAGRO ]</div>
         <h2 class="grimoire-title">LUZ DIVINA DE RESURRECCIÓN</h2>
-        <p class="grimoire-sub">Min Byung-Gyu canaliza su último milagro antes de partir hacia la paz eterna...</p>
+        <p class="grimoire-sub">Min Byung-Gyu canaliza su última bendición curativa antes de partir hacia el descanso eterno...</p>
     </div>
 
     <!-- CINEMÁTICA HOLOGRÁFICA DE HABILIDAD ACTIVA DE COMANDANTES -->
@@ -630,33 +655,28 @@
         </div>
     </div>
 
-    <!-- MÓDULOS DEL SISTEMA (ORDEN DE CARGA ESTRICTO CON BYPASS DE CACHÉ) -->
-    <script src="js/database.js?v=10.1"></script>
-    <script src="js/dialogues.js?v=10.1"></script>
-    <script src="comandantes/igris-svg.js?v=10.1" onerror="var s=document.createElement('script');s.src='igris-svg.js?v=10.1';document.head.appendChild(s);"></script>
-    <script src="comandantes/tank-svg.js?v=10.1" onerror="var s=document.createElement('script');s.src='tank-svg.js?v=10.1';document.head.appendChild(s);"></script>
-    <script src="comandantes/iron-svg.js?v=10.1" onerror="var s=document.createElement('script');s.src='iron-svg.js?v=10.1';document.head.appendChild(s);"></script>
-    <script src="comandantes/tusk-svg.js?v=10.1" onerror="var s=document.createElement('script');s.src='tusk-svg.js?v=10.1';document.head.appendChild(s);"></script>
-    <script src="comandantes/min-svg.js?v=10.1" onerror="var s=document.createElement('script');s.src='min-svg.js?v=10.1';document.head.appendChild(s);"></script>
-    <script src="comandantes/beru-svg.js?v=10.1" onerror="var s=document.createElement('script');s.src='beru-svg.js?v=10.1';document.head.appendChild(s);"></script>
-    <script src="js/models.js?v=10.1" onerror="var s=document.createElement('script');s.src='models.js?v=10.1';document.head.appendChild(s);"></script>    <script src="js/core.js?v=10.1"></script>
-    <script src="js/combat.js?v=10.1"></script>
-    <script src="js/events.js?v=10.1"></script>
-    <script src="js/inventory.js?v=10.1"></script>
-    <script src="js/missions.js?v=10.1"></script>
-    <script src="js/ui.js?v=10.1"></script>
+    <!-- MÓDULOS DEL SISTEMA (SIN NÚMEROS DE VERSIÓN: ACTUALIZACIÓN AUTOMÁTICA) -->
+    <script src="js/database.js"></script>
+    <script src="js/dialogues.js"></script>
+    <script src="comandantes/igris-svg.js" onerror="var s=document.createElement('script');s.src='igris-svg.js';document.head.appendChild(s);"></script>
+    <script src="comandantes/tank-svg.js" onerror="var s=document.createElement('script');s.src='tank-svg.js';document.head.appendChild(s);"></script>
+    <script src="comandantes/iron-svg.js" onerror="var s=document.createElement('script');s.src='iron-svg.js';document.head.appendChild(s);"></script>
+    <script src="comandantes/tusk-svg.js" onerror="var s=document.createElement('script');s.src='tusk-svg.js';document.head.appendChild(s);"></script>
+    <script src="comandantes/min-svg.js" onerror="var s=document.createElement('script');s.src='min-svg.js';document.head.appendChild(s);"></script>
+    <script src="comandantes/beru-svg.js" onerror="var s=document.createElement('script');s.src='beru-svg.js';document.head.appendChild(s);"></script>
+    <script src="js/models.js" onerror="var s=document.createElement('script');s.src='models.js';document.head.appendChild(s);"></script>
+    <script src="js/core.js"></script>
+    <script src="js/combat.js"></script>
+    <script src="js/events.js"></script>
+    <script src="js/inventory.js"></script>
+    <script src="js/missions.js"></script>
+    <script src="js/ui.js"></script>
 
-    <!-- REGISTRO UNIFICADO DEL SERVICE WORKER V10.0 -->
+    <!-- SERVICE WORKER CON AUTO-ACTUALIZACIÓN NETWORK-FIRST -->
     <script>
-           if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
-        if (!localStorage.getItem('SL_CachePurged_V10_1')) {
-          caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).then(() => {
-            localStorage.setItem('SL_CachePurged_V10_1', '1');
-            window.location.reload();
-          });
-        }
-        navigator.serviceWorker.register('./sw.js?v=10.1')
-          .then(reg => { reg.update(); console.log("SINCRO-LOG:: Service Worker V10.1 Activo."); })
+      if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+        navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
+          .then(reg => { reg.update(); console.log("SINCRO-LOG:: Service Worker Auto-Sync Activo."); })
           .catch(err => console.log("Error de Sistema:", err));
       }
     </script>
