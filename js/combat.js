@@ -1587,10 +1587,12 @@ function startInfantryExpedition(hours) {
         return systemNotify("🔒 No se encontraron portales despejados válidos.", "danger");
     }
 
-    let portalOptionsHtml = clearedObjs.map(d => {
+        window._expPortalOptions = clearedObjs.map(d => {
         let rMult = EXPEDITION_RANK_MULTS[d.rank] || 1.0;
-        return `<option value="${d.id}">[Rango ${d.rank} • Botín x${rMult}] ${d.title}</option>`;
-    }).join('');
+        return { value: d.id, label: `[Rango ${d.rank} • Botín x${rMult}] ${d.title}` };
+    });
+    let firstPortal = window._expPortalOptions[0];
+
 
     let unitSelectorsHtml = Object.keys(INFANTRY_META).map(k => {
         let meta = INFANTRY_META[k];
@@ -1615,9 +1617,12 @@ function startInfantryExpedition(hours) {
     let modalHtml = `
         <div style="text-align:left; margin-bottom:10px;">
             <div style="font-family:'Share Tech Mono', monospace; font-size:0.72em; color:#bae6fd; margin-bottom:4px;">1. SELECCIONA PORTAL CONQUISTADO (${hours} HORAS):</div>
-            <select id="exp-portal-select" class="input-dark" style="margin:0; padding:9px; font-size:0.86em; border-color:#38bdf8;" onchange="updateExpeditionPreview()">
-                ${portalOptionsHtml}
-            </select>
+                    <input type="hidden" id="exp-portal-select" value="${firstPortal.value}">
+            <div class="sl-holo-select-trigger" onclick="openExpeditionPortalPicker()">
+                <span id="exp-portal-label">${firstPortal.label}</span>
+                <span style="color:#7dd3fc;">▾</span>
+            </div>
+
         </div>
         <div style="text-align:left; margin-bottom:6px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
@@ -1669,6 +1674,20 @@ window.setAllExpUnits = function(sendAll) {
     });
     updateExpeditionPreview();
 };
+
+window.openExpeditionPortalPicker = function() {
+    let opts = window._expPortalOptions || [];
+    if (opts.length === 0) return;
+    let cur = document.getElementById('exp-portal-select')?.value || opts[0].value;
+    openSystemPickerModal('PORTAL DE EXPEDICIÓN', '[ ELIGE ZONA CONQUISTADA ]', opts, cur, (val, lbl) => {
+        let inp = document.getElementById('exp-portal-select');
+        let txt = document.getElementById('exp-portal-label');
+        if (inp) inp.value = val;
+        if (txt) txt.textContent = lbl;
+        if (typeof updateExpeditionPreview === 'function') updateExpeditionPreview();
+    });
+};
+
 
 function calculateExpeditionYield(sentUnits, hours, portalRank, ratio = 1.0, earlyPenalty = false) {
     let rMult = EXPEDITION_RANK_MULTS[portalRank] || 1.0;
@@ -1997,7 +2016,8 @@ function openShadowBestowNameModal(cmdId) {
             <div class="sl-holo-glass">
                 <div class="sl-holo-inner-box" style="text-align:center; padding:22px 16px;">
                     <div class="sl-holo-header-row" style="margin-bottom:14px;">
-                        <div class="sl-excl-square">!</div>
+                                         <div class="sl-excl-square"><span class="sl-excl-circle-inner">!</span></div>
+
                         <div class="sl-title-rect">NOTIFICACIÓN</div>
                     </div>
                     <div id="bestow-step-1">
@@ -2259,10 +2279,11 @@ function triggerMinByungGyuMiracle(fromDungeon = false, confirmed = false) {
             gainHunterSkillXP('longevity', 50);
         }
 
-        if (!p.titles.some(t => t.id === 'title_min_byung_gyu')) {
+                if (!p.titles.some(t => t.id === 'title_min_byung_gyu')) {
             p.titles.push({
                 id: 'title_min_byung_gyu',
-                name: 'Misericordia del Monarca: El Descanso de Min Byung-Gyu',
+                name: 'Misericordia del Monarca',
+                isAchievementOnly: true,
                 desc: 'Extrajiste el alma de un sanador Rango S en la Isla de Jeju para obrar un milagro de resurrección y renunciaste a su poder para concederle la paz eterna. (Bono eterno: +5% recarga de MP y +0.50 STR/INT).'
             });
         }
@@ -2300,33 +2321,50 @@ function renderTitles() {
         return;
     }
 
-    const TITLE_GREEN_EFFECTS = {
-        "t_adversity":        { label: "Supervivencia Crítica:",   buff: "MITIGACIÓN DE RESACA +20%" },
-        "t_wolf_slayer":      { label: "Bestias y Enfoque:",       buff: "TODAS LAS HABILIDADES +40%" },
-        "t_job_breaker":      { label: "Dominio de Ruta:",         buff: "COSTO DE FATIGA VIAL -20%" },
-        "t_demon_hunter":     { label: "Sangre del Monarca:",      buff: "REGENERACIÓN MATUTINA +5 HP" },
-        "t_jeju_savior":      { label: "Autoridad de Extracción:", buff: "PROBABILIDAD ¡SURGE! +10%" },
-        "t_architect_slayer": { label: "Corazón Negro:",           buff: "NÚCLEO DE MANÁ EXPANDIDO" },
-        "t_national_level":   { label: "Rango Nacional:",          buff: "AUTORIDAD SOBERANA ACTIVA" },
-        "t_true_monarch":     { label: "Trono de Sombras:",        buff: "PODER ABSOLUTO DESBLOQUEADO" },
-        "title_min_byung_gyu":{ label: "Bendición Eterna:",        buff: "RECARGA MP +5% // FUE & INT +0.50" },
-        "title_legion":       { label: "Comandante Supremo:",      buff: "MORAL DE INFANTERÍA +25%" },
-        "title_fallen_souls": { label: "Salmos 121:8:",            buff: "ESCUDO DE GRACIA +80 HP" }
+        const TITLE_GREEN_EFFECTS = {
+        "t_weakest":          { label: "Punto de Partida:",       buff: "VOLUNTAD DEL RECEPTÁCULO ACTIVA" },
+        "t_cartenon_survivor":{ label: "Templo de Cartenon:",     buff: "RESISTENCIA AL SISTEMA ACTIVADA" },
+        "t_wolf_slayer":      { label: "Bestias y Enfoque:",      buff: "EFICIENCIA FOCUS +40% // EXP +5%" },
+        "t_kasaka_bane":      { label: "Inmunidad de Pantano:",   buff: "TEMPLE CONTRA TOXINAS ACTIVO" },
+        "t_silent_hunter":    { label: "Instinto de Asesino:",    buff: "REFLEJOS DE COMBATE AFILADOS" },
+        "t_job_breaker":      { label: "Dominio de Ruta:",        buff: "COSTO DE FATIGA VIAL -20%" },
+        "t_adversity":        { label: "Supervivencia Crítica:",  buff: "MITIGACIÓN DE RESACA +20%" },
+        "t_red_gate":         { label: "Templo Glacial:",         buff: "ADAPTACIÓN A PORTALES ROJOS" },
+        "t_s_rank_tenth":     { label: "Maná Inconmensurable:",   buff: "RANGO S CERTIFICADO" },
+        "t_high_orc_bane":    { label: "Dominio Arcano:",         buff: "RESONANCIA DE ALTOS ORCOS" },
+        "t_demon_hunter":     { label: "Sangre del Monarca:",     buff: "REGENERACIÓN MATUTINA +5 HP" },
+        "t_jeju_savior":      { label: "Autoridad de Extracción:",buff: "PROBABILIDAD ¡SURGE! +10%" },
+        "t_architect_slayer": { label: "Corazón Negro:",          buff: "NÚCLEO DE MANÁ EXPANDIDO" },
+        "t_national_level":   { label: "Rango Nacional:",         buff: "AUTORIDAD SOBERANA ACTIVA" },
+        "t_true_monarch":     { label: "Trono de Sombras:",       buff: "PODER ABSOLUTO DESBLOQUEADO" },
+        "title_min_byung_gyu":{ label: "Bendición Eterna:",       buff: "RECARGA MP +5% // FUE & INT +0.50" },
+        "title_legion":       { label: "Comandante Supremo:",     buff: "MORAL DE INFANTERÍA +25%" },
+        "title_fallen_souls": { label: "Salmos 121:8:",           buff: "ESCUDO DE GRACIA +80 HP" }
     };
 
+    const achIds = (typeof ACHIEVEMENT_ONLY_TITLE_IDS !== 'undefined')
+        ? ACHIEVEMENT_ONLY_TITLE_IDS
+        : ['title_min_byung_gyu', 'title_fallen_souls', 'title_legion'];
+
     let html = '';
-    p.titles.forEach(t => {
-        let cleanTitle = (t.name || "").replace(/^[^\wÁÉÍÓÚÑáéíóúñ¡!]+\s*/, '');
+        p.titles.forEach(t => {
+        if (t && t.id === 'title_min_byung_gyu') t.name = 'Misericordia del Monarca';
+        let cleanTitle = (t.name || "").replace(/^[^\wÁÉÍÓÚÑáéíóúñ¡!«"']+\s*/, '');
+
+        let isAch = !!(t.isAchievementOnly || achIds.includes(t.id));
+        let prefixTag = isAch ? 'Logro' : 'Título';
         let fx = TITLE_GREEN_EFFECTS[t.id] || { label: "Efecto Pasivo:", buff: "BONIFICACIÓN PERMANENTE ACTIVA" };
         html += `
         <div class="sl-title-anime-window">
-            <div class="sl-title-bracket-box">[Título: ${cleanTitle}]</div>
+            <div class="sl-title-bracket-box">[${prefixTag}: ${cleanTitle}]</div>
             <div class="sl-title-lore-line">${t.desc}</div>
             <div class="sl-title-green-buff">${fx.label} <b>${fx.buff}</b></div>
         </div>`;
     });
     _setGuardedHtml(cont, html);
 }
+
+
 
 function triggerDeathFromCombat(reason) {
     if (typeof triggerDeath === "function") {

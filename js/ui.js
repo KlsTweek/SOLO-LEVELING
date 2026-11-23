@@ -152,8 +152,8 @@ function scrubAllDOMVectors(root = document.body) {
 
 function highlightAnimeKeywords(text) {
     let base = stripAllSystemEmojis(text || "");
-    const negStatRegex = /(?<![a-záéíóúñA-ZÁÉÍÓÚÑ])(PENALIZACIÓN|CASTIGO|COLAPSO|ALERTA|PELIGRO|FALLIDA|(?:DE\s+)?EMERGENCIA|-[0-9.]+(?:\s+)?(?:HP|SP|MP|G))(?![a-záéíóúñA-ZÁÉÍÓÚÑ])/gi;
-    const posStatRegex = /(?<![a-záéíóúñA-ZÁÉÍÓÚÑ])(?:[+\-]?\d+(?:[\.,]\d+)?%?(?:\s+(?:de|del|la|el))?\s+(?:G|XP|EXP|MP|CM|HP|SP|FATIGA|STR|INT|AGI|FUE|VIT|PER|Escudo|Oro|Evasión)|CAZADORES|CAZADOR)(?![a-záéíóúñA-ZÁÉÍÓÚÑ])/gi;
+    const negStatRegex = /(?<![a-záéíóúñA-ZÁÉÍÓÚÑ])(PENALIZACIÓN|CASTIGO|COLAPSO|ALERTA|PELIGRO|FALLIDA|(?:DE\s+)?EMERGENCIA|-[0-9.]+(?:\s+)?(?:HP|SP|MP|G)(?:\/(?:min|seg|m|s))?)(?![a-záéíóúñA-ZÁÉÍÓÚÑ])/gi;
+    const posStatRegex = /(?<![a-záéíóúñA-ZÁÉÍÓÚÑ])(?:[+\-]?\d+(?:[\.,]\d+)?%?(?:\s+(?:de|del|la|el))?\s+(?:G|XP|EXP|MP(?:\/(?:min|seg|m|s))?|CM|HP(?:\/(?:min|seg|m|s))?|SP(?:\/(?:min|seg|m|s))?|FATIGA|STR|INT|AGI|FUE|VIT|PER|Escudo|Oro|Evasión)|CAZADORES|CAZADOR)(?![a-záéíóúñA-ZÁÉÍÓÚÑ])/gi;
     const rankRegex = /(?<![a-záéíóúñA-ZÁÉÍÓÚÑ])(JUGADOR 1|ÉXITO|NIVEL \d+|ASCENSIÓN AL NIVEL \d+|¡SURGE!|MILAGRO CONSUMADO)(?![a-záéíóúñA-ZÁÉÍÓÚÑ])/gi;
 
     return base
@@ -317,6 +317,97 @@ function systemNotify(msg, type = "info") {
         dismissActiveHoloToast();
     }, 3800);
 }
+
+window.openSystemConfirmModal = function(title, sub, msgHtml, confirmLabel, onConfirm, themeClass = 'danger') {
+    let old = document.getElementById('sl-sys-confirm-overlay');
+    if (old) old.remove();
+    let cornerSVG = (typeof getBaroqueCornerSVG === 'function') ? getBaroqueCornerSVG() : '';
+
+    let ov = document.createElement('div');
+    ov.id = 'sl-sys-confirm-overlay';
+    ov.style.cssText = 'position:fixed; inset:0; background:rgba(2,6,18,0.92); backdrop-filter:blur(6px); z-index:14800; display:flex; justify-content:center; align-items:center; padding:18px;';
+    ov.innerHTML = `
+        <div class="sl-holo-frame ${themeClass}" style="width:100%; max-width:395px; cursor:default;">
+            <div class="sl-holo-rail top"><span class="rail-core"></span></div>
+            <div class="sl-holo-glass">
+                <div class="sl-holo-inner-box" style="padding:18px 16px; text-align:center;">
+                    <span class="sl-baroque-corner tl">${cornerSVG}</span>
+                    <span class="sl-baroque-corner tr">${cornerSVG}</span>
+                    <span class="sl-baroque-corner bl">${cornerSVG}</span>
+                    <span class="sl-baroque-corner br">${cornerSVG}</span>
+                    <div class="sl-holo-header-row" style="margin-bottom:6px;">
+                        <div class="sl-excl-square"><span class="sl-excl-circle-inner">!</span></div>
+                        <div class="sl-title-rect">${title}</div>
+                    </div>
+                    ${sub ? `<div class="sl-holo-subbracket" style="margin-bottom:10px;">${sub}</div>` : ''}
+                    <div style="color:#e2e8f0; font-size:0.9em; line-height:1.5; margin:12px 0 16px 0;">${msgHtml}</div>
+                    <div style="display:flex; gap:8px;">
+                        <button class="btn btn-blue" style="flex:1;" id="sl-sys-conf-cancel">CANCELAR</button>
+                        <button class="btn ${themeClass === 'danger' ? 'btn-red' : 'btn-main'}" style="flex:1.3;" id="sl-sys-conf-ok">${confirmLabel || 'CONFIRMAR'}</button>
+                    </div>
+                </div>
+            </div>
+            <div class="sl-holo-rail bottom"><span class="rail-core"></span></div>
+        </div>
+    `;
+    document.body.appendChild(ov);
+    document.getElementById('sl-sys-conf-cancel').onclick = () => ov.remove();
+    document.getElementById('sl-sys-conf-ok').onclick = () => {
+        ov.remove();
+        if (typeof onConfirm === 'function') onConfirm();
+    };
+};
+
+window.openSystemPickerModal = function(title, sub, options, selectedVal, onSelect, themeClass = '') {
+    let old = document.getElementById('sl-sys-picker-overlay');
+    if (old) old.remove();
+    let cornerSVG = (typeof getBaroqueCornerSVG === 'function') ? getBaroqueCornerSVG() : '';
+
+    let optsHtml = options.map((opt, idx) => {
+        let isSel = String(opt.value) === String(selectedVal);
+        return `
+        <div class="sl-picker-option ${isSel ? 'selected' : ''}" data-pick-idx="${idx}">
+            <span>${opt.label}</span>
+            <span class="sl-picker-dot"></span>
+        </div>`;
+    }).join('');
+
+    let ov = document.createElement('div');
+    ov.id = 'sl-sys-picker-overlay';
+    ov.style.cssText = 'position:fixed; inset:0; background:rgba(2,6,18,0.92); backdrop-filter:blur(6px); z-index:14850; display:flex; justify-content:center; align-items:center; padding:18px;';
+    ov.innerHTML = `
+        <div class="sl-holo-frame ${themeClass}" style="width:100%; max-width:405px; cursor:default;">
+            <div class="sl-holo-rail top"><span class="rail-core"></span></div>
+            <div class="sl-holo-glass">
+                <div class="sl-holo-inner-box" style="padding:16px 14px; text-align:center;">
+                    <span class="sl-baroque-corner tl">${cornerSVG}</span>
+                    <span class="sl-baroque-corner tr">${cornerSVG}</span>
+                    <span class="sl-baroque-corner bl">${cornerSVG}</span>
+                    <span class="sl-baroque-corner br">${cornerSVG}</span>
+                    <div class="sl-holo-header-row" style="margin-bottom:4px;">
+                        <div class="sl-excl-square"><span class="sl-excl-circle-inner">!</span></div>
+                        <div class="sl-title-rect">${title}</div>
+                    </div>
+                    ${sub ? `<div class="sl-holo-subbracket">${sub}</div>` : ''}
+                    <div class="sl-picker-list">${optsHtml}</div>
+                    <button class="btn btn-blue" style="width:100%;" onclick="document.getElementById('sl-sys-picker-overlay').remove()">CERRAR</button>
+                </div>
+            </div>
+            <div class="sl-holo-rail bottom"><span class="rail-core"></span></div>
+        </div>
+    `;
+    document.body.appendChild(ov);
+
+    ov.querySelectorAll('.sl-picker-option').forEach(el => {
+        el.onclick = () => {
+            let picked = options[Number(el.getAttribute('data-pick-idx'))];
+            ov.remove();
+            if (picked && typeof onSelect === 'function') onSelect(picked.value, picked.label);
+        };
+    });
+};
+
+
 
 window.openHonorLogModal = function() {
     let modal = document.getElementById('honor-log-modal');
@@ -549,9 +640,21 @@ function renderStatusRadarProfile() {
         ? getHunterJobTitleByState()
         : (p.level >= 51 ? 'MONARCA DE LAS SOMBRAS' : (p.level >= 40 ? 'NIGROMANTE' : 'NINGUNA'));
 
-    let hunterTitle = (p.titles && p.titles.length > 0)
-        ? p.titles[p.titles.length - 1].name.replace(/^[^\s]+\s/, '')
+        const _achOnlyIds = (typeof ACHIEVEMENT_ONLY_TITLE_IDS !== 'undefined')
+        ? ACHIEVEMENT_ONLY_TITLE_IDS
+        : ['title_min_byung_gyu', 'title_fallen_souls', 'title_legion'];
+    let _equipableTitles = Array.isArray(p.titles)
+        ? p.titles.filter(t => t && !t.isAchievementOnly && !_achOnlyIds.includes(t.id))
+        : [];
+    if (_equipableTitles.length > 1 && typeof PASSIVE_TITLES_DB !== 'undefined') {
+        const _orderMap = {};
+        PASSIVE_TITLES_DB.forEach((item, idx) => { _orderMap[item.id] = idx; });
+        _equipableTitles.sort((a, b) => (_orderMap[a.id] ?? -1) - (_orderMap[b.id] ?? -1));
+    }
+    let hunterTitle = _equipableTitles.length > 0
+        ? _equipableTitles[_equipableTitles.length - 1].name.replace(/^[^\wÁÉÍÓÚÑáéíóúñ¡!«"']+\s*/, '')
         : 'NINGUNO';
+
 
     let strVal = +(p.stats.str * 10).toFixed(2);
     let intVal = +(p.stats.int * 10).toFixed(2);
@@ -581,8 +684,14 @@ function renderStatusRadarProfile() {
     if (statusCard.dataset.profSig === profSig && statusCard.childElementCount > 0) return;
     statusCard.dataset.profSig = profSig;
 
-    // Construir barra visual de los últimos 14 días (13 pasados + hoy)
+    // Construir cadena de 14 días (si hoy ya está completo o racha >= 14, el nodo 14 también se ilumina)
     let cellsHtml = '';
+    let todayListRef = (typeof getTodayMissions === 'function') ? getTodayMissions() : [];
+    let todayAllDone = todayListRef.length > 0
+        && Array.isArray(p.completedToday)
+        && todayListRef.every(m => p.completedToday.includes(m.id))
+        && !!p.studyCompletedToday;
+
     let padded = hist.slice(-13);
     let emptyCount = Math.max(0, 13 - padded.length);
     for (let i = 0; i < emptyCount; i++) {
@@ -592,7 +701,9 @@ function renderStatusRadarProfile() {
         let cls = item.status === 'perfect' ? 'st-perfect' : (item.status === 'protected' ? 'st-protected' : 'st-missed');
         cellsHtml += `<div class="sl-streak-day-cell ${cls}" title="${item.day}: ${item.status.toUpperCase()}"></div>`;
     });
-    cellsHtml += `<div class="sl-streak-day-cell st-today" title="Hoy en curso"></div>`;
+    let todayNodeCls = (todayAllDone || (p.perfectDays || 0) >= 14) ? 'st-perfect' : 'st-today-active';
+    cellsHtml += `<div class="sl-streak-day-cell ${todayNodeCls}" title="${todayAllDone ? 'Hoy completado' : 'Hoy en curso'}"></div>`;
+
 
     let gearSvg = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#e0f2fe" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px #00e5ff);"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
     let cubeSvg = `<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="#7dd3fc" stroke-width="2" style="margin-right:3px; filter:drop-shadow(0 0 4px #00e5ff);"><polygon points="12,2 21,7 21,17 12,22 3,17 3,7"/><circle cx="12" cy="12" r="2.5" fill="#ffffff"/></svg>`;
@@ -641,13 +752,14 @@ function renderStatusRadarProfile() {
 
         <div class="sl-status-divider"></div>
 
-        <div class="sl-streak-14-wrap">
+                <div class="sl-streak-14-wrap">
             <div class="sl-streak-14-header">
-                <span>CADENA DE DISCIPLINA (14 DÍAS)</span>
-                <span style="color:#7dd3fc;">${p.perfectDays || 0} INVICTO</span>
+                <span>CADENA DE RESONANCIA (14 DÍAS)</span>
+                <span class="sl-streak-badge">${p.perfectDays || 0} INVICTO</span>
             </div>
             <div class="sl-streak-14-grid">${cellsHtml}</div>
         </div>
+
 
         <div class="sl-status-divider"></div>
         <div style="display:flex; flex-direction:column; gap:8px; margin-top:6px;">
@@ -1767,7 +1879,7 @@ function playJobChangeCinematic(leadText = "TU CLASE HA CAMBIADO", oldName = "NI
             setTimeout(() => {
                 if (newEl) newEl.classList.add('awaken-slam');
                 if (typeof playSystemSound === "function") playSystemSound('monarch_awakening');
-                if (navigator.vibrate) navigator.vibrate([90, 50, 220]);
+                if (navigator.vibrate && (!navigator.userActivation || navigator.userActivation.hasBeenActive)) navigator.vibrate([90, 50, 220]);
             }, 1300);
             setTimeout(() => {
                 ov.style.transition = 'opacity 0.5s ease';

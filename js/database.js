@@ -438,7 +438,7 @@ const shopDB = [
         id: "c7",
         cat: "Consumibles",
         icon: "✨",
-        title: "Elixir del Agua de la Vida (Lágrima del Monarca)",
+        title: "Elixir del Agua de la Vida",
         desc: "Milagro absoluto del Piso 100: Restaura 100% HP, 100% SP, 100% MP, elimina todo Debuff, levanta castigos y purga la Maldición de la 6ta Capa.",
         cost: 2200,
         rank: "SS",
@@ -711,7 +711,7 @@ const shopDB = [
         id: "p_double_loot",
         cat: "Pergaminos",
         icon: "🧲",
-        title: "Pergamino: Mano del Gobernante [Ruler's Authority]",
+        title: "Pergamino: Mano del Gobernante",
         desc: "Telequinesis dimensional del anime: Atrae y materializa inmediatamente 3 objetos o minerales de la matriz de botín directo a tu bolsa.",
         cost: 310,
         rank: "A",
@@ -943,7 +943,7 @@ const shopDB = [
         cat: "Pergaminos",
         icon: "🌫️",
         title: "Runa de Habilidad: Sigilo [Stealth]",
-        desc: "[ANIME T1 EP.9 - KANG TAESHIK]: Oculta tu presencia física y mágica. En tu próxima mazmorra eres 100% inmune al daño ambiental y tu primer golpe al Jefe hace x2.5 de daño.",
+        desc: "[KANG TAESHIK]: Oculta tu presencia física y mágica. En tu próxima mazmorra eres 100% inmune al daño ambiental y tu primer golpe al Jefe hace x2.5 de daño.",
         cost: 390,
         rank: "A",
         type: "item"
@@ -953,7 +953,7 @@ const shopDB = [
         cat: "Pergaminos",
         icon: "💎",
         title: "Piedra de Retorno de Calabozo",
-        desc: "[ANIME T1/T2 - RETORNO DE INSTANCIA]: Cristal de evacuación de la Asociación. Te permite salir de una mazmorra normal por emergencia sin sufrir los -20 HP de castigo y reembolsa +100 MP.",
+        desc: "[RETORNO DE INSTANCIA]: Cristal de evacuación de la Asociación. Te permite salir de una mazmorra normal por emergencia sin sufrir los -20 HP de castigo y reembolsa +100 MP.",
         cost: 195,
         rank: "B",
         type: "item"
@@ -963,7 +963,7 @@ const shopDB = [
         cat: "Pergaminos",
         icon: "🩹",
         title: "Vendaje de Colmillo Blanco (Hapjeong)",
-        desc: "[ANIME T1 EP.5 - CACERÍA DE LYCANS]: Vendaje impregnado con maná de bestia. Congela y detiene la hemorragia nocturna durante 30 minutos y sella tus heridas (+30 HP).",
+        desc: "[CACERÍA DE LYCANS]: Vendaje impregnado con maná de bestia. Congela y detiene la hemorragia nocturna durante 30 minutos y sella tus heridas (+30 HP).",
         cost: 175,
         rank: "B",
         type: "item"
@@ -973,7 +973,7 @@ const shopDB = [
         cat: "Pergaminos",
         icon: "🐯",
         title: "Permiso de Asalto: Gremio Tigre Blanco",
-        desc: "[ANIME T2 - CONTRATO CON BAEK YOONHO]: Convenio oficial de compra de portales. Al despejar tu próxima mazmorra o misión principal, el Gremio te paga un bono extra de +110 G limpios.",
+        desc: "[CONTRATO CON BAEK YOONHO]: Convenio oficial de compra de portales. Al despejar tu próxima mazmorra o misión principal, el Gremio te paga un bono extra de +110 G limpios.",
         cost: 75,
         rank: "A",
         type: "item"
@@ -997,39 +997,39 @@ const shopDB = [
     { id: "eq_w_iron_mace", cat: "Armería", icon: "🔨", title: "Maza Pesada de Hierro", desc: "Arma Rango D. Contundente e implacable contra escudos. Otorga +0.35 STR.", cost: 175, rank: "D", slot: "weapon", stats: { str: 0.35 } },
     { id: "eq_w_arachnid", cat: "Armería", icon: "🦂", title: "Aguijón de Reina Arácnida", desc: "Arma Rango C. Daga ligera con filo ácido perforante. Otorga +0.35 AGI y +0.15 STR.", cost: 280, rank: "C", slot: "weapon", stats: { str: 0.15, agi: 0.35 } },
     { id: "eq_w_bow", cat: "Armería", icon: "🏹", title: "Arco Compuesto de Francotirador", desc: "Arma Rango C. Precisión letal a larga distancia. Otorga +0.40 AGI y +0.15 INT.", cost: 320, rank: "C", slot: "weapon", stats: { agi: 0.40, int: 0.15 } },
-    { id: "eq_w1", cat: "Armería", icon: "🐍", title: "Colmillo de Kasaka (Daga)", desc: "Arma Rango B. Daga de veneno azul paralizante y hemorrágico. Otorga +0.50 STR y +0.25 AGI.", cost: 450, rank: "B", slot: "weapon", stats: { str: 0.50, agi: 0.25 } },
+    { id: "eq_w1", cat: "Armería", icon: "🐍", title: "Colmillo de Kasaka", desc: "Arma Rango B. Daga de veneno azul paralizante y hemorrágico. Otorga +0.50 STR y +0.25 AGI.", cost: 450, rank: "B", slot: "weapon", stats: { str: 0.50, agi: 0.25 } },
     { id: "eq_w_killer", cat: "Armería", icon: "⚔️", title: "Asesina de Caballeros (Knight Killer)", desc: "Arma Rango B. Diseñada para desgarrar armaduras pesadas. Otorga +0.75 STR y +0.20 AGI.", cost: 560, rank: "B", slot: "weapon", stats: { str: 0.75, agi: 0.20 } },
     { id: "eq_w_halberd", cat: "Armería", icon: "🪓", title: "Alabarda de Guardia Real", desc: "Arma Rango B. Lanza pesada de caballería sangrienta. Otorga +0.85 STR.", cost: 620, rank: "B", slot: "weapon", stats: { str: 0.85 } },
     { id: "eq_w_baruka", cat: "Armería", icon: "🌪️", title: "Tanto de Baruka (Daga Hyakki)", desc: "Arma Rango A. Imbuida con magia de viento élfico veloz. Otorga +0.60 STR y +0.90 AGI.", cost: 850, rank: "A", slot: "weapon", stats: { str: 0.60, agi: 0.90 } },
-    { id: "eq_w_kargalgan", cat: "Armería", icon: "🔴", title: "Orbe de Avaricia (Tusk)", desc: "Arma Rango A. Duplica el poder destructivo de la magia negra. Otorga +1.40 INT.", cost: 980, rank: "A", slot: "weapon", stats: { int: 1.40 } },
+    { id: "eq_w_kargalgan", cat: "Armería", icon: "🔴", title: "Orbe de Avaricia", desc: "Arma Rango A. Duplica el poder destructivo de la magia negra. Otorga +1.40 INT.", cost: 980, rank: "A", slot: "weapon", stats: { int: 1.40 } },
     { id: "eq_w_vulcan_club", cat: "Armería", icon: "🌋", title: "Garrote Ígneo de Vulcano", desc: "Arma Rango A. Fuerza colosal del demonio de fuego inferior. Otorga +1.55 STR.", cost: 1050, rank: "A", slot: "weapon", stats: { str: 1.55 } },
     { id: "eq_w_scythe", cat: "Armería", icon: "🌙", title: "Guadaña del Segador Sombrío", desc: "Arma Rango S. Cosecha almas en completo silencio. Otorga +1.10 STR, +1.00 AGI y +0.60 INT.", cost: 1450, rank: "S", slot: "weapon", stats: { str: 1.10, agi: 1.00, int: 0.60 } },
-    { id: "eq_w_demon_daggers", cat: "Armería", icon: "⚡", title: "Dagas del Rey Demonio (Baran)", desc: "Arma Rango S. Dagas gemelas de relámpago blanco. Otorgan +1.20 STR y +1.30 AGI.", cost: 1680, rank: "S", slot: "weapon", stats: { str: 1.20, agi: 1.30 } },
+    { id: "eq_w_demon_daggers", cat: "Armería", icon: "⚡", title: "Dagas del Rey Demonio", desc: "Arma Rango S. Dagas gemelas de relámpago blanco. Otorgan +1.20 STR y +1.30 AGI.", cost: 1680, rank: "S", slot: "weapon", stats: { str: 1.20, agi: 1.30 } },
     { id: "eq_w_demon_sword", cat: "Armería", icon: "🌩️", title: "Espada Larga del Rey Demonio", desc: "Arma Rango S. Desata la Tormenta de Llamas Blancas de Baran. Otorga +1.80 STR y +0.80 INT.", cost: 1890, rank: "S", slot: "weapon", stats: { str: 1.80, int: 0.80 } },
-    { id: "eq_w_kamish", cat: "Armería", icon: "🐉", title: "Ira de Kamish (Dagas de Dragón)", desc: "Arma Rango SS. Forjadas con el colmillo de la mayor calamidad de la humanidad. Otorga +3.00 STR, +2.50 AGI y +1.50 INT.", cost: 3100, rank: "SS", slot: "weapon", stats: { str: 3.00, agi: 2.50, int: 1.50 } },
+    { id: "eq_w_kamish", cat: "Armería", icon: "🐉", title: "Ira de Kamish", desc: "Arma Rango SS. Forjadas con el colmillo de la mayor calamidad de la humanidad. Otorga +3.00 STR, +2.50 AGI y +1.50 INT.", cost: 3100, rank: "SS", slot: "weapon", stats: { str: 3.00, agi: 2.50, int: 1.50 } },
 
 // --- CASCOS, PECHERAS, GUANTELETES Y BOTAS (RANURAS DE ARMADURA ANATÓMICA) ---
     { id: "eq_a_leather", cat: "Armería", icon: "🦺", title: "Chaleco Táctico de Cazador Rango E", desc: "Pechera Rango E. Cuero reforzado para incursiones menores. Otorga +0.20 STR.", cost: 65, rank: "E", slot: "chest", stats: { str: 0.20 } },
     { id: "eq_a_boots_e", cat: "Armería", icon: "🥾", title: "Botas de Marcha Forzada", desc: "Botas Rango E. Calzado militar antideslizante. Otorga +0.20 AGI.", cost: 75, rank: "E", slot: "boots", stats: { agi: 0.20 } },
     { id: "eq_g_low", cat: "Armería", icon: "🧤", title: "Guantelete de Caballero de Bajo Rango", desc: "Guantelete Rango E. Placas articuladas de acero ligero. Otorga +0.18 STR.", cost: 80, rank: "E", slot: "gloves", stats: { str: 0.18 } },
-    { id: "eq_a_serpento", cat: "Armería", icon: "🧥", title: "Chaqueta Blindada de Ruta (Los Chorros)", desc: "Pechera Rango D. Protección contra el asfalto y la fatiga vial. Otorga +0.25 STR y +0.20 AGI.", cost: 160, rank: "D", slot: "chest", stats: { str: 0.25, agi: 0.20 } },
+    { id: "eq_a_serpento", cat: "Armería", icon: "🧥", title: "Chaqueta Blindada de Ruta", desc: "Pechera Rango D. Protección contra el asfalto y la fatiga vial. Otorga +0.25 STR y +0.20 AGI.", cost: 160, rank: "D", slot: "chest", stats: { str: 0.25, agi: 0.20 } },
     { id: "eq_a_helm_d", cat: "Armería", icon: "🪖", title: "Casco de Acero de Vanguardia", desc: "Casco Rango D. Protege el cráneo en derrumbes de mina. Otorga +0.35 STR.", cost: 185, rank: "D", slot: "head", stats: { str: 0.35 } },
     { id: "eq_b_mid", cat: "Armería", icon: "🥾", title: "Bota de Caballero de Rango Medio", desc: "Botas Rango C. Grebas templadas de caballería. Otorga +0.45 AGI.", cost: 270, rank: "C", slot: "boots", stats: { agi: 0.45 } },
     { id: "eq_a_gloves_c", cat: "Armería", icon: "🧤", title: "Guanteletes de Escama de Serpiente", desc: "Guanteletes Rango C. Agarre firme y resistente al ácido. Otorga +0.30 STR y +0.30 AGI.", cost: 290, rank: "C", slot: "gloves", stats: { str: 0.30, agi: 0.30 } },
     { id: "eq_a_assassin", cat: "Armería", icon: "🥷", title: "Manto de Sigilo de Kang Taeshik", desc: "Pechera Rango B. Tejido oscuro que camufla la presencia. Otorga +0.65 AGI y +0.25 INT.", cost: 480, rank: "B", slot: "chest", stats: { agi: 0.65, int: 0.25 } },
     { id: "eq_a_mage_b", cat: "Armería", icon: "👘", title: "Túnica Carmesí de Hechicero", desc: "Pechera Rango B. Amplifica la regeneración de maná. Otorga +0.85 INT.", cost: 540, rank: "B", slot: "chest", stats: { int: 0.85 } },
     { id: "eq_g_high", cat: "Armería", icon: "🧤", title: "Guantelete de Caballero de Alto Rango", desc: "Guantelete Rango B. Acero rúnico del Cambio de Clase. Otorga +0.60 STR y +0.30 AGI.", cost: 590, rank: "B", slot: "gloves", stats: { str: 0.60, agi: 0.30 } },
-    { id: "eq_h_crimson", cat: "Armería", icon: "🪖", title: "Casco del Caballero Carmesí (Igris)", desc: "Casco Rango A. Yelmo real del Comandante Rojo Sangriento. Reduce daño físico -15% y otorga +0.90 STR y +0.40 AGI.", cost: 760, rank: "A", slot: "head", stats: { str: 0.90, agi: 0.40 } },
+    { id: "eq_h_crimson", cat: "Armería", icon: "🪖", title: "Casco del Caballero Carmesí", desc: "Casco Rango A. Yelmo real del Comandante Rojo Sangriento. Reduce daño físico -15% y otorga +0.90 STR y +0.40 AGI.", cost: 760, rank: "A", slot: "head", stats: { str: 0.90, agi: 0.40 } },
     { id: "eq_a1", cat: "Armería", icon: "🛡️", title: "Pechera de Caballero de Alto Rango", desc: "Pechera Rango A. Acero carmesí del comandante de sangre. Otorga +1.00 STR y +0.30 AGI.", cost: 790, rank: "A", slot: "chest", stats: { str: 1.00, agi: 0.30 } },
     { id: "eq_a_high_orc", cat: "Armería", icon: "👹", title: "Armadura de Guardia de Alto Orco", desc: "Pechera Rango A. Imbuida con sed de batalla salvaje. Otorga +1.35 STR.", cost: 920, rank: "A", slot: "chest", stats: { str: 1.35 } },
     { id: "eq_a_valkyrie", cat: "Armería", icon: "🪽", title: "Grebas Aladas de Cazador Rango S", desc: "Botas Rango A. Velocidad supersónica en mazmorra. Otorga +1.40 AGI.", cost: 990, rank: "A", slot: "boots", stats: { agi: 1.40 } },
     { id: "eq_a_archlich", cat: "Armería", icon: "💀", title: "Túnica del Arquimago de la Muerte", desc: "Pechera Rango S. Canaliza el maná del abismo sin fricción. Otorga +1.80 INT y +0.50 AGI.", cost: 1490, rank: "S", slot: "chest", stats: { int: 1.80, agi: 0.50 } },
     { id: "eq_h_shadow", cat: "Armería", icon: "👑", title: "Yelmo de Sombras del Monarca", desc: "Casco Rango S. Corona abisal que expande tus sentidos. Otorga +1.40 INT y +1.10 STR.", cost: 1620, rank: "S", slot: "head", stats: { int: 1.40, str: 1.10 } },
-    { id: "eq_a_giant", cat: "Armería", icon: "🗿", title: "Coraza del Rey de los Gigantes (Legia)", desc: "Pechera Rango S. Defensa inquebrantable de nivel nacional. Otorga +2.30 STR.", cost: 1720, rank: "S", slot: "chest", stats: { str: 2.30 } },
+    { id: "eq_a_giant", cat: "Armería", icon: "🗿", title: "Coraza del Rey de los Gigantes", desc: "Pechera Rango S. Defensa inquebrantable de nivel nacional. Otorga +2.30 STR.", cost: 1720, rank: "S", slot: "chest", stats: { str: 2.30 } },
     { id: "eq_g_monarch", cat: "Armería", icon: "🧤", title: "Guanteletes de Garras del Rey Hormiga", desc: "Guanteletes Rango S. Quitina afilada de la Isla de Jeju. Otorga +1.50 STR y +1.20 AGI.", cost: 1840, rank: "S", slot: "gloves", stats: { str: 1.50, agi: 1.20 } },
-    { id: "eq_a_beru", cat: "Armería", icon: "🐜", title: "Exoesqueleto del Rey Hormiga (Jeju)", desc: "Pechera Rango S. Quitina negra indestructible y ultraligera. Otorga +1.60 STR y +1.40 AGI.", cost: 1950, rank: "S", slot: "chest", stats: { str: 1.60, agi: 1.40 } },
+    { id: "eq_a_beru", cat: "Armería", icon: "🐜", title: "Exoesqueleto del Rey Hormiga", desc: "Pechera Rango S. Quitina negra indestructible y ultraligera. Otorga +1.60 STR y +1.40 AGI.", cost: 1950, rank: "S", slot: "chest", stats: { str: 1.60, agi: 1.40 } },
     { id: "eq_b_shadow", cat: "Armería", icon: "🥾", title: "Botas del Paso Sombrío de Ashborn", desc: "Botas Rango SS. Desplazamiento instantáneo entre sombras. Otorga +2.40 AGI y +1.20 STR.", cost: 2650, rank: "SS", slot: "boots", stats: { agi: 2.40, str: 1.20 } },
-    { id: "eq_a_ashborn", cat: "Armería", icon: "👑", title: "Manto Imperial de Ashborn (Monarca)", desc: "Pechera Rango SS. Tejida con oscuridad primigenia. Otorga +2.80 STR, +2.80 INT y +2.00 AGI.", cost: 3200, rank: "SS", slot: "chest", stats: { str: 2.80, int: 2.80, agi: 2.00 } },
+    { id: "eq_a_ashborn", cat: "Armería", icon: "👑", title: "Manto Imperial de Ashborn", desc: "Pechera Rango SS. Tejida con oscuridad primigenia. Otorga +2.80 STR, +2.80 INT y +2.00 AGI.", cost: 3200, rank: "SS", slot: "chest", stats: { str: 2.80, int: 2.80, agi: 2.00 } },
 
     // --- COLLARES Y ANILLOS (RANURAS DE JOYERÍA: "necklace" Y "ring") ---
     { id: "eq_acc_copper", cat: "Armería", icon: "💍", title: "Anillo de Enfoque de Cobre", desc: "Anillo Rango E. Estabiliza la mente del estudiante. Otorga +0.20 INT.", cost: 70, rank: "E", slot: "ring", stats: { int: 0.20 } },
@@ -1042,7 +1042,7 @@ const shopDB = [
     { id: "eq_acc_kandiaru", cat: "Armería", icon: "💎", title: "Anillo de Longevidad de Kandiaru", desc: "Anillo Rango A. Bendición de cuerpo indestructible. Otorga +0.80 STR, +0.60 INT y +0.60 AGI.", cost: 1020, rank: "A", slot: "ring", stats: { str: 0.80, int: 0.60, agi: 0.60 } },
     { id: "eq_acc_national", cat: "Armería", icon: "🎖️", title: "Collar de Cazador de Nivel Nacional", desc: "Collar Rango S. Autoridad suprema sobre gremios. Otorga +1.60 STR y +1.20 AGI.", cost: 1780, rank: "S", slot: "necklace", stats: { str: 1.60, agi: 1.20 } },
     { id: "eq_acc_chalice", cat: "Armería", icon: "🏆", title: "Anillo de la Copa del Renacimiento", desc: "Anillo Rango S. Artefacto de los Gobernantes que altera el tiempo. Otorga +2.00 INT y +1.00 AGI.", cost: 1920, rank: "S", slot: "ring", stats: { int: 2.00, agi: 1.00 } },
-    { id: "eq_acc_black_heart", cat: "Armería", icon: "🖤", title: "Anillo del Corazón Negro (Monarca)", desc: "Anillo Rango SS. Desbloquea el maná infinito del Monarca Sombrío. Otorga +3.50 INT, +1.50 STR y +1.50 AGI.", cost: 3000, rank: "SS", slot: "ring", stats: { int: 3.50, str: 1.50, agi: 1.50 } },
+    { id: "eq_acc_black_heart", cat: "Armería", icon: "🖤", title: "Anillo del Corazón Negro", desc: "Anillo Rango SS. Desbloquea el maná infinito del Monarca Sombrío. Otorga +3.50 INT, +1.50 STR y +1.50 AGI.", cost: 3000, rank: "SS", slot: "ring", stats: { int: 3.50, str: 1.50, agi: 1.50 } },
 
     // ==================== SUBCARPETA 4: PRIVILEGIOS REALES (28 MECÁNICAS ÚNICAS Y SIN REGALAR STATS) ====================
     {
@@ -1395,7 +1395,7 @@ const lootDB = [
    ========================================================================== */
 const dungeonDB = [
     {
-        id: "dung_alpha", title: "Ruinas de Alpha (Entrada Libre)", rank: "E", minLevel: 1, reqKey: null, isRedGate: false, biome: "default",
+        id: "dung_alpha", title: "Ruinas de Alpha", rank: "E", minLevel: 1, reqKey: null, isRedGate: false, biome: "default",
         phases: [
             { name: "Beatboxers Olvidados", desc: "Sombras que imitan ritmos básicos bloquean el paso.", durationMins: 2, autoNext: true },
             { name: "El Primer Coro", desc: "Las voces se unen. Debes resistir la resonancia sonora.", durationMins: 3, autoNext: false }
@@ -1403,7 +1403,7 @@ const dungeonDB = [
         rewards: { xp: 80, gold: 40 }
     },
     {
-        id: "dung_e_1", title: "Estación de Metro Abandonada (Hapjeong)", rank: "E", minLevel: 1, reqKey: "rankE", isRedGate: false, biome: "default", 
+        id: "dung_e_1", title: "Estación de Metro Abandonada", rank: "E", minLevel: 1, reqKey: "rankE", isRedGate: false, biome: "default", 
         phases: [
             { name: "Lobos de Acero (Manada)", durationMins: 15, autoNext: true, desc: "Despeja la entrada. Trabajo organizativo ligero." },
             { name: "Rey Lobo Lycan", durationMins: 10, autoNext: false, desc: "Jefe de la Estación. Entrega botín garantizado." }
@@ -1411,17 +1411,17 @@ const dungeonDB = [
         rewards: { xp: 130, gold: 85, drops: ["c1"] }
     },
     {
-        id: "child_birds", title: "Isla Cerdito (Entrada Libre)", rank: "E", minLevel: 2, reqKey: null, isRedGate: false, biome: "retro-mobile",
+        id: "child_birds", title: "Isla Cerdito", rank: "E", minLevel: 2, reqKey: null, isRedGate: false, biome: "retro-mobile",
         phases: [{ name: "Robo de Huevos", desc: "Estructuras inestables bloquean el paso. Derrúmbalas.", durationMins: 5, autoNext: false }],
         rewards: { xp: 55, gold: 30 }
     },
     {
-        id: "child_city", title: "Colapso Cívico (Little Big City)", rank: "E", minLevel: 4, reqKey: "rankE", isRedGate: false, biome: "retro-mobile",
+        id: "child_city", title: "Little Big City", rank: "E", minLevel: 4, reqKey: "rankE", isRedGate: false, biome: "retro-mobile",
         phases: [{ name: "Gestión de Alcaldía", desc: "La ciudad exige tu atención inmediata. Optimiza recursos.", durationMins: 10, autoNext: false }],
         rewards: { xp: 110, gold: 70 }
     },
     {
-        id: "child_farm", title: "Cosecha Podrida (Green Farm 3)", rank: "E", minLevel: 6, reqKey: "rankE", isRedGate: false, biome: "retro-mobile",
+        id: "child_farm", title: "Cosecha Green Farm 3", rank: "E", minLevel: 6, reqKey: "rankE", isRedGate: false, biome: "retro-mobile",
         phases: [{ name: "Plaga en los Cultivos", desc: "Trabajo agrícola manual bajo presión de tiempo.", durationMins: 15, autoNext: false }],
         rewards: { xp: 135, gold: 85 }
     },
@@ -1431,12 +1431,12 @@ const dungeonDB = [
         rewards: { xp: 140, gold: 90 }
     },
     {
-        id: "gta_1", title: "Territorio Ballas (Grove Street)", rank: "E", minLevel: 10, reqKey: "rankE", isRedGate: false, biome: "groove-st",
+        id: "gta_1", title: "Territorio Ballas", rank: "E", minLevel: 10, reqKey: "rankE", isRedGate: false, biome: "groove-st",
         phases: [{ name: "Drive-By Ciego", desc: "Sobrevive al tiroteo desde el coche.", durationMins: 10, autoNext: false }],
         rewards: { xp: 150, gold: 95 }
     },
     {
-        id: "botw_1", title: "Meseta de los Albores (Entrada Libre)", rank: "D", minLevel: 12, reqKey: null, isRedGate: false, biome: "shrine",
+        id: "botw_1", title: "Meseta de los Albores", rank: "D", minLevel: 12, reqKey: null, isRedGate: false, biome: "shrine",
         phases: [{ name: "Santuario de Prueba", desc: "Resuelve el acertijo ancestral con precisión.", durationMins: 20, autoNext: false }],
         rewards: { xp: 120, gold: 60 }
     },
@@ -1446,7 +1446,7 @@ const dungeonDB = [
         rewards: { xp: 185, gold: 110 }
     },
     {
-        id: "child_dragon", title: "Hábitat Inestable (Dragon Mania)", rank: "D", minLevel: 17, reqKey: "rankD", isRedGate: false, biome: "retro-mobile",
+        id: "child_dragon", title: "Hábitat Dragón", rank: "D", minLevel: 17, reqKey: "rankD", isRedGate: false, biome: "retro-mobile",
         phases: [{ name: "Furia Elemental", desc: "Los dragones de fuego se han descontrolado. Apacígualos.", durationMins: 20, autoNext: false }],
         rewards: { xp: 195, gold: 120 }
     },

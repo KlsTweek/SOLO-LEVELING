@@ -554,16 +554,16 @@ function getCartenonWireframeSVG(item) {
 
 function formatCartenonDesc(text) {
     if (!text) return "";
-    // 1. Sintagmas numéricos completos: Número/Porcentaje + (conector opcional: de, la, el, por...) + Palabra(s) completas sin cortar jamás a la mitad
-    const numPhraseRegex = /(?:[+\-x]?\d+(?:[\.,]\d+)?%?(?:\s+(?:de|del|la|el|los|las|al|en|por|para|a))?\s+[a-záéíóúñA-ZÁÉÍÓÚÑ/]+(?:\s+(?:Protector|Vital|Máximo|Máximos|Físico|Ártico|extra|adicionales))?|[+\-]?\d+(?:[\.,]\d+)?%)(?![a-záéíóúñA-ZÁÉÍÓÚÑ])/gi;
+    const numPhraseRegex = /(?<![a-záéíóúñA-ZÁÉÍÓÚÑ])(?:\d{1,2}:\d{2}\s*(?:AM|PM)|(?:Oro|EXP|XP|Daño)\s+x\d+(?:[\.,]\d+)?|[+\-]?\d+(?:[\.,]\d+)?\s*\/\s*(?:MP|HP|SP|min|m|días?|\d+)|[+\-]?\d+(?:[\.,]\d+)?%?(?:\s+(?:de\s+)?(?:HP\/SP|MP\/min|MP\/m|HP|SP|MP|G|XP|EXP|CM|STR|INT|AGI|FUE|Escudo(?:\s+(?:Ártico|Físico|Protector))?|Fatiga|Evasión|Llaves?|Rango\s+(?:SSS|SS|[EDCBAS])|minutos?|min|horas?|días?|segundos?|noches?|usos?|cargas?|misiones?|minerales?|objetos?|bloques?|niveles?))|[+\-]?\d+(?:[\.,]\d+)?(?:%|H|m|s|G)\b|x\d+(?:[\.,]\d+)?)(?![a-záéíóúñA-ZÁÉÍÓÚÑ])/gi;
 
-    // 2. Conceptos críticos / peligro (siempre respetando fronteras de palabra completas)
     const dangerRegex = /(?<![a-záéíóúñA-ZÁÉÍÓÚÑ])(Zona de Penalización|Penalización|Maldición(?:\s+de\s+[a-záéíóúñA-ZÁÉÍÓÚÑ]+)?|Cero Absoluto|Isla de Jeju|Templo de Cartenon|Cartenon|Star Stream|Abismo|Mazmorra o Medianoche|Muertes?|Castigo(?:\s+Crítico|\s+Físico)?)(?![a-záéíóúñA-ZÁÉÍÓÚÑ])/gi;
 
     return text
         .replace(numPhraseRegex, '<span class="ct-cyan-Runic">$&</span>')
         .replace(dangerRegex, '<span class="ct-red-Runic">$1</span>');
 }
+
+
 
 function buildCartenonInspectorHTML(item, count = 1) {
     ensureCartenonStyles();
@@ -2330,16 +2330,29 @@ function importData(event) {
         try {
             const parsed = JSON.parse(e.target.result);
             const cleanSoul = sanitizeImportedSoul(parsed);
-            if (cleanSoul && cleanSoul.level >= 1) {
-                if (confirm("ADVERTENCIA: Inyectar un alma sobrescribirá todo tu progreso actual. ¿Continuar?")) {
+                        if (cleanSoul && cleanSoul.level >= 1) {
+                const applySoul = () => {
                     p = cleanSoul;
                     if (typeof ensureSevenSlotEquipment === 'function') ensureSevenSlotEquipment();
                     if (typeof ensureShadowStructure === 'function') ensureShadowStructure();
                     saveData();
                     systemNotify("Alma sanitizada e inyectada. Reiniciando Sistema...", "gold");
                     setTimeout(() => { window.location.reload(); }, 1200);
+                };
+                if (typeof openSystemConfirmModal === 'function') {
+                    openSystemConfirmModal(
+                        'INYECTAR ALMA',
+                        '[ SOBRESCRITURA DE EXPEDIENTE ]',
+                        'Inyectar este respaldo sobrescribirá <b>todo tu progreso actual</b>.<br><br>¿Deseas continuar?',
+                        'INYECTAR ALMA',
+                        applySoul,
+                        'danger'
+                    );
+                } else {
+                    applySoul();
                 }
             } else {
+
                 systemNotify("Estructura de alma inválida o corrupta.", "danger");
             }
         } catch (error) {

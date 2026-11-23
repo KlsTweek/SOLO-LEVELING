@@ -178,11 +178,11 @@ const HUNTER_SKILLS_META = {
     },
     // --- HABILIDADES ACTIVAS EQUILIBRADAS ---
     sprint: {
-        id: 'sprint', type: 'active', name: 'Sprint (Quicksilver)', maxLvl: 5, mpCost: 45, cdSec: 35,
+        id: 'sprint', type: 'active', name: 'Dash', maxLvl: 5, mpCost: 45, cdSec: 35,
         desc: (lvl) => `En Mazmorra: Reduce un ${12 + (lvl * 3)}% el tiempo restante de la fase actual y da +20% Evasión por 45s. En Rutina: Adelanta ${2 + lvl} min tus misiones activas (Potenciado +2m por Botas).`
     },
     vital_strike: {
-        id: 'vital_strike', type: 'active', name: 'Tajo Vital (Mutilación)', maxLvl: 5, mpCost: 60, cdSec: 12,
+        id: 'vital_strike', type: 'active', name: 'Mutilación', maxLvl: 5, mpCost: 60, cdSec: 12,
         desc: (lvl) => `En Choque de Jefe: Estocada al punto débil que inflige x${(1.55 + (lvl * 0.15)).toFixed(2)} de daño crítico inmediato y drena +${5 + (lvl * 2)} HP. Fuera de Mazmorra: Ensancha +15% tu próximo Corte (Potenciado por Guanteletes).`
     },
     bloodlust: {
@@ -1313,11 +1313,12 @@ window.openNightVigilModal = function() {
                             <div>• <b style="color:#00e5ff;">MISIONES AL 100%:</b> Te permite sellar misiones antes de las 11:20 PM cobrando 100% EXP y Oro.</div>
                             <div>• <b style="color:#f0abfc;">SIN RESACA SI DUERMES A TIEMPO:</b> Activa el Modo Hibernación antes de las 11:20 PM para amanecer con 0 Resaca y Racha intacta.</div>
                         </div>
-                        <select id="vigil-reason-select" class="input-dark" style="margin-bottom:12px; font-size:0.86em; border-color:#c084fc;">
-                            <option value="Regreso tarde desde El Boquerón / Salida con Erika">Regreso tarde (El Boquerón / Santa Tecla / Erika)</option>
-                            <option value="Cena tardía, orden del cuarto y descanso">Cena tardía, ordenar cuarto y descanso</option>
-                            <option value="Compromiso universitario o jornada extendida">Compromiso universitario / laboral nocturno</option>
-                        </select>
+                                                <input type="hidden" id="vigil-reason-select" value="Regreso tarde desde El Boquerón / Salida con Erika">
+                        <div class="sl-holo-select-trigger" id="vigil-reason-trigger" style="margin-bottom:12px; border-color:#c084fc;" onclick="openVigilReasonPicker()">
+                            <span id="vigil-reason-label">Regreso tarde (El Boquerón / Santa Tecla / Erika)</span>
+                            <span style="color:#c084fc;">▾</span>
+                        </div>
+
                         <div style="display:flex; gap:8px;">
                             <button class="btn btn-blue" style="flex:1;" onclick=\"const _v=document.getElementById('sl-vigil-pass-overlay'); if(_v){ _v.querySelector('.sl-holo-frame')?.classList.add('holo-closing'); setTimeout(()=>_v.remove(), 220); }\">CANCELAR</button>
                             <button class="btn btn-purple" style="flex:1.5;" onclick="confirmActivateNightVigil()">ACTIVAR HASTA 11:20 PM</button>
@@ -1334,6 +1335,22 @@ window.openNightVigilModal = function() {
     }
     ov.style.display = 'flex';
 };
+
+window.openVigilReasonPicker = function() {
+    const opts = [
+        { value: 'Regreso tarde desde El Boquerón / Salida con Erika', label: 'Regreso tarde (El Boquerón / Santa Tecla / Erika)' },
+        { value: 'Cena tardía, orden del cuarto y descanso', label: 'Cena tardía, ordenar cuarto y descanso' },
+        { value: 'Compromiso universitario o jornada extendida', label: 'Compromiso universitario / laboral nocturno' }
+    ];
+    let cur = document.getElementById('vigil-reason-select')?.value || opts[0].value;
+    openSystemPickerModal('MOTIVO DE VIGILIA', '[ SELECCIONA JUSTIFICACIÓN ]', opts, cur, (val, lbl) => {
+        let inp = document.getElementById('vigil-reason-select');
+        let txt = document.getElementById('vigil-reason-label');
+        if (inp) inp.value = val;
+        if (txt) txt.textContent = lbl;
+    }, 'monarch-purple');
+};
+
 
 window.confirmActivateNightVigil = function() {
     ensureNightVigilQuota();
@@ -1405,13 +1422,21 @@ function activateNightSleepMode() {
     systemNotify("MODO HIBERNACIÓN ACTIVADO: Signos vitales congelados hasta las 4:30 AM" + debtWarning, "purple");
 }
 
-function wakeUpFromSleepMode() {
+function wakeUpFromSleepMode(confirmed = false) {
     if (!p) return;
     let now = new Date();
     let h = now.getHours();
     let curMinWake = h * 60 + now.getMinutes();
-    if (curMinWake < 270 || curMinWake >= 1200) {
-        if (!confirm("ADVERTENCIA: Aún es horario nocturno. Si rompes tu Modo Hibernación ahora, perderás la protección nocturna y comenzará el desangrado continuo. ¿Despertar de todos modos?")) {
+    if (!confirmed && (curMinWake < 270 || curMinWake >= 1200)) {
+        if (typeof openSystemConfirmModal === 'function') {
+            openSystemConfirmModal(
+                'ADVERTENCIA',
+                '[ PROTOCOLO NOCTURNO ACTIVO ]',
+                'Aún es horario nocturno. Si rompes tu <b>Modo Hibernación</b> ahora, perderás la protección y comenzará el desangrado continuo.<br><br>¿Despertar de todos modos?',
+                'DESPERTAR',
+                () => wakeUpFromSleepMode(true),
+                'danger'
+            );
             return;
         }
     }
@@ -1425,6 +1450,7 @@ function wakeUpFromSleepMode() {
     if (typeof renderStatusRadarProfile === "function") renderStatusRadarProfile();
     systemNotify("Has salido del Modo Hibernación.", "info");
 }
+
 
 function triggerSleepCheatPenalty(bioDayStr) {
     p.sleepingUntilMorning = null;
@@ -2716,56 +2742,102 @@ function _evalArcCalendarHook() {
         systemNotify("🌟 Anomalía Temporal del Calendario: El Sistema te otorga 30 min de bendición prismática.", "gold");
     }
 }
+const ACHIEVEMENT_ONLY_TITLE_IDS = ['title_min_byung_gyu', 'title_fallen_souls', 'title_legion'];
+window.ACHIEVEMENT_ONLY_TITLE_IDS = ACHIEVEMENT_ONLY_TITLE_IDS;
+
 const PASSIVE_TITLES_DB = [
     {
-        id: "t_adversity",
-        name: "🔥 El que Vence a la Adversidad",
-        req: () => p.level >= 2 && ((p.history && p.history.deaths >= 1) || p.hp <= 30 || (p.totalMissions || 0) >= 3),
-        desc: "[TÍTULO INICIAL DEL MANHWA - NIV. 2]: Otorgado a quienes sobreviven al borde de la muerte en la Mazmorra Doble. Tus estadísticas aumentan proporcionalmente cuando tu vida baja y mitiga un 20% la resaca por desvelo."
+        id: "t_weakest",
+        name: "El Más Débil de la Humanidad",
+        req: () => (p.level || 1) >= 1 && (p.totalMissions || 0) >= 1,
+        desc: "[EP. 1 — RANGO E]: El punto de partida antes del Segundo Despertar. Quien conoció el fondo no teme volver a caer."
+    },
+    {
+        id: "t_cartenon_survivor",
+        name: "Sobreviviente de Cartenon",
+        req: () => (p.level || 1) >= 5 && (p.totalMissions || 0) >= 5,
+        desc: "[EP. 2 — MAZMORRA DOBLE]: Descifraste los tres mandamientos del altar y sobreviviste a la prueba del Arquitecto."
     },
     {
         id: "t_wolf_slayer",
-        name: "🐺 Asesino de Lobos",
-        req: () => p.level >= 15 && (p.totalMissions || 0) >= 15,
-        desc: "[CALABOZO DE HAPJEONG - NIV. 15]: Título obtenido por masacrar bestias Lycan de Colmillos de Acero. Otorga +40% de eficiencia de enfoque y +5% de EXP en incursiones y sesiones de estudio."
+        name: "Asesino de Lobos",
+        req: () => (p.level || 1) >= 10 && (p.totalMissions || 0) >= 10,
+        desc: "[TÍTULO DEL SISTEMA — EP. 4, HAPJEONG]: Masacraste a los Lycans de Colmillos de Acero en tu primer calabozo instanciado. (+40% eficiencia de enfoque en Focus y +5% EXP en incursiones)."
+    },
+    {
+        id: "t_kasaka_bane",
+        name: "Colmillo de Kasaka",
+        req: () => (p.level || 1) >= 18 && (p.totalMissions || 0) >= 18,
+        desc: "[EP. 4 — PANTANO VENENOSO]: Asfixiaste a la Serpiente Azul Venenosa Kasaka con tus propias manos, forjando resistencia ante las toxinas."
+    },
+    {
+        id: "t_silent_hunter",
+        name: "Cazador del Silencio",
+        req: () => (p.level || 1) >= 28 && (p.totalMissions || 0) >= 28,
+        desc: "[EP. 9 — INCIDENTE DE LA ASOCIACIÓN]: Superaste a Kang Taeshik en las sombras del calabozo sin titubear."
     },
     {
         id: "t_job_breaker",
-        name: "🗡️ Conquistador del Cambio de Clase",
-        req: () => p.level >= 40,
-        desc: "[MISIÓN DE CAMBIO DE CLASE - NIV. 40]: Superaste al Comandante Rojo Sangriento Igris y a las hordas de nigromantes. Desbloquea la clase oculta del Sistema y reduce un 20% el costo de SP en Ruta Los Chorros."
+        name: "Conquistador del Cambio de Clase",
+        req: () => (p.level || 1) >= 40 && !!(p.igrisExtractedCanon || (p.shadowArmy && p.shadowArmy.igris && p.shadowArmy.igris.unlocked)),
+        desc: "[EP. 12 — CAMBIO DE CLASE]: Derrotaste al Comandante Rojo Sangriento Igris y extrajiste tu primera sombra de élite. (-20% Fatiga en Ruta Los Chorros)."
+    },
+    {
+        id: "t_adversity",
+        name: "El que Vence a la Adversidad",
+        req: () => (p.level || 1) >= 41 && !!(p.igrisExtractedCanon || (p.shadowArmy && p.shadowArmy.igris && p.shadowArmy.igris.unlocked)),
+        desc: "[TÍTULO DEL SISTEMA — EP. 12, CAMBIO DE CLASE]: Resististe el asedio infinito de los caballeros al borde del colapso. (Aumenta tu poder al bajar tu HP y mitiga un 20% la resaca por desvelo)."
+    },
+    {
+        id: "t_red_gate",
+        name: "Sobreviviente del Portal Rojo",
+        req: () => (p.level || 1) >= 50 && !!((p.shadowArmy && p.shadowArmy.tank && p.shadowArmy.tank.unlocked) || (Array.isArray(p.clearedDungeons) && p.clearedDungeons.includes('dung_red_ice')) || (p.level || 1) >= 52),
+        desc: "[T2 EP. 2 — BOSQUE DE HIELO]: Escapaste vivo de una grieta sellada tras derrotar a los Osos de Hielo y a Baruka."
+    },
+    {
+        id: "t_s_rank_tenth",
+        name: "10.º Cazador Rango S",
+        req: () => (p.level || 1) >= 65,
+        desc: "[T2 EP. 4 — REEVALUACIÓN OFICIAL]: El medidor de maná de la Asociación de Cazadores marcó error ante tu energía inconmensurable."
+    },
+    {
+        id: "t_high_orc_bane",
+        name: "Soberano de la Llama Carmesí",
+        req: () => (p.level || 1) >= 75 && !!((p.shadowArmy && p.shadowArmy.tusk && p.shadowArmy.tusk.unlocked) || (p.level || 1) >= 78),
+        desc: "[T2 EP. 6 — GREMIO DE CAZADORES]: Dominaste la incursión de los Altos Orcos y doblegaste al Gran Chamán Kargalgan."
     },
     {
         id: "t_demon_hunter",
-        name: "⚡ Cazador de Demonios",
-        req: () => p.level >= 97,
-        desc: "[CASTILLO DEMONÍACO PISO 100 - NIV. 97]: Aniquilaste al Monarca de las Llamas Blancas, Baran, y completaste el Elixir del Agua de la Vida. Incrementa tu regeneración celular (+5 HP cada mañana) y potencia todas tus estadísticas."
+        name: "Cazador de Demonios",
+        req: () => (p.level || 1) >= 97,
+        desc: "[TÍTULO DEL SISTEMA — CASTILLO DEMONÍACO PISO 100]: Aniquilaste al Monarca de las Llamas Blancas, Baran, y completaste el Elixir del Agua de la Vida. (+5 HP de regeneración matutina)."
     },
     {
         id: "t_jeju_savior",
-        name: "🐜 Verdugo de la Isla de Jeju",
-        req: () => p.level >= 100 && p.jejuCleared,
-        desc: "[4TA INCURSIÓN DE JEJU - NIV. 100]: Alcanzaste el Nivel 100 tras aplastar al Rey Hormiga en vivo ante todo el mundo. Probabilidad de Extracción ¡SURGE! aumentada en +10%."
+        name: "Verdugo de la Isla de Jeju",
+        req: () => (p.level || 1) >= 100 && !!p.jejuCleared,
+        desc: "[4.ª INCURSIÓN DE JEJU — NIV. 100]: Aplastaste al Rey Hormiga en directo ante todo el mundo. (+10% probabilidad de Extracción ¡SURGE!)."
     },
     {
         id: "t_architect_slayer",
-        name: "🖤 Sucesor del Corazón Negro",
-        req: () => p.level >= 103,
-        desc: "[REGRESO AL TEMPLO DE CARTENON - NIV. 103]: Derrotaste a Kandiaru, el Arquitecto del Sistema, tras rechazar ser un simple cascarón. Tu núcleo de Maná se expande masivamente."
+        name: "Sucesor del Corazón Negro",
+        req: () => (p.level || 1) >= 103,
+        desc: "[REGRESO AL TEMPLO DE CARTENON — NIV. 103]: Derrotaste a Kandiaru, el Arquitecto del Sistema, tras rechazar ser un simple receptáculo."
     },
     {
         id: "t_national_level",
-        name: "🌟 Cazador de Nivel Nacional",
-        req: () => p.level >= 122 && p.sRankCleared,
-        desc: "[CRISIS DE LOS GIGANTES Y CONFERENCIA INTERNACIONAL - NIV. 122]: Sellaste el Portal Rango S de Legia tú solo y doblegaste a Thomas Andre. Tu autoridad supera a la de cualquier nación."
+        name: "Cazador de Nivel Nacional",
+        req: () => (p.level || 1) >= 122 && !!p.sRankCleared,
+        desc: "[CRISIS DE LOS GIGANTES — NIV. 122]: Sellaste el Portal Rango S de Legia en solitario y doblegaste a Thomas Andre. Tu autoridad supera a cualquier nación."
     },
     {
         id: "t_true_monarch",
-        name: "👑 Verdadero Monarca de las Sombras",
-        req: () => p.level >= 146,
-        desc: "[DESPERTAR DE ASHBORN - NIV. 146]: «Yo soy el registro de tu amarga lucha». El Sistema ha eliminado todas sus restricciones; tú y el Rey de los Muertos son uno solo."
+        name: "Verdadero Monarca de las Sombras",
+        req: () => (p.level || 1) >= 146,
+        desc: "[DESPERTAR DE ASHBORN — NIV. 146]: «Yo soy el registro de tu amarga lucha». El Sistema ha eliminado todas sus restricciones; tú y el Rey de los Muertos son uno solo."
     }
 ];
+window.PASSIVE_TITLES_DB = PASSIVE_TITLES_DB;
 
 function getHunterJobTitleByState() {
     if (!p) return "NINGUNA";
@@ -2780,7 +2852,22 @@ function checkPassiveTitlesUnlock() {
     if (!p) return;
     if (!Array.isArray(p.titles)) p.titles = [];
 
-    // 1. Verificar Cambio de Clase según los niveles exactos del Manhwa (Niv 40 -> Nigromante -> Niv 51 Monarca de las Sombras)
+    // Normalizar logros de alma guardados previamente para que nunca pisen el Título principal
+    let dirtyNorm = false;
+    p.titles.forEach(t => {
+        if (!t) return;
+        if (t.id === 'title_min_byung_gyu' && (t.name !== 'Misericordia del Monarca' || !t.isAchievementOnly)) {
+            t.name = 'Misericordia del Monarca';
+            t.isAchievementOnly = true;
+            dirtyNorm = true;
+        } else if (ACHIEVEMENT_ONLY_TITLE_IDS.includes(t.id) && !t.isAchievementOnly) {
+            t.isAchievementOnly = true;
+            dirtyNorm = true;
+        }
+    });
+    if (dirtyNorm) saveData();
+
+    // 1. Verificar Cambio de Clase
     let currentJob = getHunterJobTitleByState();
     if (!p.lastRecordedJob) p.lastRecordedJob = currentJob;
     if (p.lastRecordedJob !== currentJob && currentJob !== "NINGUNA") {
@@ -2792,16 +2879,18 @@ function checkPassiveTitlesUnlock() {
         }
     }
 
-    // 2. Verificar Títulos Oficiales del Manhwa
+    // 2. Verificar Títulos Oficiales de Progresión
+    let realTitlesNow = p.titles.filter(x => x && !x.isAchievementOnly && !ACHIEVEMENT_ONLY_TITLE_IDS.includes(x.id));
+    let prevTitle = realTitlesNow.length > 0
+        ? realTitlesNow[realTitlesNow.length - 1].name.replace(/^[^\wÁÉÍÓÚÑáéíóúñ¡!«"']+\s*/, '')
+        : "NINGUNO";
+
     let unlockedQueue = [];
     PASSIVE_TITLES_DB.forEach(t => {
         if (!p.titles.some(x => x.id === t.id) && t.req()) {
-            let prevTitle = p.titles.length > 0
-                ? p.titles[p.titles.length - 1].name.replace(/^[^\s]+\s/, '')
-                : "SIN TÍTULO";
-            let cleanNew = t.name.replace(/^[^\s]+\s/, '');
             p.titles.push({ id: t.id, name: t.name, desc: t.desc });
-            unlockedQueue.push({ oldName: prevTitle, newName: cleanNew });
+            unlockedQueue.push({ oldName: prevTitle, newName: t.name });
+            prevTitle = t.name;
         }
     });
 
@@ -2813,10 +2902,12 @@ function checkPassiveTitlesUnlock() {
                 playJobChangeCinematic("TÍTULO ADQUIRIDO", lastUnlock.oldName, lastUnlock.newName);
             }, 350);
         } else if (typeof systemNotify === "function") {
-            systemNotify(`🏆 Título del Sistema adquirido: [${lastUnlock.newName}]`, "gold");
+            systemNotify(`Título del Sistema adquirido: [${lastUnlock.newName}]`, "gold");
         }
     }
 }
+
+
 function _evalArcHudHook() {
     if (!p || !p.equipment) return;
     if (!Array.isArray(p.discoveredArcs)) p.discoveredArcs = [];
