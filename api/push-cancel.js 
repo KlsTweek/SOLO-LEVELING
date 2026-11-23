@@ -1,0 +1,18 @@
+module.exports = async (req, res) => {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  const { messageIds } = req.body || {};
+  const qstashToken = process.env.QSTASH_TOKEN;
+  if (!qstashToken || !Array.isArray(messageIds) || messageIds.length === 0) {
+    return res.status(200).json({ ok: true, skipped: true });
+  }
+
+  await Promise.allSettled(
+    messageIds.map((id) =>
+      fetch(`https://qstash.upstash.io/v2/messages/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${qstashToken}` }
+      })
+    )
+  );
+  return res.status(200).json({ ok: true });
+};
