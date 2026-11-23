@@ -268,7 +268,7 @@ const IGRIS_SVG = `
 <g class="svg-summon-ring">
 <ellipse cx="110" cy="202" rx="76" ry="12" fill="none" stroke="#00d2ff" stroke-width="2" stroke-dasharray="10 5"/>
 </g>
-<g transform="translate(25.75 12.20) scale(0.105)">
+<g transform="translate(35 12) scale(0.101)">
 <g class="svg-torso-solid ig-gpu-rim">
 <g transform="translate(-150 420) scale(0.81 0.78) translate(-127 -100)">
 <g class="ig-cape svg-shadow-flame-1">

@@ -54,7 +54,7 @@ const TUSK_SVG = `
 </radialGradient>
 </defs>
 <g class="svg-summon-ring"><ellipse cx="110" cy="202" rx="76" ry="12" fill="none" stroke="#00d2ff" stroke-width="2" stroke-dasharray="10 5"/></g>
-<g data-global class="tu-gpu-rim" transform="translate(110 101) scale(0.09904) translate(-780 -962)">
+<g data-global class="tu-gpu-rim" transform="translate(110 110) scale(0.098) translate(-735 -962)">
 <g class="tu-float">
 <g class="svg-torso-solid">
 <g>

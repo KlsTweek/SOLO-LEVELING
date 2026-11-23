@@ -48,7 +48,7 @@ const BERU_SVG = `
 <clipPath id="ber-clipLegR"><rect x="716" y="647.7777709960938" width="2000" height="2200"/></clipPath>
 </defs>
 <g class="svg-summon-ring"><ellipse cx="110" cy="202" rx="76" ry="12" fill="none" stroke="#00d2ff" stroke-width="2" stroke-dasharray="10 5"/></g>
-<g data-global class="be-gpu-rim" transform="translate(110 101) scale(0.10220) translate(-681.5 -985.0)">
+<g data-global class="be-gpu-rim" transform="translate(110 114) scale(0.100) translate(-716 -985)">
 <g class="be-float">
 <g transform="translate(637.0 695.6)">
 <g class="be-wingL">

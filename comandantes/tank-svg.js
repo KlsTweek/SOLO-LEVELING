@@ -37,7 +37,7 @@ const TANK_SVG = `
 @keyframes tkSummon { 0% { opacity: 0; transform: translateY(10px); } 100% { opacity: 1; transform: translateY(0); } }
 </style>
 <g class="svg-summon-ring"><ellipse cx="110" cy="202" rx="76" ry="12" fill="none" stroke="#00d2ff" stroke-width="2" stroke-dasharray="10 5"/></g>
-<g class="tk-gpu-rim" transform="translate(19.06 -2.15) scale(0.097)">
+<g class="tk-gpu-rim" transform="translate(14 11) scale(0.095)">
 <g class="svg-torso-solid">
 <path fill="#121726" d="M1023 100c6 2 15 9 15 16h2q1-17-2-32c16 4 17 23 29 32q1-9 7-19l7-7 3 1c5 5 0 24 1 30q2 6 6 10 5 6 12 8 1-11
      7-21l2 2 4 19q7 12 9 25h2c4-2 20-25 22-30h2c5 9-1 24-6 33l-4 8c-3 8 1 8-5 17 9 1 15 8 22 8 10 1 19-7 29-8q17

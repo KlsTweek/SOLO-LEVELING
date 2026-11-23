@@ -7,7 +7,9 @@ const MIN_SVG = `
 .ig * { transform-box: view-box; }
 .ig .mi-armL, .ig .mi-armR { transform-origin: 0 0; animation: none; }
 .ig .svg-torso-solid { transform-origin: 622px 900px; }
+.ig .mi-armL, .ig .mi-armR, .ig .mi-float, .ig .svg-torso-solid { will-change: transform; }
 .ig .mi-float { animation: none; }
+.ig .mi-gpu-rim { filter: drop-shadow(0 0 2px #38bdf8); }
 
 .ig.ig-idle .svg-torso-solid { animation: miBreath 3.2s ease-in-out infinite alternate; }
 @keyframes miBreath { 0% { transform: scale(1); } 100% { transform: scale(1.01); } }
@@ -41,9 +43,8 @@ const MIN_SVG = `
 <feComposite in2="b" operator="in" result="glow"/>
 <feMerge><feMergeNode in="glow"/><feMergeNode in="SourceGraphic"/></feMerge>
 </filter>
-</defs>
 <g class="svg-summon-ring"><ellipse cx="110" cy="202" rx="76" ry="12" fill="none" stroke="#00d2ff" stroke-width="2" stroke-dasharray="10 5"/></g>
-<g data-global transform="translate(110 101) scale(0.09968) translate(-622.0 -956.0)" filter="url(#mir-rim)">
+<g data-global class="mi-gpu-rim" transform="translate(110 109) scale(0.098) translate(-695 -956)">
 <g class="mi-float">
 <g class="svg-torso-solid">
 <g>
