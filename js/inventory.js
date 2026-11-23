@@ -921,10 +921,13 @@ function renderInventory() {
         return;
     }
 
+        if (!window._bagIconCache) window._bagIconCache = {};
     let html = bagToolbar + `<div class="minecraft-grid">` + ownedKeySlotsHtml;
     grouped.forEach(g => {
         let item = g.item;
-        let icon = getIconFor(item);
+        let cacheK = item.id || item.title;
+        if (!window._bagIconCache[cacheK]) window._bagIconCache[cacheK] = getIconFor(item);
+        let icon = window._bagIconCache[cacheK];
         let subLabel = item.sellGold ? `${item.sellGold}G` : (item.rank || 'A');
         let stackBadge = g.count > 1 ? `<span class="slot-stack-badge">x${g.count}</span>` : '';
         html += `
@@ -1660,8 +1663,8 @@ let now = Date.now(); let currentDayStr = (typeof getBiologicalDayStr === 'funct
     } else if (item.id === "c_magma_heart") {
         p.hp = Math.floor(maxHP * 1.4);
         p.magmaOverheal = true;
-        p.arcticShield = Math.min(800, (p.arcticShield || 0) + 85);
-        systemNotify(`Corazón de Magma: ¡SOBRECARGA VITAL AL 140% (${p.hp}/${maxHP} HP) y +85 Escudo!`, "gold");
+        let sh = (typeof grantHunterShield === 'function') ? grantHunterShield(85) : { overflow: 0, msg: '' };
+        systemNotify(`Corazón de Magma: ¡SOBRECARGA VITAL AL 140% (${p.hp}/${maxHP} HP)! ${sh.overflow > 0 ? sh.msg : '+85 Escudo.'}`, "gold");
     } else if (item.id === "c_zero_serum") {
         p.cryoBuffUntil = now + (6 * 3600000);
         systemNotify("Suero de Cero Absoluto: Todo daño recibido se reduce al 50% durante 6 Horas.", "info");
@@ -1998,13 +2001,14 @@ let now = Date.now(); let currentDayStr = (typeof getBiologicalDayStr === 'funct
         systemNotify("🔥 ¡HIMNO DEL DRAGÓN DE FUEGO! Tiempo de fase reducido a la mitad.", "gold");
     } else if (item.id === "p_tank_shield") {
         if (typeof ensureShadowStructure === "function") ensureShadowStructure();
-        p.arcticShield = (p.arcticShield || 0) + 75;
+        let sh = (typeof grantHunterShield === 'function') ? grantHunterShield(75) : { overflow: 0, msg: '' };
+        let shTxt = sh.overflow > 0 ? sh.msg : '+75 Escudo Ártico.';
         if (p.shadowArmy.tank && p.shadowArmy.tank.unlocked) {
             p.shadowArmy.tank.usesLeft = Math.min(2, (p.shadowArmy.tank.usesLeft || 0) + 1);
             p.shadowArmy.tank.cooldownUntil = null;
-            systemNotify(`🐻‍❄️ Rugido de Tank: +75 Escudo Ártico y +1 noche de guardia restaurada (${p.shadowArmy.tank.usesLeft}/2).`, "purple");
+            systemNotify(`Rugido de Tank: ${shTxt} +1 noche de guardia restaurada (${p.shadowArmy.tank.usesLeft}/2).`, "purple");
         } else {
-            systemNotify("🐻‍❄️ Rugido Blindado: +75 de Escudo Ártico activado.", "info");
+            systemNotify(`Rugido Blindado: ${shTxt}`, "info");
         }
     } else if (item.id === "p7") {
         let mList = typeof getTodayMissions === 'function' ? getTodayMissions() : [];
@@ -2384,10 +2388,10 @@ function equipItem(idx) {
         p.shadowArmy.tusk.unlocked = true;
     }
 
-    let newMaxHP = calculateHunterMaxHP();
-    if (!p.magmaOverheal && p.hp > newMaxHP) {
-        p.hp = newMaxHP;
-    }
+        let newMaxHP = calculateHunterMaxHP();
+    let newMaxMP = p.stats ? Math.floor(1000 + ((p.stats.int - 1) * 1000)) : 1000;
+    if (!p.magmaOverheal && p.hp > newMaxHP) p.hp = newMaxHP;
+    if ((p.mp || 0) > newMaxMP) p.mp = newMaxMP;
 
     window._lastEquipHash = null;
     saveData();
@@ -2411,12 +2415,13 @@ function unequipItem(slotType) {
     p.inventory.push(item);
     p.equipment[slotType] = null;
 
-    let newMaxHP = calculateHunterMaxHP();
-    if (!p.magmaOverheal && p.hp > newMaxHP) {
-        p.hp = newMaxHP;
-    }
-    
+        let newMaxHP = calculateHunterMaxHP();
+    let newMaxMP = p.stats ? Math.floor(1000 + ((p.stats.int - 1) * 1000)) : 1000;
+    if (!p.magmaOverheal && p.hp > newMaxHP) p.hp = newMaxHP;
+    if ((p.mp || 0) > newMaxMP) p.mp = newMaxMP;
+
     window._lastEquipHash = null;
+
     saveData();
     updateEquipmentUI();
     renderInventory();
@@ -2570,11 +2575,13 @@ function updateEquipmentUI() {
                 </div>
             </div>
 
-            ${(activeRelicLines || setsHtml) ? `
-            <div style="border-top:1px solid rgba(147,197,253,0.25); margin-top:8px; padding-top:8px; font-size:0.75em; color:#94a3b8; line-height:1.4; position:relative; z-index:2;">
-                ${activeRelicLines}
-                ${setsHtml}
-            </div>` : ''}
+                  ${setsHtml ? `<div style="position:relative; z-index:2; margin-top:6px;">${setsHtml}</div>` : ''}
+            ${activeRelicLines ? `
+            <div class="sl-equip-effects-toggle" onclick="const d=document.getElementById('sl-equip-effects-drawer'); if(d){ d.classList.toggle('open'); this.querySelector('span:last-child').textContent = d.classList.contains('open') ? '▴' : '▾'; }">
+                <span>EFECTOS DE RELIQUIAS EQUIPADAS (${SEVEN_EQUIP_SLOTS.filter(s => eq[s]).length})</span>
+                <span>▾</span>
+            </div>
+            <div id="sl-equip-effects-drawer" class="sl-equip-effects-drawer">${activeRelicLines}</div>` : ''}
         </div>
         <div class="sl-mech-rail bottom"></div>
     `;

@@ -103,8 +103,7 @@ function _d64(str) {
    1. MOTOR DE VENTANA HOLOGRÁFICA ÚNICA (SIN SATURACIÓN Y 100% ESPAÑOL)
    ========================================================================== */
 let activeToastTimer = null;
-let activeToastMessages = [];
-let currentToastSeverity = 0; // 1 = Azul Normal, 2 = Rojo Peligro, 3 = Morado Supremo
+let _toastStackItems = [];
 
 const _EMO_SRC = '(?:[\\u{1F000}-\\u{1FAFF}]|[\\u2600-\\u26FF]|[\\u2700-\\u27BF]|[\\u2B00-\\u2BFF]|[\\u2300-\\u23FF]|[\\u25A0-\\u25FF]|[\\u2190-\\u21FF]|[\\u3030\\u303D\\u3297\\u3299])(?:[\\uFE0E\\uFE0F]|[\\u{1F3FB}-\\u{1F3FF}]|\\u200D(?:[\\u{1F000}-\\u{1FAFF}]|[\\u2600-\\u27BF\\u2B50])[\\uFE0E\\uFE0F]?)*';
 const _EMO_RE = new RegExp(_EMO_SRC + '\\s*', 'gu');
@@ -174,6 +173,15 @@ function isMajorMonarchNotification(msg, type) {
     return upper.includes("CAMBIO DE CLASE") || upper.includes("CORAZÓN NEGRO") || upper.includes("SOBERANO DE LOS MUERTOS") || upper.includes("CAJA NEGRA DESCIFRADA") || upper.includes("ISLA DE JEJU") || upper.includes("PORTAL ROJO") || upper.includes("LOGRO OCULTO");
 }
 
+function _syncToastStackDepth() {
+    for (let i = 0; i < _toastStackItems.length; i++) {
+        let el = _toastStackItems[i].el;
+        if (!el) continue;
+        el.classList.remove('toast-stack-0', 'toast-stack-1', 'toast-stack-2');
+        el.classList.add('toast-stack-' + Math.min(2, i));
+    }
+}
+
 function dismissActiveHoloToast() {
     if (activeToastTimer) {
         clearTimeout(activeToastTimer);
@@ -181,17 +189,25 @@ function dismissActiveHoloToast() {
     }
     const tc = document.getElementById('toast-container');
     if (!tc) return;
-    const frame = tc.querySelector('.sl-holo-frame');
-    if (frame && !frame.classList.contains('holo-closing')) {
-        frame.classList.add('holo-closing');
-        setTimeout(() => {
-            if (frame && frame.parentNode) frame.remove();
-        }, 250);
-    } else {
-        tc.innerHTML = '';
-    }
-    activeToastMessages = [];
-    currentToastSeverity = 0;
+
+    const toClose = [..._toastStackItems];
+    _toastStackItems = [];
+
+    toClose.forEach((entry, idx) => {
+        const frame = entry.el;
+        if (!frame) return;
+        if (idx === 0 && !frame.classList.contains('holo-closing')) {
+            const glass = frame.querySelector('.sl-holo-glass');
+            if (glass && glass.offsetHeight > 0) {
+                frame.style.setProperty('--shutter-y', Math.round(glass.offsetHeight / 2) + 'px');
+            }
+            frame.classList.add('holo-closing');
+            setTimeout(() => { if (frame && frame.parentNode) frame.remove(); }, 230);
+        } else {
+            frame.style.opacity = '0';
+            setTimeout(() => { if (frame && frame.parentNode) frame.remove(); }, 180);
+        }
+    });
 }
 
 function systemNotify(msg, type = "info") {
@@ -206,22 +222,37 @@ function systemNotify(msg, type = "info") {
     const tc = document.getElementById('toast-container');
     if (!tc) return;
 
-let newSeverity = isMajorMonarchNotification(msg, type) ? 3 : (type === "danger" ? 2 : 1);
-    let existingFrame = tc.querySelector('.sl-holo-frame:not(.holo-closing)');
-    let isConsecutiveNotif = !!existingFrame;
+    let newSeverity = isMajorMonarchNotification(msg, type) ? 3 : (type === "danger" ? 2 : 1);
+    let cleanRaw = stripAllSystemEmojis(msg || "").trim();
+    let frontEntry = _toastStackItems[0] || null;
+    let isConsecutiveNotif = !!frontEntry;
+    let isSameAsFront = frontEntry && frontEntry.lastMsg === cleanRaw;
 
-    if (!existingFrame) {
-        tc.innerHTML = '';
-        activeToastMessages = [msg];
-        currentToastSeverity = newSeverity;
-
-        let themeClass = currentToastSeverity === 3 ? "monarch-purple" : (currentToastSeverity === 2 ? "danger" : "");
-        let headerTitle = currentToastSeverity === 3 ? "SISTEMA DEL MONARCA" : (currentToastSeverity === 2 ? "ALERTA DE SISTEMA" : "NOTIFICACIÓN");
-        let subBracket = currentToastSeverity === 3 ? "[ DIRECTIVA DEL ABISMO ]" : (currentToastSeverity === 2 ? "[ ADVERTENCIA CRÍTICA ]" : "[ MENSAJE DEL SISTEMA ]");
+    // Si es exactamente el mismo mensaje repetido rápido, apila contador/línea en la tarjeta frontal sin recrear rieles
+    if (isSameAsFront && frontEntry.el && frontEntry.el.isConnected) {
+        frontEntry.repeatCount = (frontEntry.repeatCount || 1) + 1;
+        let listEl = frontEntry.el.querySelector('.sl-holo-msg-list');
+        if (listEl) {
+            if (frontEntry.repeatCount <= 3) {
+                listEl.insertAdjacentHTML('beforeend', `<div class="sl-holo-msg-item">${highlightAnimeKeywords(msg)}</div>`);
+            } else {
+                let lastLine = listEl.lastElementChild;
+                if (lastLine) lastLine.innerHTML = `${highlightAnimeKeywords(msg)} <span style="color:#7dd3fc;">(x${frontEntry.repeatCount})</span>`;
+            }
+        }
+        frontEntry.el.classList.remove('holo-pulse-update');
+        void frontEntry.el.offsetWidth;
+        frontEntry.el.classList.add('holo-pulse-update');
+    } else {
+        // Nueva ventana holográfica que se apila en 3D delante de las anteriores (como el anime)
+        let themeClass = newSeverity === 3 ? "monarch-purple" : (newSeverity === 2 ? "danger" : "");
+        let headerTitle = newSeverity === 3 ? "SISTEMA DEL MONARCA" : (newSeverity === 2 ? "ALERTA DE SISTEMA" : "NOTIFICACIÓN");
+        let subBracket = newSeverity === 3 ? "[ DIRECTIVA DEL ABISMO ]" : (newSeverity === 2 ? "[ ADVERTENCIA CRÍTICA ]" : "");
         let cornerSVG = getBaroqueCornerSVG();
 
-const frame = document.createElement('div');
-        frame.className = `sl-holo-frame ${themeClass}`.trim();
+        const frame = document.createElement('div');
+        frame.className = `sl-holo-frame toast-stack-0 ${themeClass}`.trim();
+
         let toastStartY = null;
         frame.addEventListener('pointerdown', (e) => { toastStartY = e.clientY; }, { passive: true });
         frame.addEventListener('pointermove', (e) => {
@@ -235,71 +266,48 @@ const frame = document.createElement('div');
             dismissActiveHoloToast();
         };
 
-        frame.innerHTML = `
-            <div class="sl-holo-rail top">
-                <span class="rail-cap left"></span><span class="rail-core"></span><span class="rail-cap right"></span>
-            </div>
+                        frame.innerHTML = `
+            <div class="sl-holo-rail top"><span class="rail-core"></span></div>
             <div class="sl-holo-glass">
                 <div class="sl-holo-inner-box">
                     <span class="sl-baroque-corner tl">${cornerSVG}</span>
                     <span class="sl-baroque-corner tr">${cornerSVG}</span>
                     <span class="sl-baroque-corner bl">${cornerSVG}</span>
                     <span class="sl-baroque-corner br">${cornerSVG}</span>
-                    <span class="sl-manhwa-controls">_ □ X</span>
-                    <div class="sl-holo-header-row">
-                        <div class="sl-excl-square">!</div>
-                        <div class="sl-title-rect" id="sl-holo-title-txt">${headerTitle}</div>
+                    <div>
+                        <div class="sl-holo-header-row">
+                            <div class="sl-excl-square"><span class="sl-excl-circle-inner">!</span></div>
+                            <div class="sl-title-rect">${headerTitle}</div>
+                        </div>
+                        ${subBracket ? `<div class="sl-holo-subbracket">${subBracket}</div>` : ''}
                     </div>
-                    <div class="sl-holo-subbracket" id="sl-holo-sub-txt">${subBracket}</div>
-                    <div class="sl-holo-msg-list" id="sl-holo-msg-list">
+                    <div class="sl-holo-msg-list">
                         <div class="sl-holo-msg-item">${highlightAnimeKeywords(msg)}</div>
                     </div>
                     <div class="sl-holo-footer-hint">[ TOCA PARA CERRAR ]</div>
                 </div>
             </div>
-            <div class="sl-holo-rail bottom">
-                <span class="rail-cap left"></span><span class="rail-core"></span><span class="rail-cap right"></span>
-            </div>
+            <div class="sl-holo-rail bottom"><span class="rail-core"></span></div>
         `;
 
         tc.appendChild(frame);
-    } else {
-        if (!activeToastMessages.includes(msg)) {
-            activeToastMessages.push(msg);
-            if (activeToastMessages.length > 3) activeToastMessages.shift();
-        }
-        if (newSeverity > currentToastSeverity) {
-            currentToastSeverity = newSeverity;
+
+        // Medición única de media altura para que ambos rieles partan exactamente del centro
+        const glass = frame.querySelector('.sl-holo-glass');
+        if (glass && glass.offsetHeight > 0) {
+            frame.style.setProperty('--shutter-y', Math.round(glass.offsetHeight / 2) + 'px');
         }
 
-        existingFrame.classList.remove('monarch-purple', 'danger', 'holo-pulse-update');
-        if (currentToastSeverity === 3) existingFrame.classList.add('monarch-purple');
-        else if (currentToastSeverity === 2) existingFrame.classList.add('danger');
-
-        void existingFrame.offsetWidth;
-        existingFrame.classList.add('holo-pulse-update');
-
-        let headerTitle = currentToastSeverity === 3 ? "SISTEMA DEL MONARCA" : (currentToastSeverity === 2 ? "ALERTA DE SISTEMA" : "NOTIFICACIÓN");
-        let subBracket = currentToastSeverity === 3 ? "[ DIRECTIVA DEL ABISMO ]" : (currentToastSeverity === 2 ? "[ ADVERTENCIA CRÍTICA ]" : "[ MENSAJE DEL SISTEMA ]");
-
-        let titleEl = existingFrame.querySelector('#sl-holo-title-txt');
-        let subEl = existingFrame.querySelector('#sl-holo-sub-txt');
-        let listEl = existingFrame.querySelector('#sl-holo-msg-list');
-
-        if (titleEl) titleEl.innerText = headerTitle;
-        if (subEl) subEl.innerText = subBracket;
-        if (listEl) {
-            listEl.innerHTML = activeToastMessages
-                .map(m => `<div class="sl-holo-msg-item">${highlightAnimeKeywords(m)}</div>`)
-                .join('<div class="sl-holo-msg-divider"></div>');
+        _toastStackItems.unshift({ el: frame, lastMsg: cleanRaw, repeatCount: 1 });
+        while (_toastStackItems.length > 3) {
+            let oldest = _toastStackItems.pop();
+            if (oldest && oldest.el && oldest.el.parentNode) oldest.el.remove();
         }
+        _syncToastStackDepth();
     }
 
-// 1ª notificación usa system-notification.mp3; todas las notificaciones seguidas (incluso del mismo daño) usan notification-clic.mp3
     if (isConsecutiveNotif) {
-        if (typeof playSystemSound === 'function') {
-            playSystemSound('type');
-        }
+        if (typeof playSystemSound === 'function') playSystemSound('type');
     } else if (typeof playSystemSound === 'function') {
         playSystemSound(type);
     }
@@ -307,8 +315,9 @@ const frame = document.createElement('div');
     if (activeToastTimer) clearTimeout(activeToastTimer);
     activeToastTimer = setTimeout(() => {
         dismissActiveHoloToast();
-    }, 4200);
+    }, 3800);
 }
+
 window.openHonorLogModal = function() {
     let modal = document.getElementById('honor-log-modal');
     if (!modal) {
@@ -1090,6 +1099,7 @@ function getActiveBuffsList(now, currentDayStr, maxHP) {
     };
 
     let buffs = [];
+        if (p.temperedBarrierCharges && p.temperedBarrierCharges > 0) buffs.push({ lbl: 'Barrera Templada', time: `${p.temperedBarrierCharges}/3 CARGAS`, alert: false, info: 'Sobrecarga de Escudo (800/800): reduce un 35% el próximo golpe antes de tocar tu escudo.' });
     if (isMercyActive()) buffs.push({ lbl: 'Piedra de la Misericordia', time: minsLeft(p.mercyUntil), alert: false, info: 'Caída nocturna extendida hasta las 2:00 AM y protección vital activa.' });
     if (p.magmaOverheal && p.hp > maxHP) buffs.push({ lbl: `Sobrecarga de Magma (${Math.round((p.hp / maxHP) * 100)}%)`, time: 'ACTIVO', alert: false, info: 'Tu HP supera temporalmente el límite máximo normal.' });
     if (p.cryoBuffUntil && now < p.cryoBuffUntil) buffs.push({ lbl: 'Suero de Cero Absoluto', time: minsLeft(p.cryoBuffUntil), alert: false, info: 'Reduce al 50% todo daño recibido.' });
@@ -1716,7 +1726,7 @@ function playJobChangeCinematic(leadText = "TU CLASE HA CAMBIADO", oldName = "NI
                     <span class="sl-baroque-corner bl">${cornerSVG}</span>
                     <span class="sl-baroque-corner br">${cornerSVG}</span>
                     <div class="sl-holo-header-row" style="margin-bottom:12px;">
-                        <div class="sl-excl-square">!</div>
+                        <div class="sl-excl-square"><span class="sl-excl-circle-inner">!</span></div>
                         <div class="sl-title-rect">DESPERTAR DEL SISTEMA</div>
                     </div>
                     <div class="sl-job-seq-box">
@@ -1950,7 +1960,7 @@ const DAY_ZERO_SEQUENCE = [
         frame: "sl-holo-frame",
         header: "NOTIFICACIÓN",
         sub: "[ DESPERTAR CONFIRMADO ]",
-        body: "[ Felicitaciones por convertirte en un JUGADOR. ]",
+        body: "[ Felicitaciones por convertirte en un JUGADOR.­­­­­­­­­­­­­­­­­­­­­­­]",
         action: "[ TOCA PARA CONTINUAR ]",
         sound: "gold"
     },
@@ -2059,7 +2069,7 @@ window.renderDayZeroStep = function() {
     } else if (stepData.type === "input") {
         innerContent = `
             <div onclick="event.stopPropagation()">
-                <input type="text" id="dz-name-input" class="sl-name-bestow-input" value="${(p && p.playerName) || dayZeroPlayerName || 'Cristian'}" style="margin:14px auto 12px auto; max-width:240px;">
+                <input type="text" id="dz-name-input" class="sl-name-bestow-input" value="" placeholder="Escribe tu nombre..." autocomplete="off" style="margin:14px auto 12px auto; max-width:250px;">
                 <button class="btn btn-main" style="width:100%;" onclick="confirmDayZeroRegistration()">CONFIRMAR REGISTRO</button>
             </div>
         `;

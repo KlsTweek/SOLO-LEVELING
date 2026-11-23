@@ -1240,7 +1240,7 @@ function rescanRadarHorizon() {
         if (typeof systemNotify === "function") {
             systemNotify(usedBeacon
                 ? "SOBRECARGA CARMESÍ COMPLETADA: Portales de alto rango fijados durante 30 minutos."
-                : "Barrido de sonar completado. Señales dimensionales fijadas (30 min).", usedBeacon ? "danger" : "info");
+                : "Barrido sonar completado.", usedBeacon ? "danger" : "info");
         }
     }, 1420);
     _sonarScanTimers.push(finishTid);
@@ -1661,7 +1661,7 @@ function buildSonarTerminalHTML() {
         statusNotes += `<div style="margin-top:6px; padding:5px 8px; background:rgba(255,42,85,0.16); border-left:2.5px solid #ff2a55; color:#fda4af; font-size:0.78em; font-weight:600;">PORTAL ROJO: Retirada sellada al entrar. Recompensas potenciadas.</div>`;
     }
     if (isClearedPerm) {
-        statusNotes += `<div style="margin-top:5px; color:#7dd3fc; font-size:0.74em; font-family:'Share Tech Mono', monospace;">[✓ PORTAL CONQUISTADO • APTO PARA EXPEDICIONES]</div>`;
+        statusNotes += `<div style="margin-top:5px; color:#7dd3fc; font-size:0.74em; font-family:'Share Tech Mono', monospace;">[PORTAL CONQUISTADO • APTO PARA EXPEDICIONES]</div>`;
     } else if (isBeaconTemp) {
         let minsRem = Math.max(1, Math.ceil((p.beaconUnlockedGates[dung.id].expiresAt - nowMs) / 60000));
         statusNotes += `<div style="margin-top:5px; color:#c084fc; font-size:0.74em; font-family:'Share Tech Mono', monospace;">[BALIZA CARMESÍ ACTIVA • EXPIRA EN ${minsRem}M]</div>`;
@@ -1823,12 +1823,13 @@ function renderBosses(hideBlipsForScan = false) {
         if (d.isRedGate) { extraCls.push('red-gate-blip'); badgeTxt = 'ROJO'; }
         else if (d.reqKey === null) { extraCls.push('free-blip'); badgeTxt = 'LIBRE'; }
 
+          let showClearedPip = false;
         if (isLvlLocked || !hasKey) {
             extraCls.push('locked-blip');
             if (!badgeTxt) badgeTxt = isLvlLocked ? `NV.${d.minLevel}` : 'LLAVE';
         } else if (isCleared) {
             extraCls.push('cleared-blip');
-            if (!badgeTxt) badgeTxt = '✓';
+            if (!badgeTxt) showClearedPip = true;
         }
         if (hideBlipsForScan) extraCls.push('blip-hidden');
 
@@ -1838,7 +1839,7 @@ function renderBosses(hideBlipsForScan = false) {
              style="left:${b.x}%; top:${b.y}%;"
              onclick="selectRadarBlip('${d.id}')">
             <span>${d.rank}</span>
-            ${badgeTxt ? `<span class="sonar-blip-badge">${badgeTxt}</span>` : ''}
+            ${badgeTxt ? `<span class="sonar-blip-badge">${badgeTxt}</span>` : (showClearedPip ? `<span class="sonar-blip-cleared-pip"></span>` : '')}
         </div>`;
     });
 

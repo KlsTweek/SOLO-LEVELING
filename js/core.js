@@ -633,6 +633,35 @@ function isMercyActive() {
     return !!(p && p.mercyUntil && Date.now() < p.mercyUntil);
 }
 
+window.grantHunterShield = function(amount, sourceLabel = '') {
+    if (!p || !amount || amount <= 0) return { added: 0, overflow: 0, msg: '' };
+    let cur = Math.min(800, Math.max(0, Math.floor(p.arcticShield || 0)));
+    let space = Math.max(0, 800 - cur);
+    let added = Math.min(space, Math.floor(amount));
+    let overflow = Math.max(0, Math.floor(amount) - added);
+
+    p.arcticShield = cur + added;
+    if (overflow <= 0) return { added, overflow: 0, msg: '' };
+
+    // Sobrecarga de Escudo: convierte excedente en HP, -Fatiga, +MP y Barrera Templada (máx 3 cargas)
+    let maxHP = (typeof calculateHunterMaxHP === 'function') ? calculateHunterMaxHP() : 100;
+    let maxMP = p.stats ? Math.floor(1000 + ((p.stats.int - 1) * 1000)) : 1000;
+    let healGain = Math.max(10, Math.floor(overflow * 0.5));
+    let spGain = Math.min(35, Math.max(10, Math.floor(overflow * 0.25)));
+    let mpGain = Math.floor(overflow * 1.5);
+
+    if (!p.magmaOverheal) p.hp = Math.min(maxHP, +(p.hp + healGain).toFixed(1));
+    p.sp = Math.min(100, (p.sp || 0) + spGain);
+    p.mp = Math.min(maxMP, (p.mp || 0) + mpGain);
+    p.temperedBarrierCharges = Math.min(3, (p.temperedBarrierCharges || 0) + 1);
+
+    let msg = `Sobrecarga de Escudo (800/800): +${healGain} HP, -${spGain} Fatiga, +${mpGain} MP y Barrera Templada (${p.temperedBarrierCharges}/3).`;
+    if (sourceLabel && typeof systemNotify === 'function') {
+        systemNotify(`[${sourceLabel}] ${msg}`, 'info');
+    }
+    return { added, overflow, healGain, spGain, mpGain, msg };
+};
+
 /* ==========================================================================
    6. CHEQUEO DIARIO BIOLÓGICO (4:30 AM, RACHAS, RESACA Y BONO CIRCADIANO)
    ========================================================================== */
@@ -1065,13 +1094,18 @@ function startMpRealtimeLoop() {
         if (isSupremeSet)                 mageRegenPerMin += 200;
         mageRegenPerMin = +(mageRegenPerMin).toFixed(1);
 
-        let netPerMin = +(mageRegenPerMin - drainPerMin).toFixed(1);
+                let netPerMin = +(mageRegenPerMin - drainPerMin).toFixed(1);
         currentNetMpPerMin = netPerMin;
+        let bleedMpMin = window._nightBleedMpPerMin || 0;
+        let totalDisplayRate = +(netPerMin - bleedMpMin).toFixed(0);
 
         if (!document.hidden) {
             let rateEl = document.getElementById('mp-drain-rate');
             if (rateEl) {
-                if (netPerMin < 0) {
+                if (bleedMpMin > 0) {
+                    rateEl.innerText = `(${totalDisplayRate} MP/m • Desvelo)`;
+                    rateEl.style.color = '#fb7185';
+                } else if (netPerMin < 0) {
                     rateEl.innerText = `(${netPerMin} MP/m)`;
                     rateEl.style.color = '#bae6fd';
                 } else if (netPerMin > 0) {
@@ -1443,11 +1477,13 @@ function evaluateNightCurfew(isClockJump = false) {
     let currentMinsDay = h * 60 + m;
     if (currentMinsDay >= 270 && currentMinsDay < 1200) {
         _lastBleedStepMs = 0;
+        window._nightBleedMpPerMin = 0;
         return;
     }
 
     if (isSleepingNow(now)) {
         _lastBleedStepMs = 0;
+        window._nightBleedMpPerMin = 0;
         if (!document.hidden && (currentMinsDay >= 1200 || currentMinsDay < 270)) {
             let elapsedSinceActivated = p.sleepModeActivatedAt ? (nowMs - p.sleepModeActivatedAt) : 0;
             if (elapsedSinceActivated > 600000) {
@@ -1481,8 +1517,9 @@ function evaluateNightCurfew(isClockJump = false) {
     if (p.nightPassActive === bioDayStr || p.movieNightCurfewDay === bioDayStr) startBleedMins = 23 * 60 + 20;
     if (isMercyActive()) startBleedMins = 26 * 60;
 
-    if (continuousMins < startBleedMins) {
+        if (continuousMins < startBleedMins) {
         _lastBleedStepMs = 0;
+        window._nightBleedMpPerMin = 0;
         return;
     }
 
@@ -1555,6 +1592,7 @@ function evaluateNightCurfew(isClockJump = false) {
     let hpLoss = hpPerSec * dt * cheatMult;
     let spLoss = spPerSec * dt * cheatMult;
     let mpLoss = mpPerSec * dt * cheatMult;
+    window._nightBleedMpPerMin = Math.round(mpPerSec * 60 * cheatMult);
 
     // Sin bloqueo en 1 HP: si llega a 0 muere (Tank solo ancla en 25 HP antes de las 11:30 PM)
     let minAllowedHp = (tankReady && continuousMins < (23 * 60 + 30)) ? 25 : 0;
@@ -2923,8 +2961,15 @@ function dealRaidDamage(dmg, deathMsg, isBossAttack = false) {
     if (_hasEq("eq_g_low")) dmg *= 0.99;
     if (isBossAttack && _hasEq("eq_a_helm_d")) dmg = Math.max(1, dmg - 5);
 
+    if (p.temperedBarrierCharges && p.temperedBarrierCharges > 0 && dmg > 0) {
+        p.temperedBarrierCharges--;
+        dmg = +(dmg * 0.65).toFixed(1);
+        pushRaidLog(`Barrera Templada absorbió 35% del impacto (${p.temperedBarrierCharges}/3 restantes).`, "#7dd3fc");
+    }
+
     if ((p.arcticShield || 0) > 0) {
         let absorbed = Math.min(p.arcticShield, dmg);
+
         p.arcticShield -= absorbed;
         dmg -= absorbed;
     }
@@ -3304,16 +3349,18 @@ function executeShadowClashSkill(cmdId, mpCost) {
                 let d = Math.floor(110 * shadowMult);
                 clashBossHP = Math.max(0, clashBossHP - d);
                 systemNotify(`¡${COMMANDERS_META.igris.name} ejecutó un Tajo Relámpago (-${d} HP al Jefe)!`, "purple");
-            } else if (cmdId === 'tank') {
+                       } else if (cmdId === 'tank') {
                 let d = Math.floor(50 * shadowMult);
-                p.arcticShield = (p.arcticShield || 0) + 45;
+                let shRes = grantHunterShield(45);
                 clashBossHP = Math.max(0, clashBossHP - d);
-                systemNotify(`¡${COMMANDERS_META.tank.name} embistió al Jefe (-${d} HP) y levantó +45 Escudo Ártico!`, "info");
+                systemNotify(`¡${COMMANDERS_META.tank.name} embistió al Jefe (-${d} HP)! ${shRes.overflow > 0 ? shRes.msg : '+45 Escudo Ártico.'}`, "info");
             } else if (cmdId === 'iron') {
                 let d = Math.floor(70 * shadowMult);
+                let shRes = grantHunterShield(30);
                 clashBossHP = Math.max(0, clashBossHP - d);
-                p.arcticShield = (p.arcticShield || 0) + 30;
-                systemNotify(`¡${COMMANDERS_META.iron.name} aturdió al Jefe con su escudo (-${d} HP, +30 Guardia)!`, "gold");
+                systemNotify(`¡${COMMANDERS_META.iron.name} aturdió al Jefe (-${d} HP)! ${shRes.overflow > 0 ? shRes.msg : '+30 Guardia.'}`, "gold");
+
+
             } else if (cmdId === 'tusk') {
                 clashBossHP = 0;
                 systemNotify(`¡${COMMANDERS_META.tusk.name.toUpperCase()} DESATÓ EL HIMNO DEL DRAGÓN DE FUEGO! Jefe incinerado al instante.`, "gold");

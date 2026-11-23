@@ -83,93 +83,6 @@ const INFANTRY_META = {
 };
 let currentShowcaseCmd = 'igris';
 
-// Coordenadas X / Y por defecto para centrar a cada Sombra sobre su círculo de invocación
-const DEFAULT_SHADOW_OFFSETS = {
-    igris: { x: 0, y: 0 },
-    tank:  { x: 0, y: 0 },
-    iron:  { x: 0, y: 0 },
-    tusk:  { x: 0, y: 0 },
-    beru:  { x: 0, y: 0 }
-};
-
-function getShadowOffset(cmdId) {
-    let key = String(cmdId || '').toLowerCase().trim();
-    if (typeof p !== 'undefined' && p && p.shadowOffsets && p.shadowOffsets[key]) {
-        return p.shadowOffsets[key];
-    }
-    return DEFAULT_SHADOW_OFFSETS[key] || { x: 0, y: 0 };
-}
-
-// Función global para mover cualquier sombra en el eje X y Y sobre su círculo (ej: setShadowOffset('igris', -4, -6))
-window.setShadowOffset = function(cmdId, x = 0, y = 0) {
-    let key = String(cmdId || '').toLowerCase().trim();
-    if (typeof p !== 'undefined' && p) {
-        if (!p.shadowOffsets) p.shadowOffsets = {};
-        p.shadowOffsets[key] = { x: Number(x) || 0, y: Number(y) || 0 };
-        if (typeof saveData === 'function') saveData();
-    }
-    applyShadowOffsetsToDOM();
-    return p && p.shadowOffsets ? p.shadowOffsets[key] : { x, y };
-};
-
-window.nudgeShadowOffset = function(cmdId, dx = 0, dy = 0) {
-    let cur = getShadowOffset(cmdId);
-    let nx = Math.round((cur.x + dx) * 10) / 10;
-    let ny = Math.round((cur.y + dy) * 10) / 10;
-    window.setShadowOffset(cmdId, nx, ny);
-    let lbl = document.getElementById('sl-calibrator-coords');
-    if (lbl) lbl.innerText = `${cmdId.toUpperCase()} -> X: ${nx}px | Y: ${ny}px`;
-};
-
-function applyShadowOffsetsToDOM(root = document) {
-    root.querySelectorAll('svg[data-cmd-key]').forEach(svg => {
-        let key = svg.getAttribute('data-cmd-key');
-        let off = getShadowOffset(key);
-        // Mueve el cuerpo del personaje dejando el círculo base de invocación fijo
-        let bodyGroup = svg.querySelector('.ig-body, .tk-body, .ir-body, .svg-torso-solid');
-        if (bodyGroup) {
-            bodyGroup.style.transform = (off.x !== 0 || off.y !== 0) ? `translate(${off.x}px, ${off.y}px)` : '';
-        } else {
-            Array.from(svg.children).forEach(ch => {
-                let tag = ch.tagName.toLowerCase();
-                if (tag === 'defs' || tag === 'ellipse' || ch.classList.contains('svg-summon-ring')) return;
-                ch.style.transform = (off.x !== 0 || off.y !== 0) ? `translate(${off.x}px, ${off.y}px)` : '';
-            });
-        }
-    });
-}
-
-let activeCalibratorCmd = 'igris';
-window.openShadowXYCalibrator = function(cmdId) {
-    if (cmdId) activeCalibratorCmd = cmdId;
-    let bar = document.getElementById('sl-shadow-xy-calibrator');
-    if (!bar) {
-        bar = document.createElement('div');
-        bar.id = 'sl-shadow-xy-calibrator';
-        bar.style.cssText = 'position:fixed; bottom:88px; left:50%; transform:translateX(-50%); width:94%; max-width:395px; background:rgba(3,10,24,0.96); border:1.5px solid #7dd3fc; box-shadow:0 0 22px rgba(0,229,255,0.4); padding:10px 12px; z-index:9900; border-radius:2px;';
-        document.body.appendChild(bar);
-    }
-    let cur = getShadowOffset(activeCalibratorCmd);
-let tabs = ['igris', 'tank', 'iron', 'tusk', 'beru', 'min'].map(k =>
-        `<span onclick="openShadowXYCalibrator('${k}')" style="padding:3px 7px; font-family:'Share Tech Mono',monospace; font-size:0.7em; cursor:pointer; border:1px solid ${k===activeCalibratorCmd?'#fff':'rgba(125,211,252,0.35)'}; background:${k===activeCalibratorCmd?'rgba(14,165,233,0.35)':'transparent'}; color:#fff;">${k.toUpperCase()}</span>`
-    ).join('');
-
-    bar.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-            <span style="font-family:'Share Tech Mono',monospace; font-size:0.75em; color:#7dd3fc;" id="sl-calibrator-coords">${activeCalibratorCmd.toUpperCase()} -> X: ${cur.x}px | Y: ${cur.y}px</span>
-            <span style="cursor:pointer; color:#94a3b8; font-size:0.75em; padding:2px 6px;" onclick="document.getElementById('sl-shadow-xy-calibrator').remove()">CERRAR ✕</span>
-        </div>
-        <div style="display:flex; gap:4px; justify-content:center; margin-bottom:8px; flex-wrap:wrap;">${tabs}</div>
-        <div style="display:grid; grid-template-columns:repeat(5, 1fr); gap:5px;">
-            <button class="btn btn-blue" style="padding:6px 2px;" onclick="nudgeShadowOffset('${activeCalibratorCmd}', -2, 0)">◀ X-</button>
-            <button class="btn btn-blue" style="padding:6px 2px;" onclick="nudgeShadowOffset('${activeCalibratorCmd}', 2, 0)">X+ ▶</button>
-            <button class="btn btn-blue" style="padding:6px 2px;" onclick="nudgeShadowOffset('${activeCalibratorCmd}', 0, -2)">▲ Y-</button>
-            <button class="btn btn-blue" style="padding:6px 2px;" onclick="nudgeShadowOffset('${activeCalibratorCmd}', 0, 2)">▼ Y+</button>
-            <button class="btn btn-red" style="padding:6px 2px; font-size:0.65em;" onclick="setShadowOffset('${activeCalibratorCmd}', 0, 0); openShadowXYCalibrator('${activeCalibratorCmd}')">RESET</button>
-        </div>
-    `;
-};
-
 /* ==========================================================================
    3. CINEMÁTICA HOLOGRÁFICA A PANTALLA COMPLETA PARA HABILIDADES ACTIVAS
    ========================================================================== */
@@ -2196,14 +2109,15 @@ function castCommanderActive(cmdId) {
                     ? `+${goldReward} G del gremio (${p.igrisGoldUses}/3 hoy)`
                     : `0 G (Límite diario 3/3 alcanzado)`;
                 systemNotify(`⚔️ ¡CONCENTRACIÓN DEL CABALLERO (Niv.${lvl})! +${xpGain} XP, -20 Fatiga y ${goldMsg} (Tiempos reales intactos).`, "purple");
-            } else if (cmdId === 'tank') {
+               } else if (cmdId === 'tank') {
                 let shieldAdd = 80 + (bonus * 15);
                 let spAdd = Math.min(100, 30 + (bonus * 4));
-                p.arcticShield = (p.arcticShield || 0) + shieldAdd;
+                let shRes = (typeof grantHunterShield === 'function') ? grantHunterShield(shieldAdd) : { overflow: 0, msg: '' };
                 p.tankCurfewDelayDay = currentDayStr;
                 if (typeof animateSPChange === "function") animateSPChange(spAdd);
                 else p.sp = Math.min(100, p.sp + spAdd);
-                systemNotify(`🐻‍❄️ ¡ESTAMPIDA DEL CERO ABSOLUTO (Niv.${lvl})! +${shieldAdd} 🛡️ Escudo Ártico, -${spAdd} Fatiga y desgaste nocturno retrasado +45m hoy.`, "info");
+                let extraTxt = shRes.overflow > 0 ? shRes.msg : `+${shieldAdd} Escudo Ártico.`;
+                systemNotify(`¡ESTAMPIDA DEL CERO ABSOLUTO (Niv.${lvl})! ${extraTxt} -${spAdd} Fatiga y desgaste nocturno retrasado +45m hoy.`, "info");
             } else if (cmdId === 'iron') {
                 let immMins = 20 + (bonus * 4);
                 let spAdd = Math.min(100, 35 + (bonus * 4));
@@ -2271,10 +2185,10 @@ let hasOrb = (typeof hasEquippedItem === 'function') && hasEquippedItem('eq_w_ka
 /* ==========================================================================
    8. EL MILAGRO DE 1 SOLO USO DE MIN BYUNG-GYU Y TÍTULOS DE PERFIL
    ========================================================================== */
-function triggerMinByungGyuMiracle(fromDungeon = false) {
+function triggerMinByungGyuMiracle(fromDungeon = false, confirmed = false) {
     ensureShadowStructure();
     if (!p.shadowArmy.min.unlocked) {
-        systemNotify("🔒 El alma de Min Byung-Gyu está sellada. Solo puedes desbloquearla despejando la Mazmorra Rango S: Isla de Jeju.", "danger");
+        systemNotify("El alma de Min Byung-Gyu está sellada. Desbloquea la Mazmorra Rango S: Isla de Jeju.", "danger");
         return;
     }
     if (p.shadowArmy.min.usedForever) {
@@ -2282,22 +2196,41 @@ function triggerMinByungGyuMiracle(fromDungeon = false) {
         return;
     }
 
-    if (!fromDungeon && !p.penaltyActive && p.hp > 50) {
-        if (!confirm("⚠️ ADVERTENCIA DEL SISTEMA: Solo puedes invocar a Min Byung-Gyu UNA VEZ en toda tu partida. ¿Estás seguro de gastar su milagro ahora?")) {
-            return;
-        }
+    if (!fromDungeon && !confirmed && typeof createArtifactRitualShell === 'function') {
+        let html = `
+            <div style="width:92px; height:92px; margin:0 auto 8px auto; filter:drop-shadow(0 0 12px #6ee7b7);">${getCommanderSVG('min', 'idle')}</div>
+            <div style="color:#e0f2fe; font-size:0.88em; line-height:1.5; margin-bottom:14px;">
+                Solo puedes invocar a <b>Min Byung-Gyu</b> una única vez en toda tu historia.<br><br>
+                Restaurará el <b>100% de HP/SP/MP</b>, fijará tu Escudo en <b>800/800</b>, otorgará <b>+0.50 STR/INT</b> y su alma será liberada para siempre.
+            </div>
+            <div style="display:flex; gap:8px;">
+                <button class="btn btn-blue" style="flex:1;" onclick="closeArtifactRitualModal()">CONSERVAR</button>
+                <button class="btn btn-main" style="flex:1.4;" onclick="closeArtifactRitualModal(); triggerMinByungGyuMiracle(false, true)">INVOCAR MILAGRO</button>
+            </div>
+        `;
+        createArtifactRitualShell("ÚLTIMA INVOCACIÓN", "[ SANADOR RANGO S // MIN BYUNG-GYU ]", html);
+        return;
     }
 
     let rescueBox = document.getElementById('raid-min-rescue');
     if (rescueBox) rescueBox.style.display = 'none';
 
-    let grimoireOverlay = document.getElementById('min-grimoire-overlay');
+        let grimoireOverlay = document.getElementById('min-grimoire-overlay');
     if (grimoireOverlay) grimoireOverlay.style.display = 'flex';
-    if (typeof playSystemSound === "function") playSystemSound('gold');
-    if (navigator.vibrate) navigator.vibrate([100, 80, 250, 80, 400]);
+
+    if (typeof playSystemSound === "function") playSystemSound('monarch_awakening');
+    if (navigator.vibrate) navigator.vibrate([90, 70, 220, 70, 340]);
 
     setTimeout(() => {
-        if (grimoireOverlay) grimoireOverlay.style.display = 'none';
+        if (grimoireOverlay) {
+            grimoireOverlay.style.transition = 'opacity 0.55s ease';
+            grimoireOverlay.style.opacity = '0';
+            setTimeout(() => {
+                grimoireOverlay.style.display = 'none';
+                grimoireOverlay.style.opacity = '1';
+                grimoireOverlay.style.transition = '';
+            }, 560);
+        }
 
         p.shadowArmy.min.usedForever = true;
         p.penaltyActive = false;
@@ -2315,20 +2248,21 @@ function triggerMinByungGyuMiracle(fromDungeon = false) {
         let maxHP = (typeof calculateHunterMaxHP === "function") ? calculateHunterMaxHP() : 100;
         let maxMP = Math.floor(1000 + ((p.stats.int - 1) * 1000));
 
-// Milagro Remasterizado: 100% HP/SP/MP, Escudo al Tope (800/800) y +1 Nivel a [Voluntad de Recuperación]
         p.hp = maxHP;
         p.sp = 100;
         p.mp = maxMP;
         p.magmaOverheal = false;
-        p.arcticShield = 800;
+        if (typeof grantHunterShield === 'function') grantHunterShield(800);
+        else p.arcticShield = 800;
+
         if (typeof gainHunterSkillXP === "function") {
-            gainHunterSkillXP('longevity', 20);
+            gainHunterSkillXP('longevity', 50);
         }
 
         if (!p.titles.some(t => t.id === 'title_min_byung_gyu')) {
             p.titles.push({
                 id: 'title_min_byung_gyu',
-                name: '📗 Misericordia del Monarca: El Descanso de Min Byung-Gyu',
+                name: 'Misericordia del Monarca: El Descanso de Min Byung-Gyu',
                 desc: 'Extrajiste el alma de un sanador Rango S en la Isla de Jeju para obrar un milagro de resurrección y renunciaste a su poder para concederle la paz eterna. (Bono eterno: +5% recarga de MP y +0.50 STR/INT).'
             });
         }
@@ -2343,9 +2277,11 @@ function triggerMinByungGyuMiracle(fromDungeon = false) {
         saveData();
         if (typeof updateHUD === "function") updateHUD();
         if (typeof renderRoutine === "function") renderRoutine();
-        systemNotify("¡MILAGRO CONSUMADO! Vitalidad al 100%, Escudo al máximo (800/800), +0.50 STR/INT y el título de Min Byung-Gyu ha quedado grabado en tu Perfil.", "success");
-    }, 3600);
+        if (typeof renderShadowSanctuary === "function") renderShadowSanctuary();
+        systemNotify("¡MILAGRO CONSUMADO! Vitalidad al 100%, Escudo al máximo (800/800), +0.50 STR/INT y el alma de Min Byung-Gyu descansa en paz.", "success");
+    }, 3100);
 }
+
 
 function renderTitles() {
     const cont = document.getElementById('titles-container');
