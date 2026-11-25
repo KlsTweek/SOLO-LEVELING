@@ -2804,23 +2804,6 @@ function handleTacticalNotificationAction(action, data = {}, actionTs = Date.now
 }
 
 // Detector pasivo de transición Wi-Fi <-> Datos Móviles (blindado por ventana horaria anti-apagón)
-let _lastKnownConnType = (navigator.connection && navigator.connection.type) ? navigator.connection.type : null;
-
-function evaluateSafeNetworkTransition() {
-    if (!p || !p.dayZeroCompleted || p.penaltyActive) return;
-    if (!navigator.connection || !navigator.connection.type) return;
-
-    let curType = navigator.connection.type;
-    let prevType = _lastKnownConnType;
-    _lastKnownConnType = curType;
-    if (!prevType || prevType === curType) return;
-
-    let now = new Date();
-    let dow = now.getDay();
-    let curMins = now.getHours() * 60 + now.getMinutes();
-    let todayKey = (typeof getBiologicalDayStr === 'function') ? getBiologicalDayStr(now) : now.toDateString();
-
-// Detector pasivo de transición Wi-Fi <-> Datos Móviles (blindado por ventana horaria anti-apagón)
 function _readConnType() {
     if (!navigator.onLine) return 'none';
     if (navigator.connection && navigator.connection.type && navigator.connection.type !== 'unknown') {
@@ -2833,7 +2816,9 @@ let _lastKnownConnType = _readConnType();
 let _lastActiveConnType = _lastKnownConnType !== 'none' ? _lastKnownConnType : null;
 
 function _triggerMorningDeparturePrompt(todayKey) {
-    if (!p || !p.activeMissions || p.activeMissions['m_traffic_ida']) return;
+    if (!p) return;
+    if (!p.activeMissions) p.activeMissions = {};
+    if (p.activeMissions['m_traffic_ida']) return;
     if (Array.isArray(p.completedToday) && p.completedToday.includes('m_traffic_ida')) return;
     if (p._netMorningPromptDay === todayKey) return;
 
@@ -2860,7 +2845,7 @@ function _triggerMorningDeparturePrompt(todayKey) {
         }).catch(() => {});
     }
 
-    // 2. Respaldo visual inmediato dentro de la app (si está abierta o si faltaba permiso Push)
+    // 2. Respaldo visual inmediato dentro de la app (si está abierta o faltaba permiso Push)
     if (!document.hidden && typeof openSystemConfirmModal === 'function') {
         openSystemConfirmModal(
             'SALIDA DETECTADA',
@@ -2915,42 +2900,6 @@ if (navigator.connection && typeof navigator.connection.addEventListener === 'fu
 }
 window.addEventListener('offline', evaluateSafeNetworkTransition);
 window.addEventListener('online', evaluateSafeNetworkTransition);
-
-
-                if ('serviceWorker' in navigator) {
-                    navigator.serviceWorker.ready.then(reg => {
-                        if (reg.active) {
-                            reg.active.postMessage({
-                                type: 'SL_SHOW_TACTICAL_NOW',
-                                payload: {
-                                    title: 'SISTEMA // SALIDA DETECTADA',
-                                    body: 'Desconexión de Wi-Fi doméstico detectada. ¿Iniciamos Ruta de Ida?',
-                                    tag: 'sl-net-depart',
-                                    actions: [
-                                        { action: 'start_route_ida', title: 'Iniciar Ruta' },
-                                        { action: 'skip_work_today', title: 'Ignorar' }
-                                    ]
-                                }
-                            });
-                        }
-                    }).catch(() => {});
-                }
-            }
-        }
-    }
-
-    // Ventana 2 (5:15 PM - 8:00 PM): Volviste al Wi-Fi de casa tras Ruta de Vuelta
-    if (curMins >= 1035 && curMins <= 1200 && prevType === 'cellular' && curType === 'wifi') {
-        if (p.activeMissions && p.activeMissions['m_traffic_vuelta']) {
-            systemNotify("Wi-Fi de casa detectado. Recuerda sellar tu [Ruta de Vuelta] cuando bajes de la moto.", "info");
-        }
-    }
-    // Cualquier otra hora (ej. apagón a las 9:00 PM): se ignora por completo
-}
-
-if (navigator.connection && typeof navigator.connection.addEventListener === 'function') {
-    navigator.connection.addEventListener('change', evaluateSafeNetworkTransition);
-}
 
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.addEventListener('message', (event) => {
