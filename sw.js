@@ -22,16 +22,23 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE_NAME && k !== 'monarch-sw-state').map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
 
-// Estrategia Network-First: siempre descarga cambios frescos al subir a Vercel y usa caché solo sin conexión
+// Cache-First para íconos (evita el círculo gris "S" al saltar de Wi-Fi a LTE) y Network-First para el resto
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
+
+  if (url.pathname === '/icon-192.png' || url.pathname === '/icon-512.png') {
+    event.respondWith(
+      caches.match(event.request).then((cached) => cached || fetch(event.request))
+    );
+    return;
+  }
 
   event.respondWith(
     fetch(event.request, { cache: 'no-cache' })
@@ -42,7 +49,6 @@ self.addEventListener('fetch', (event) => {
         }
         return networkRes;
       })
-      // ignoreSearch: permite que /?swAction=... encuentre '/' en caché sin conexión
       .catch(() => caches.match(event.request, { ignoreSearch: true }))
   );
 });
@@ -51,7 +57,6 @@ let _swScheduledTimers = {};
 let _swMissingMissionsTimers = [];
 let _swTacticalTimers = {};
 
-// Android Chrome normalmente muestra solo 2 acciones
 function getMaxActions() {
   try {
     if (typeof Notification !== 'undefined' && Notification.maxActions) {
@@ -62,17 +67,22 @@ function getMaxActions() {
 }
 
 function showSystemPush(title, body, tag, vibrate = [200, 100, 250], actions = [], data = {}) {
+  // Unifica el aviso de auto-arranque bajo 'sl-net-depart' sin botones para reemplazar al aviso previo
+  const isAutoConfirm = (tag === 'sl-net-depart-auto');
+  const finalTag = isAutoConfirm ? 'sl-net-depart' : (tag || 'sl-notif-' + Date.now());
+  const finalActions = isAutoConfirm ? [] : actions;
+
   const opts = {
     body: body || 'Directiva del Sistema actualizada.',
     icon: '/icon-192.png',
     badge: '/icon-192.png',
     vibrate: vibrate,
-    tag: tag || 'sl-notif-' + Date.now(),
+    tag: finalTag,
     renotify: true,
     data: Object.assign({ createdAt: Date.now() }, data || {})
   };
-  if (Array.isArray(actions) && actions.length > 0) {
-    opts.actions = actions.slice(0, getMaxActions());
+  if (Array.isArray(finalActions) && finalActions.length > 0) {
+    opts.actions = finalActions.slice(0, getMaxActions());
     opts.requireInteraction = true;
   }
   return self.registration.showNotification(title || 'SISTEMA DEL MONARCA', opts);
@@ -123,13 +133,11 @@ self.addEventListener('message', (event) => {
         }).catch(() => {})
       );
     }
-
   } else if (event.data.type === 'SL_SCHEDULE_TACTICAL_CHECKPOINTS') {
     Object.values(_swTacticalTimers).forEach((t) => clearTimeout(t));
     _swTacticalTimers = {};
     const list = Array.isArray(event.data.checkpoints) ? event.data.checkpoints : [];
     list.forEach((cp) => {
-      // Corrección: !(x > 0) también descarta undefined/NaN (antes disparaba al instante)
       if (!cp || !cp.key || !(cp.delayMs > 0)) return;
       _swTacticalTimers[cp.key] = setTimeout(() => {
         showSystemPush(
@@ -226,25 +234,42 @@ self.addEventListener('push', (event) => {
     try { payload = Object.assign(payload, event.data.json()); }
     catch (e) { payload.body = event.data.text() || payload.body; }
   }
+
+  let title = payload.title;
+  let body = payload.body;
+  let tag = payload.tag;
   const actions = (Array.isArray(payload.actions) && payload.actions.length > 0)
     ? payload.actions
-    : getDefaultActionsForTag(payload.tag);
+    : (tag === 'sl-net-depart-auto' ? [] : getDefaultActionsForTag(tag));
 
-  const tasks = [
-    showSystemPush(payload.title, payload.body, payload.tag, [200, 100, 250], actions, payload.data)
-  ];
+  const tasks = [];
 
-  // Si llegó el Push de Salida Matutina con la app cerrada, dejar guardado el auto-arranque en 3 min
-  if (payload.tag === 'sl-cp-morning_depart') {
-    const now = Date.now();
-    tasks.push(saveSwAutoDepartState({
-      dayKey: getSwBioDayStr(now),
-      detectedAt: now,
-      autoStartAt: now + (3 * 60000),
-      stage: 'grace_3m'
-    }));
+  // Push-Despertador inteligente: lee si sigues en Wi-Fi o ya vas en LTE al despertar el SW
+  if (tag === 'sl-cp-morning_depart') {
+    const connType = (self.navigator && self.navigator.connection && self.navigator.connection.type)
+      ? self.navigator.connection.type
+      : 'unknown';
+    tag = 'sl-net-depart';
+
+    if (connType === 'wifi') {
+      title = 'SISTEMA // AÚN EN CASA (WI-FI)';
+      body = 'Sigues en tu Wi-Fi doméstico. Toca cuando salgas o pospón 10 min.';
+    } else {
+      if (connType === 'cellular') {
+        title = 'SISTEMA // SALIDA DETECTADA (LTE)';
+        body = 'Datos móviles detectados a tu hora de salida. Ruta de Ida iniciará sola en 3 min.';
+      }
+      const now = Date.now();
+      tasks.push(saveSwAutoDepartState({
+        dayKey: getSwBioDayStr(now),
+        detectedAt: now,
+        autoStartAt: now + (3 * 60000),
+        stage: 'grace_3m'
+      }));
+    }
   }
 
+  tasks.push(showSystemPush(title, body, tag, [200, 100, 250], actions, payload.data));
   event.waitUntil(Promise.all(tasks));
 });
 
@@ -260,7 +285,6 @@ self.addEventListener('notificationclick', (event) => {
       delete _swScheduledTimers['auto_depart_confirm'];
     }
   }
-
 
   if (action === 'still_traffic') {
     const nextCount = (data.retryCount || 0) + 1;
@@ -319,7 +343,6 @@ self.addEventListener('notificationclick', (event) => {
         return;
       }
 
-      // App 100% cerrada: guardar decisión en caché del SW sin obligar a abrir Chrome encima
       if (targetAction === 'start_route_ida') {
         await saveSwAutoDepartState({
           dayKey: getSwBioDayStr(actionTs),
