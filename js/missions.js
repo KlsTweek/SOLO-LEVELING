@@ -2820,12 +2820,103 @@ function evaluateSafeNetworkTransition() {
     let curMins = now.getHours() * 60 + now.getMinutes();
     let todayKey = (typeof getBiologicalDayStr === 'function') ? getBiologicalDayStr(now) : now.toDateString();
 
-    // Ventana 1 (5:30 AM - 6:35 AM, Lun-Vie): Saliste del Wi-Fi de casa a Datos Móviles
+// Detector pasivo de transición Wi-Fi <-> Datos Móviles (blindado por ventana horaria anti-apagón)
+function _readConnType() {
+    if (!navigator.onLine) return 'none';
+    if (navigator.connection && navigator.connection.type && navigator.connection.type !== 'unknown') {
+        return navigator.connection.type;
+    }
+    return 'online';
+}
+
+let _lastKnownConnType = _readConnType();
+let _lastActiveConnType = _lastKnownConnType !== 'none' ? _lastKnownConnType : null;
+
+function _triggerMorningDeparturePrompt(todayKey) {
+    if (!p || !p.activeMissions || p.activeMissions['m_traffic_ida']) return;
+    if (Array.isArray(p.completedToday) && p.completedToday.includes('m_traffic_ida')) return;
+    if (p._netMorningPromptDay === todayKey) return;
+
+    p._netMorningPromptDay = todayKey;
+    saveData();
+
+    // 1. Notificación nativa con botones si el permiso está activo
+    if ('serviceWorker' in navigator && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+        navigator.serviceWorker.ready.then(reg => {
+            if (reg.active) {
+                reg.active.postMessage({
+                    type: 'SL_SHOW_TACTICAL_NOW',
+                    payload: {
+                        title: 'SISTEMA // SALIDA DETECTADA',
+                        body: 'Desconexión de Wi-Fi doméstico detectada. ¿Iniciamos Ruta de Ida?',
+                        tag: 'sl-net-depart',
+                        actions: [
+                            { action: 'start_route_ida', title: 'Iniciar Ruta' },
+                            { action: 'skip_work_today', title: 'Ignorar' }
+                        ]
+                    }
+                });
+            }
+        }).catch(() => {});
+    }
+
+    // 2. Respaldo visual inmediato dentro de la app (si está abierta o si faltaba permiso Push)
+    if (!document.hidden && typeof openSystemConfirmModal === 'function') {
+        openSystemConfirmModal(
+            'SALIDA DETECTADA',
+            '[ DESCONEXIÓN DE WI-FI DOMÉSTICO ]',
+            'Se detectó salida de la red de casa en tu ventana laboral.<br><br>¿Iniciamos tu <b>Ruta de Ida</b> ahora mismo?',
+            'INICIAR RUTA',
+            () => handleTacticalNotificationAction('start_route_ida', {}, Date.now()),
+            ''
+        );
+    } else if (typeof systemNotify === 'function') {
+        systemNotify("Salida de Wi-Fi doméstico detectada. Recuerda iniciar tu [Ruta de Ida].", "info");
+    }
+}
+
+function evaluateSafeNetworkTransition() {
+    if (!p || !p.dayZeroCompleted || p.penaltyActive) return;
+
+    let curType = _readConnType();
+    let prevType = _lastKnownConnType;
+    let prevActive = _lastActiveConnType;
+
+    _lastKnownConnType = curType;
+    if (curType !== 'none') _lastActiveConnType = curType;
+    if (prevType === curType) return;
+
+    let now = new Date();
+    let dow = now.getDay();
+    let curMins = now.getHours() * 60 + now.getMinutes();
+    let todayKey = (typeof getBiologicalDayStr === 'function') ? getBiologicalDayStr(now) : now.toDateString();
+
+    // Ventana 1 (5:30 AM - 6:35 AM, Lun-Vie): Apagaste/saliste del Wi-Fi de casa (aunque pase por 'none' antes de 'cellular')
     if (dow >= 1 && dow <= 5 && p.noWorkDayStr !== todayKey && curMins >= 330 && curMins <= 395) {
-        if (prevType === 'wifi' && curType === 'cellular') {
-            if (!p.activeMissions['m_traffic_ida'] && !p.completedToday.includes('m_traffic_ida') && p._netMorningPromptDay !== todayKey) {
-                p._netMorningPromptDay = todayKey;
-                saveData();
+        let leftWifi = (prevType === 'wifi' && (curType === 'none' || curType === 'cellular')) ||
+                       (prevActive === 'wifi' && curType === 'cellular') ||
+                       (prevType === 'online' && curType === 'none');
+        if (leftWifi) {
+            _triggerMorningDeparturePrompt(todayKey);
+        }
+    }
+
+    // Ventana 2 (5:15 PM - 8:00 PM): Volviste al Wi-Fi de casa tras Ruta de Vuelta
+    if (curMins >= 1035 && curMins <= 1200 && curType === 'wifi' && (prevType === 'cellular' || prevActive === 'cellular' || prevType === 'none')) {
+        if (p.activeMissions && p.activeMissions['m_traffic_vuelta']) {
+            systemNotify("Wi-Fi de casa detectado. Recuerda sellar tu [Ruta de Vuelta] cuando bajes de la moto.", "info");
+        }
+    }
+    // Cualquier otra hora (ej. apagón a las 9:00 PM): se ignora por completo
+}
+
+if (navigator.connection && typeof navigator.connection.addEventListener === 'function') {
+    navigator.connection.addEventListener('change', evaluateSafeNetworkTransition);
+}
+window.addEventListener('offline', evaluateSafeNetworkTransition);
+window.addEventListener('online', evaluateSafeNetworkTransition);
+
+
                 if ('serviceWorker' in navigator) {
                     navigator.serviceWorker.ready.then(reg => {
                         if (reg.active) {
