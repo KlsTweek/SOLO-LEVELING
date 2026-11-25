@@ -684,8 +684,7 @@ function renderStatusRadarProfile() {
     if (statusCard.dataset.profSig === profSig && statusCard.childElementCount > 0) return;
     statusCard.dataset.profSig = profSig;
 
-    // Construir cadena de 14 días (si hoy ya está completo o racha >= 14, el nodo 14 también se ilumina)
-    let cellsHtml = '';
+    // Construir trazador de 14 nodos de cristal con haz láser proporcional a la racha viva
     let todayListRef = (typeof getTodayMissions === 'function') ? getTodayMissions() : [];
     let todayAllDone = todayListRef.length > 0
         && Array.isArray(p.completedToday)
@@ -694,15 +693,35 @@ function renderStatusRadarProfile() {
 
     let padded = hist.slice(-13);
     let emptyCount = Math.max(0, 13 - padded.length);
+    let streakNodes = [];
+
     for (let i = 0; i < emptyCount; i++) {
-        cellsHtml += `<div class="sl-streak-day-cell" title="Sin registro"></div>`;
+        streakNodes.push({ cls: '', title: 'Sin registro' });
     }
     padded.forEach(item => {
         let cls = item.status === 'perfect' ? 'st-perfect' : (item.status === 'protected' ? 'st-protected' : 'st-missed');
-        cellsHtml += `<div class="sl-streak-day-cell ${cls}" title="${item.day}: ${item.status.toUpperCase()}"></div>`;
+        streakNodes.push({ cls: cls, title: `${item.day}: ${item.status.toUpperCase()}` });
     });
     let todayNodeCls = (todayAllDone || (p.perfectDays || 0) >= 14) ? 'st-perfect' : 'st-today-active';
-    cellsHtml += `<div class="sl-streak-day-cell ${todayNodeCls}" title="${todayAllDone ? 'Hoy completado' : 'Hoy en curso'}"></div>`;
+    streakNodes.push({ cls: todayNodeCls, title: todayAllDone ? 'Hoy completado' : 'Hoy en curso' });
+
+    const isLitNode = (n) => n && (n.cls === 'st-perfect' || n.cls === 'st-protected');
+    let activeStartIdx = 13;
+    if (isLitNode(streakNodes[13])) {
+        while (activeStartIdx > 0 && isLitNode(streakNodes[activeStartIdx - 1])) activeStartIdx--;
+    } else if (isLitNode(streakNodes[12])) {
+        activeStartIdx = 12;
+        while (activeStartIdx > 0 && isLitNode(streakNodes[activeStartIdx - 1])) activeStartIdx--;
+    }
+    let litGaps = (isLitNode(streakNodes[13]) || isLitNode(streakNodes[12])) ? (13 - activeStartIdx) : 0;
+    let railFillStyle = litGaps > 0 ? `width: calc((100% - 16px) * ${(litGaps / 13).toFixed(4)});` : 'width: 0;';
+
+    let cellsHtml = `<div class="sl-streak-rail-bg"></div><div class="sl-streak-rail-fill" style="${railFillStyle}"></div>`;
+    streakNodes.forEach((node, idx) => {
+        let milestoneCls = (idx === 6 || idx === 13) ? 'milestone-node' : '';
+        cellsHtml += `<div class="sl-streak-day-cell ${milestoneCls} ${node.cls}" title="${node.title}"></div>`;
+    });
+
 
 
     let gearSvg = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#e0f2fe" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 4px #00e5ff);"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
@@ -752,14 +771,18 @@ function renderStatusRadarProfile() {
 
         <div class="sl-status-divider"></div>
 
-                <div class="sl-streak-14-wrap">
+               <div class="sl-streak-14-wrap">
             <div class="sl-streak-14-header">
-                <span>CADENA DE RESONANCIA (14 DÍAS)</span>
-                <span class="sl-streak-badge">${p.perfectDays || 0} INVICTO</span>
+                <span>REGISTRO DE DISCIPLINA</span>
+                <span class="sl-streak-badge">[ ${p.perfectDays || 0} INVICTO ]</span>
             </div>
             <div class="sl-streak-14-grid">${cellsHtml}</div>
+            <div class="sl-streak-scale-row">
+                <span>-13D</span>
+                <span>-7D</span>
+                <span class="is-today-lbl">HOY</span>
+            </div>
         </div>
-
 
         <div class="sl-status-divider"></div>
         <div style="display:flex; flex-direction:column; gap:8px; margin-top:6px;">
