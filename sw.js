@@ -114,6 +114,16 @@ self.addEventListener('message', (event) => {
       _swScheduledTimers[idKey].forEach((t) => clearTimeout(t));
       delete _swScheduledTimers[idKey];
     }
+  } else if (event.data.type === 'SL_CLOSE_NOTIFICATION') {
+    const tagToClose = event.data.tag;
+    if (tagToClose) {
+      event.waitUntil(
+        self.registration.getNotifications({ tag: tagToClose }).then((list) => {
+          list.forEach((n) => n.close());
+        }).catch(() => {})
+      );
+    }
+
   } else if (event.data.type === 'SL_SCHEDULE_TACTICAL_CHECKPOINTS') {
     Object.values(_swTacticalTimers).forEach((t) => clearTimeout(t));
     _swTacticalTimers = {};
@@ -243,6 +253,14 @@ self.addEventListener('notificationclick', (event) => {
   const action = event.action || '';
   const data = (event.notification && event.notification.data) ? event.notification.data : {};
   const actionTs = Date.now();
+
+  if (action === 'start_route_ida' || action === 'delay_route_ida' || action === 'skip_work_today') {
+    if (_swScheduledTimers['auto_depart_confirm']) {
+      _swScheduledTimers['auto_depart_confirm'].forEach((t) => clearTimeout(t));
+      delete _swScheduledTimers['auto_depart_confirm'];
+    }
+  }
+
 
   if (action === 'still_traffic') {
     const nextCount = (data.retryCount || 0) + 1;
