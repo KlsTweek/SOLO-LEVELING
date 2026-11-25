@@ -2738,17 +2738,41 @@ window.syncDailyTacticalCheckpoints = syncDailyTacticalCheckpoints;
 
 function handleTacticalNotificationAction(action, data = {}, actionTs = Date.now()) {
     if (!p || !action) return;
+    if (action !== 'delay_route_ida' && action !== 'skip_work_today' && typeof checkPendingAutoDeparture === 'function') {
+        checkPendingAutoDeparture();
+    }
     let todayKey = (typeof getBiologicalDayStr === 'function') ? getBiologicalDayStr() : new Date().toDateString();
 
     if (action === 'start_route_ida') {
+        let baseTs = (p._pendingAutoDepart && p._pendingAutoDepart.dayKey === todayKey && p._pendingAutoDepart.detectedAt)
+            ? p._pendingAutoDepart.detectedAt
+            : actionTs;
+        p._pendingAutoDepart = null;
+        document.getElementById('sl-auto-depart-modal')?.remove();
+        if (!p.activeMissions) p.activeMissions = {};
         if (!p.activeMissions['m_traffic_ida'] && !p.completedToday.includes('m_traffic_ida')) {
             deployRoutineMission('m_traffic_ida', true);
             if (p.activeMissions['m_traffic_ida']) {
-                p.activeMissions['m_traffic_ida'] = actionTs;
+                p.activeMissions['m_traffic_ida'] = baseTs;
                 saveData();
+                renderRoutine();
+                updateActiveMissionTimersInPlace();
             }
         }
+    } else if (action === 'delay_route_ida') {
+        document.getElementById('sl-auto-depart-modal')?.remove();
+        p._pendingAutoDepart = {
+            dayKey: todayKey,
+            detectedAt: actionTs,
+            autoStartAt: actionTs + (10 * 60000),
+            stage: 'wait_10m'
+        };
+        saveData();
+        if (typeof _scheduleAutoDepartCheck === 'function') _scheduleAutoDepartCheck();
+        systemNotify("En espera (10 min). Si no vuelves al Wi-Fi ni respondes, Ruta de Ida arrancará sola con esos 10 min ya recorridos.", "info");
     } else if (action === 'skip_work_today') {
+        p._pendingAutoDepart = null;
+        document.getElementById('sl-auto-depart-modal')?.remove();
         p.noWorkDayStr = todayKey;
         saveData();
         syncDailyTacticalCheckpoints();
@@ -2803,7 +2827,7 @@ function handleTacticalNotificationAction(action, data = {}, actionTs = Date.now
     }
 }
 
-// Detector pasivo de transición Wi-Fi <-> Datos Móviles (blindado por ventana horaria anti-apagón)
+// Detector pasivo de transición Wi-Fi <-> Datos Móviles (auto-arranque 3m / espera 10m + filtro anti-apagón)
 function _readConnType() {
     if (!navigator.onLine) return 'none';
     if (navigator.connection && navigator.connection.type && navigator.connection.type !== 'unknown') {
@@ -2814,6 +2838,83 @@ function _readConnType() {
 
 let _lastKnownConnType = _readConnType();
 let _lastActiveConnType = _lastKnownConnType !== 'none' ? _lastKnownConnType : null;
+let _autoDepartTimerId = null;
+
+function _scheduleAutoDepartCheck() {
+    if (_autoDepartTimerId) {
+        clearTimeout(_autoDepartTimerId);
+        _autoDepartTimerId = null;
+    }
+    if (!p || !p._pendingAutoDepart || !p._pendingAutoDepart.autoStartAt) return;
+    let remMs = p._pendingAutoDepart.autoStartAt - Date.now();
+    if (remMs <= 0) {
+        checkPendingAutoDeparture();
+    } else {
+        _autoDepartTimerId = setTimeout(checkPendingAutoDeparture, remMs + 300);
+    }
+}
+
+function checkPendingAutoDeparture() {
+    if (!p || !p._pendingAutoDepart || !p.dayZeroCompleted || p.penaltyActive) return false;
+    let pending = p._pendingAutoDepart;
+    let todayKey = (typeof getBiologicalDayStr === 'function') ? getBiologicalDayStr() : new Date().toDateString();
+
+    if (pending.dayKey !== todayKey || p.noWorkDayStr === todayKey) {
+        p._pendingAutoDepart = null;
+        saveData();
+        return false;
+    }
+    if (!p.activeMissions) p.activeMissions = {};
+    if (p.activeMissions['m_traffic_ida'] || (Array.isArray(p.completedToday) && p.completedToday.includes('m_traffic_ida'))) {
+        p._pendingAutoDepart = null;
+        saveData();
+        return false;
+    }
+
+    let now = Date.now();
+    // Si aún no vence el temporizador, reprogramar y esperar
+    if (now < pending.autoStartAt) {
+        _scheduleAutoDepartCheck();
+        return false;
+    }
+
+    // Temporizador vencido (3m iniciales o 10m tras "Todavía no"): activar Ruta de Ida retroactiva
+    let startTs = pending.detectedAt || pending.autoStartAt;
+    let elapsedMins = Math.max(1, Math.round((now - startTs) / 60000));
+    p._pendingAutoDepart = null;
+    document.getElementById('sl-auto-depart-modal')?.remove();
+
+    deployRoutineMission('m_traffic_ida', true);
+    if (p.activeMissions['m_traffic_ida']) {
+        p.activeMissions['m_traffic_ida'] = startTs;
+        saveData();
+        renderRoutine();
+        updateActiveMissionTimersInPlace();
+        syncDailyTacticalCheckpoints();
+
+        let startClock = formatClockMins12h(new Date(startTs).getHours() * 60 + new Date(startTs).getMinutes());
+        systemNotify(`[RUTA DE IDA AUTOMÁTICA]: Sin respuesta tras la salida. Cronómetro activo desde las ${startClock} (${elapsedMins}m ya recorridos).`, "gold");
+
+        if ('serviceWorker' in navigator && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+            navigator.serviceWorker.ready.then(reg => {
+                if (reg.active) {
+                    reg.active.postMessage({
+                        type: 'SL_SHOW_TACTICAL_NOW',
+                        payload: {
+                            title: 'SISTEMA // RUTA DE IDA ACTIVA',
+                            body: `Activada automáticamente desde las ${startClock} (${elapsedMins}m recorridos).`,
+                            tag: 'sl-net-depart'
+                        }
+                    });
+                }
+            }).catch(() => {});
+        }
+        return true;
+    }
+    saveData();
+    return false;
+}
+window.checkPendingAutoDeparture = checkPendingAutoDeparture;
 
 function _triggerMorningDeparturePrompt(todayKey) {
     if (!p) return;
@@ -2822,10 +2923,18 @@ function _triggerMorningDeparturePrompt(todayKey) {
     if (Array.isArray(p.completedToday) && p.completedToday.includes('m_traffic_ida')) return;
     if (p._netMorningPromptDay === todayKey) return;
 
+    let now = Date.now();
     p._netMorningPromptDay = todayKey;
+    p._pendingAutoDepart = {
+        dayKey: todayKey,
+        detectedAt: now,
+        autoStartAt: now + (3 * 60000),
+        stage: 'grace_3m'
+    };
     saveData();
+    _scheduleAutoDepartCheck();
 
-    // 1. Notificación nativa con botones si el permiso está activo
+    // 1. Notificación nativa con 2 opciones (Iniciar Ruta / Todavía no)
     if ('serviceWorker' in navigator && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
         navigator.serviceWorker.ready.then(reg => {
             if (reg.active) {
@@ -2833,11 +2942,11 @@ function _triggerMorningDeparturePrompt(todayKey) {
                     type: 'SL_SHOW_TACTICAL_NOW',
                     payload: {
                         title: 'SISTEMA // SALIDA DETECTADA',
-                        body: 'Desconexión de Wi-Fi doméstico detectada. ¿Iniciamos Ruta de Ida?',
+                        body: 'Sin Wi-Fi doméstico. Ruta de Ida iniciará sola en 3 min si ya vas en moto.',
                         tag: 'sl-net-depart',
                         actions: [
                             { action: 'start_route_ida', title: 'Iniciar Ruta' },
-                            { action: 'skip_work_today', title: 'Ignorar' }
+                            { action: 'delay_route_ida', title: 'Todavía no' }
                         ]
                     }
                 });
@@ -2845,18 +2954,22 @@ function _triggerMorningDeparturePrompt(todayKey) {
         }).catch(() => {});
     }
 
-    // 2. Respaldo visual inmediato dentro de la app (si está abierta o faltaba permiso Push)
-    if (!document.hidden && typeof openSystemConfirmModal === 'function') {
-        openSystemConfirmModal(
-            'SALIDA DETECTADA',
-            '[ DESCONEXIÓN DE WI-FI DOMÉSTICO ]',
-            'Se detectó salida de la red de casa en tu ventana laboral.<br><br>¿Iniciamos tu <b>Ruta de Ida</b> ahora mismo?',
-            'INICIAR RUTA',
-            () => handleTacticalNotificationAction('start_route_ida', {}, Date.now()),
-            ''
-        );
+    // 2. Respaldo visual dentro de la app si está abierta
+    if (!document.hidden && typeof _buildSmartTimeShell === 'function') {
+        let html = `
+            <div style="color:#e0f2fe; font-size:0.86em; line-height:1.45; margin-bottom:14px;">
+                Desconexión de Wi-Fi doméstico detectada.<br>
+                Si no respondes en <b>3 minutos</b>, <b>[Ruta de Ida]</b> arrancará automáticamente desde ahora.
+            </div>
+            <div style="display:flex; flex-direction:column; gap:7px;">
+                <button class="btn btn-main" style="width:100%; padding:10px !important;" onclick="handleTacticalNotificationAction('start_route_ida', {}, Date.now())">INICIAR RUTA AHORA</button>
+                <button class="btn btn-blue" style="width:100%; padding:9px !important;" onclick="handleTacticalNotificationAction('delay_route_ida', {}, Date.now())">TODAVÍA NO (ESPERAR 10 MIN)</button>
+                <button class="btn btn-red" style="width:100%; padding:8px !important; font-size:0.72em !important;" onclick="handleTacticalNotificationAction('skip_work_today', {}, Date.now())">HOY NO TRABAJO (CANCELAR)</button>
+            </div>
+        `;
+        _buildSmartTimeShell('sl-auto-depart-modal', 'SALIDA DETECTADA', '[ AUTO-ARRANQUE EN 3 MINUTOS ]', html);
     } else if (typeof systemNotify === 'function') {
-        systemNotify("Salida de Wi-Fi doméstico detectada. Recuerda iniciar tu [Ruta de Ida].", "info");
+        systemNotify("Salida de Wi-Fi detectada. Ruta de Ida arrancará automáticamente en 3 min.", "info");
     }
 }
 
@@ -2872,11 +2985,23 @@ function evaluateSafeNetworkTransition() {
     if (prevType === curType) return;
 
     let now = new Date();
+    let nowMs = now.getTime();
     let dow = now.getDay();
     let curMins = now.getHours() * 60 + now.getMinutes();
     let todayKey = (typeof getBiologicalDayStr === 'function') ? getBiologicalDayStr(now) : now.toDateString();
 
-    // Ventana 1 (5:30 AM - 6:35 AM, Lun-Vie): Apagaste/saliste del Wi-Fi de casa (aunque pase por 'none' antes de 'cellular')
+    // Si el Wi-Fi vuelve antes de cumplirse los 3m (o 10m de espera), cancelar auto-arranque porque sigues en casa
+    if (curType === 'wifi' && p._pendingAutoDepart && nowMs < p._pendingAutoDepart.autoStartAt) {
+        p._pendingAutoDepart = null;
+        p._netMorningPromptDay = null;
+        if (_autoDepartTimerId) { clearTimeout(_autoDepartTimerId); _autoDepartTimerId = null; }
+        document.getElementById('sl-auto-depart-modal')?.remove();
+        saveData();
+        systemNotify("Wi-Fi doméstico reconectado. Auto-arranque de Ruta cancelado.", "info");
+        return;
+    }
+
+    // Ventana 1 (5:30 AM - 6:35 AM, Lun-Vie): Apagaste/saliste del Wi-Fi de casa
     if (dow >= 1 && dow <= 5 && p.noWorkDayStr !== todayKey && curMins >= 330 && curMins <= 395) {
         let leftWifi = (prevType === 'wifi' && (curType === 'none' || curType === 'cellular')) ||
                        (prevActive === 'wifi' && curType === 'cellular') ||
@@ -2901,6 +3026,9 @@ if (navigator.connection && typeof navigator.connection.addEventListener === 'fu
 window.addEventListener('offline', evaluateSafeNetworkTransition);
 window.addEventListener('online', evaluateSafeNetworkTransition);
 
+if (window._autoDepartWatchInterval) clearInterval(window._autoDepartWatchInterval);
+window._autoDepartWatchInterval = setInterval(checkPendingAutoDeparture, 15000);
+
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.addEventListener('message', (event) => {
         if (event.data && event.data.type === 'SL_TACTICAL_ACTION') {
@@ -2912,6 +3040,7 @@ if ('serviceWorker' in navigator) {
 document.addEventListener('visibilitychange', () => {
     if (!document.hidden && p && p.dayZeroCompleted && !p.penaltyActive) {
         evaluateSafeNetworkTransition();
+        checkPendingAutoDeparture();
         setTimeout(() => checkForgottenRouteHandover(true), 600);
     }
 });
@@ -2926,6 +3055,7 @@ window.addEventListener('load', () => {
             handleTacticalNotificationAction(swAct, {}, swTs);
             window.history.replaceState({}, document.title, window.location.pathname);
         }
+        checkPendingAutoDeparture();
         syncDailyTacticalCheckpoints();
         checkForgottenRouteHandover(true);
     }, 900);
