@@ -249,11 +249,94 @@ function isTelemetryMission(m) {
     return m.id === 'm_traffic_ida' || m.id === 'm_traffic_vuelta' || m.id === 'm_work' || m.id.startsWith('sched_');
 }
 
+const TELEMETRY_EMA_ALPHA = 0.35;
+
+function ensureWorkTelemetryProfile() {
+    if (!p) return null;
+    if (!p.workTelemetryProfile) {
+        p.workTelemetryProfile = {
+            departMins: 355,     // 5:55 AM inicial
+            arrivalMins: 480,    // 8:00 AM inicial
+            leaveWorkMins: 930,  // 3:30 PM inicial
+            samples: 0,
+            shiftStreak: { depart: 0, arrival: 0, leave: 0 }
+        };
+    }
+    if (!p.workTelemetryProfile.shiftStreak) {
+        p.workTelemetryProfile.shiftStreak = { depart: 0, arrival: 0, leave: 0 };
+    }
+    return p.workTelemetryProfile;
+}
+
+function formatClockMins12h(totalMins) {
+    let m = ((Math.round(totalMins) % 1440) + 1440) % 1440;
+    let h24 = Math.floor(m / 60);
+    let min = m % 60;
+    let ap = h24 >= 12 ? 'PM' : 'AM';
+    let h12 = h24 % 12 || 12;
+    return `${h12}:${String(min).padStart(2, '0')} ${ap}`;
+}
+
+function recordWorkClockSample(kind, dateObjOrTs) {
+    let prof = ensureWorkTelemetryProfile();
+    if (!prof) return;
+    let d = new Date(dateObjOrTs);
+    let curMins = d.getHours() * 60 + d.getMinutes();
+
+    const fieldMap = { depart: 'departMins', arrival: 'arrivalMins', leave: 'leaveWorkMins' };
+    const key = fieldMap[kind];
+    if (!key) return;
+
+    let prev = prof[key];
+    let diff = Math.abs(curMins - prev);
+
+    // Si durante 3 días seguidos tu horario real se desvía > 20 min, el Sistema asume cambio de trabajo/horario y se adapta rápido
+    if (diff > 20) {
+        prof.shiftStreak[kind] = (prof.shiftStreak[kind] || 0) + 1;
+    } else {
+        prof.shiftStreak[kind] = 0;
+    }
+
+    let alpha = prof.samples < 3 ? 0.55 : (prof.shiftStreak[kind] >= 3 ? 0.72 : TELEMETRY_EMA_ALPHA);
+    prof[key] = Math.round((alpha * curMins) + ((1 - alpha) * prev));
+    if (kind === 'arrival') prof.samples = (prof.samples || 0) + 1;
+
+    if (prof.shiftStreak[kind] >= 3) {
+        prof.shiftStreak[kind] = 0;
+        if (typeof systemNotify === 'function') {
+            systemNotify(`[RECALIBRACIÓN DE HORARIO]: Nuevo patrón detectado (${formatClockMins12h(prof[key])}). Los avisos se han ajustado automáticamente.`, 'info');
+        }
+    }
+}
+
+function recordAdaptiveTelemetry(missionId, realMins) {
+    if (!p || !missionId) return realMins;
+    let cleanMins = Math.max(1, Math.round(realMins));
+    if (!p.telemetryStats) p.telemetryStats = {};
+    let st = p.telemetryStats[missionId];
+    if (!st) {
+        st = { totalMins: cleanMins, count: 1, bestMins: cleanMins, emaMins: cleanMins, lastMins: cleanMins };
+        p.telemetryStats[missionId] = st;
+    } else {
+        let prevEma = st.emaMins || (st.count > 0 ? Math.round(st.totalMins / st.count) : cleanMins);
+        st.totalMins += cleanMins;
+        st.count += 1;
+        st.lastMins = cleanMins;
+        if (cleanMins < (st.bestMins || cleanMins)) st.bestMins = cleanMins;
+        st.emaMins = Math.round((TELEMETRY_EMA_ALPHA * cleanMins) + ((1 - TELEMETRY_EMA_ALPHA) * prevEma));
+    }
+    if (!p.telemetryLastToday) p.telemetryLastToday = {};
+    p.telemetryLastToday[missionId] = cleanMins;
+    return st.emaMins;
+}
+
 function getTelemetryAverageMins(missionId, fallbackMins = 30) {
     if (!p || !p.telemetryStats || !p.telemetryStats[missionId] || p.telemetryStats[missionId].count === 0) {
         return fallbackMins;
     }
-    return Math.round(p.telemetryStats[missionId].totalMins / p.telemetryStats[missionId].count);
+    let st = p.telemetryStats[missionId];
+    if (st.emaMins) return Math.round(st.emaMins);
+    return Math.round(st.totalMins / st.count);
 }
 
 window.toggleMissionCardSelect = function(id) {
@@ -453,8 +536,9 @@ let currentDayStr = (typeof getBiologicalDayStr === "function") ? getBiologicalD
             _bracketFlipCache[`mission_${m.id}`] = bracketText;
         }
 
+                let isTransitAudioThis = (m.id.startsWith('sched_') && isActive && p.classAudioTransitMode);
         let telemetryNote = isTelemetry
-            ? `<div class="sl-telemetry-note" style="color:#bae6fd; margin-bottom:6px;">[Modo Telemetría: Promedio actual ${reqMins}m]</div>`
+            ? `<div class="sl-telemetry-note" style="color:#bae6fd; margin-bottom:6px;">[Telemetría Adaptativa EMA: ~${reqMins}m]${isTransitAudioThis ? '<br><span style="color:#7dd3fc;">[ENLACE RADIAL EN MOTO ACTIVO • 0 CASTIGO POR DESERCIÓN]</span>' : ''}</div>`
             : '';
 
         let swapNextName = '';
@@ -496,8 +580,8 @@ let currentDayStr = (typeof getBiologicalDayStr === "function") ? getBiologicalD
                     : (isHydration
                         ? `<button class="btn" id="btn-hydration-glass" onclick="incrementHydrationGlass()">REGISTRAR VASO DE AGUA (${p.hydrationGlasses || 0}/8)</button>`
                                                 : (isActive
-                            ? `${m.id.startsWith('sched_') ? `<button class="btn btn-blue" style="margin-bottom:8px;" onclick="toggleClassOledShield(true, '${m.id}', '${m.title.replace(/'/g, "\\'")}')">[ ESCUDO OLED: PONER EN BOLSILLO ]</button>` : ''}<button class="btn" onclick="finishRoutineMission('${m.id}')">${isTelemetry ? 'FINALIZAR Y REGISTRAR TIEMPO REAL' : 'SELLAR MISIÓN (' + minsPassed + '/' + reqMins + 'm)'}</button>`
-                            : `<button class="btn" onclick="selectedRoutineMissionId=null; deployRoutineMission('${m.id}')">${isTelemetry ? 'INICIAR CRONÓMETRO REAL' : 'DESPLEGAR MISIÓN (' + reqMins + 'm)'}</button>`))}
+                            ? `${m.id.startsWith('sched_') ? `<button class="btn btn-blue" style="margin-bottom:8px;" onclick="toggleClassOledShield(true, '${m.id}', '${m.title.replace(/'/g, "\\'")}')">[ ESCUDO OLED: PONER EN BOLSILLO ]</button><button class="btn btn-blue" style="margin-bottom:8px;" onclick="toggleClassAudioTransitMode()">[ ENLACE RADIAL EN MOTO: ${p.classAudioTransitMode ? 'ACTIVO' : 'APAGADO'} ]</button>` : ''}${m.id === 'm_traffic_ida' ? `<button class="btn btn-blue" style="margin-bottom:8px;" onclick="openSmartArrivalHandoverModal()">[ RELEVO A TRABAJO / AJUSTAR HORA ]</button>` : ''}${m.id === 'm_work' ? `<button class="btn btn-blue" style="margin-bottom:8px;" onclick="openSmartWorkExitModal()">[ SALÍ DEL TRABAJO / AJUSTAR HORA ]</button>` : ''}<button class="btn" onclick="finishRoutineMission('${m.id}')">${isTelemetry ? 'FINALIZAR Y REGISTRAR TIEMPO REAL' : 'SELLAR MISIÓN (' + minsPassed + '/' + reqMins + 'm)'}</button>`
+                            : `${m.id.startsWith('sched_') ? `<button class="btn btn-blue" style="margin-bottom:8px;" onclick="openRetroactiveClassStartModal('${m.id}')">[ YA LA ESCUCHABA EN RUTA (AJUSTAR HORA) ]</button>` : ''}<button class="btn" onclick="selectedRoutineMissionId=null; deployRoutineMission('${m.id}')">${isTelemetry ? 'INICIAR CRONÓMETRO REAL' : 'DESPLEGAR MISIÓN (' + reqMins + 'm)'}</button>`))}
             </div>` : ''}
         </div>`;
     });
@@ -685,55 +769,390 @@ window.toggleClassOledShield = async function(enable, missionId = null, title = 
     }
 };
 
-function checkForgottenRouteHandover() {
-    if (!p || !p.activeMissions || !p.activeMissions['m_traffic_ida']) return false;
-    let startTs = p.activeMissions['m_traffic_ida'];
-    let elapsedMins = Math.floor((Date.now() - startTs) / 60000);
-    if (elapsedMins < 95) return false;
+window.toggleClassAudioTransitMode = function() {
+    if (!p) return;
+    p.classAudioTransitMode = !p.classAudioTransitMode;
+    saveData();
+    renderRoutine();
+    if (typeof systemNotify === 'function') {
+        systemNotify(p.classAudioTransitMode
+            ? "[ENLACE RADIAL ACTIVADO]: Puedes escuchar tu clase manejando con pantalla apagada o en otra app sin castigo por deserción."
+            : "[ENLACE RADIAL DESACTIVADO]: Vigilancia estándar de academia restaurada.", "info");
+    }
+};
 
-    let avgRouteMins = getTelemetryAverageMins('m_traffic_ida', 50);
-    let clampedRouteMins = Math.min(80, Math.max(35, avgRouteMins));
-    let workStartTs = startTs + (clampedRouteMins * 60000);
-    let workAccumMins = Math.max(1, elapsedMins - clampedRouteMins);
-
-    if (document.getElementById('sl-handover-modal')) return true;
-
+function _buildSmartTimeShell(modalId, title, sub, bodyHtml) {
+    let old = document.getElementById(modalId);
+    if (old) old.remove();
     let cornerSVG = (typeof getBaroqueCornerSVG === "function") ? getBaroqueCornerSVG() : '';
     let ov = document.createElement('div');
-    ov.id = 'sl-handover-modal';
-    ov.style.cssText = 'position:fixed; inset:0; background:rgba(2,6,18,0.94); z-index:13600; display:flex; justify-content:center; align-items:center; padding:18px;';
+    ov.id = modalId;
+    ov.style.cssText = 'position:fixed; inset:0; background:rgba(2,6,18,0.92); backdrop-filter:blur(6px); z-index:13650; display:flex; justify-content:center; align-items:center; padding:18px;';
     ov.innerHTML = `
-        <div class="sl-holo-frame" style="width:100%; max-width:410px; cursor:default;">
+        <div class="sl-holo-frame" style="width:100%; max-width:405px; cursor:default;">
             <div class="sl-holo-rail top"><span class="rail-core"></span></div>
             <div class="sl-holo-glass">
-                <div class="sl-holo-inner-box" style="padding:20px 16px; text-align:center;">
+                <div class="sl-holo-inner-box" style="padding:18px 15px; text-align:center;">
                     <span class="sl-baroque-corner tl">${cornerSVG}</span>
                     <span class="sl-baroque-corner tr">${cornerSVG}</span>
                     <span class="sl-baroque-corner bl">${cornerSVG}</span>
                     <span class="sl-baroque-corner br">${cornerSVG}</span>
-                    <div class="sl-holo-header-row" style="margin-bottom:8px;">
-                        <div class="sl-excl-square">!</div>
-                        <div class="sl-title-rect">RELEVO DE MEMORIA</div>
+                    <div class="sl-holo-header-row" style="margin-bottom:6px;">
+                        <div class="sl-excl-square"><span class="sl-excl-circle-inner">!</span></div>
+                        <div class="sl-title-rect">${title}</div>
                     </div>
-                    <div class="sl-holo-subbracket">[ ASISTENCIA COGNITIVA DEL ARQUITECTO ]</div>
-                    <div style="color:#e0f2fe; font-size:0.9em; line-height:1.5; margin:12px 0;">
-                        Tu cronómetro de <b>[Ruta de Ida]</b> lleva <b>${elapsedMins} min</b> corriendo.<br><br>
-                        ¿Olvidaste desactivarlo al llegar al trabajo? El Sistema puede sellar tu Ruta en <b>${clampedRouteMins} min</b> y transferir los <b>${workAccumMins} min restantes</b> directamente a tu <b>[Jornada Laboral]</b>.
-                    </div>
-                    <div style="display:flex; flex-direction:column; gap:8px;">
-                        <button class="btn btn-main" style="width:100%; padding:11px;" onclick="confirmRouteToWorkHandover(${clampedRouteMins}, ${workStartTs})">
-                            TRANSFERIR ${workAccumMins}M A JORNADA Y SELLAR RUTA
-                        </button>
-                        <button class="btn btn-blue" style="width:100%; padding:9px;" onclick="document.getElementById('sl-handover-modal').remove()">
-                            NO, SIGO EN TRÁFICO (${elapsedMins}M REALES)
-                        </button>
-                    </div>
+                    <div class="sl-holo-subbracket" style="margin-bottom:10px;">${sub}</div>
+                    ${bodyHtml}
                 </div>
             </div>
             <div class="sl-holo-rail bottom"><span class="rail-core"></span></div>
         </div>
     `;
     document.body.appendChild(ov);
+    return ov;
+}
+
+function _timeInputToTodayTs(hhmmStr) {
+    if (!hhmmStr || !hhmmStr.includes(':')) return Date.now();
+    let parts = hhmmStr.split(':').map(Number);
+    let d = new Date();
+    d.setHours(parts[0] || 0, parts[1] || 0, 0, 0);
+    return d.getTime();
+}
+
+window.openSmartArrivalHandoverModal = function() {
+    if (!p || !p.activeMissions || !p.activeMissions['m_traffic_ida']) return;
+    let startTs = p.activeMissions['m_traffic_ida'];
+    let now = Date.now();
+    let elapsedMins = Math.max(1, Math.floor((now - startTs) / 60000));
+    let prof = ensureWorkTelemetryProfile();
+    let learnedArrMins = prof ? prof.arrivalMins : 480;
+    let learnedLabel = formatClockMins12h(learnedArrMins);
+
+    let learnedDate = new Date();
+    learnedDate.setHours(Math.floor(learnedArrMins / 60), learnedArrMins % 60, 0, 0);
+    let learnedTs = Math.min(now, Math.max(startTs + 60000, learnedDate.getTime()));
+
+    let defH = String(new Date().getHours()).padStart(2, '0');
+    let defM = String(new Date().getMinutes()).padStart(2, '0');
+    let isLearnedMature = prof && prof.samples >= 7;
+
+    let html = `
+        <div style="color:#e0f2fe; font-size:0.86em; line-height:1.45; margin-bottom:12px;">
+            Tu <b>[Ruta de Ida]</b> lleva <b>${elapsedMins} min</b> activa.<br>
+            Indica en 1 toque a qué hora llegaste al trabajo para separar el viaje real y tu jornada:
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:8px;">
+            <button class="btn btn-main" style="padding:9px 4px !important; font-size:0.72em !important;" onclick="executeSmartArrivalHandover(${now})">LLEGUÉ AHORITA</button>
+            <button class="btn btn-blue" style="padding:9px 4px !important; font-size:0.72em !important;" onclick="executeSmartArrivalHandover(${Math.max(startTs + 60000, now - 15 * 60000)})">HACE 15 MIN</button>
+            <button class="btn btn-blue" style="padding:9px 4px !important; font-size:0.72em !important;" onclick="executeSmartArrivalHandover(${Math.max(startTs + 60000, now - 30 * 60000)})">HACE 30 MIN</button>
+            <button class="btn ${isLearnedMature ? 'btn-main' : 'btn-blue'}" style="padding:9px 4px !important; font-size:0.72em !important;" onclick="executeSmartArrivalHandover(${learnedTs})">HABITUAL (${learnedLabel})</button>
+        </div>
+        <div style="display:flex; gap:6px; align-items:center; margin-bottom:10px;">
+            <input type="time" id="sl-exact-arrival-time" class="input-dark" value="${defH}:${defM}" style="margin:0; padding:8px; flex:1; color-scheme:dark; text-align:center;">
+            <button class="btn btn-blue" style="padding:9px 10px !important; font-size:0.7em !important;" onclick="executeSmartArrivalHandover(_timeInputToTodayTs(document.getElementById('sl-exact-arrival-time').value))">APLICAR HORA</button>
+        </div>
+        <button class="btn btn-red" style="width:100%; padding:8px !important; font-size:0.72em !important;" onclick="snoozeArrivalHandover()">SIGO EN TRÁFICO (PREGUNTAR EN 15M)</button>
+    `;
+    _buildSmartTimeShell('sl-handover-modal', 'RELEVO DE LLEGADA', '[ SEPARACIÓN DE RUTA Y JORNADA ]', html);
+};
+
+window.snoozeArrivalHandover = function() {
+    let modal = document.getElementById('sl-handover-modal');
+    if (modal) modal.remove();
+    p._arrivalHandoverSnoozeUntil = Date.now() + (15 * 60000);
+    saveData();
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.ready.then(reg => {
+            if (reg.active) {
+                reg.active.postMessage({
+                    type: 'SL_SCHEDULE_REMINDERS',
+                    missionId: 'arrival_snooze',
+                    alerts: [{
+                        delayMs: 15 * 60000,
+                        title: 'SISTEMA // VERIFICACIÓN DE ARRIBO',
+                        body: 'Pasaron 15 min más. ¿Ya llegaste al trabajo?',
+                        tag: 'sl-cp-work_arrival',
+                        actions: [
+                            { action: 'arrived_now', title: 'Llegué ya' },
+                            { action: 'arrived_15_ago', title: 'Hace 15m' },
+                            { action: 'still_traffic', title: 'Sigo en ruta' }
+                        ]
+                    }]
+                });
+            }
+        }).catch(() => {});
+    }
+    systemNotify("Entendido. Te volveré a preguntar en 15 minutos.", "info");
+};
+
+window.executeSmartArrivalHandover = function(arrivalTs, silentFromNotif = false) {
+    let modal = document.getElementById('sl-handover-modal');
+    if (modal) modal.remove();
+    if (!p || !p.activeMissions || !p.activeMissions['m_traffic_ida']) return;
+
+    let startTs = p.activeMissions['m_traffic_ida'];
+    let now = Date.now();
+    let clampedArrivalTs = Math.min(now, Math.max(startTs + 60000, arrivalTs || now));
+    let routeMins = Math.max(1, Math.round((clampedArrivalTs - startTs) / 60000));
+    let workAccumMins = Math.max(0, Math.round((now - clampedArrivalTs) / 60000));
+
+    let mIda = getTodayMissions().find(x => x.id === 'm_traffic_ida');
+    if (!mIda) return;
+
+    recordAdaptiveTelemetry('m_traffic_ida', routeMins);
+    recordWorkClockSample('depart', startTs);
+    recordWorkClockSample('arrival', clampedArrivalTs);
+
+    delete p.activeMissions['m_traffic_ida'];
+    p._arrivalHandoverSnoozeUntil = null;
+    cancelMissionNativeReminders('m_traffic_ida');
+
+    if (!p.completedToday.includes('m_work')) {
+        p.activeMissions['m_work'] = clampedArrivalTs;
+        let mWork = getTodayMissions().find(x => x.id === 'm_work');
+        if (mWork) scheduleMissionNativeReminders(mWork);
+    }
+
+    if (!p.synergiesClaimedList) p.synergiesClaimedList = [];
+    if (!p.synergiesClaimedList.includes('syn_relay_work')) {
+        p.synergiesClaimedList.push('syn_relay_work');
+        p.mp = Math.min(1000 + ((p.stats.int - 1) * 1000), (p.mp || 0) + 80);
+    }
+
+    if (silentFromNotif) {
+        // Completado silencioso desde botón de notificación Push (sin abrir modal de corte)
+        if (!p.completedToday.includes('m_traffic_ida')) p.completedToday.push('m_traffic_ida');
+        p.chorrosIdaFinishedAt = clampedArrivalTs;
+        p.xp += mIda.xp || 40;
+        p.gold += getEffectiveMissionGoldReward(mIda);
+        p.totalMissions = (p.totalMissions || 0) + 1;
+        if (p.timeStats) p.timeStats.traffic = (p.timeStats.traffic || 0) + routeMins;
+        saveData();
+        renderRoutine();
+        updateHUD();
+        syncDailyTacticalCheckpoints();
+        systemNotify(`[RELEVO POR NOTIFICACIÓN]: Ruta de Ida sellada (${routeMins}m) y Jornada iniciada a las ${formatClockMins12h(new Date(clampedArrivalTs).getHours() * 60 + new Date(clampedArrivalTs).getMinutes())}.`, "gold");
+        return;
+    }
+
+    saveData();
+    renderRoutine();
+    updateHUD();
+    syncDailyTacticalCheckpoints();
+
+    let arrivalClockStr = formatClockMins12h(new Date(clampedArrivalTs).getHours() * 60 + new Date(clampedArrivalTs).getMinutes());
+    systemNotify(`[RELEVO SINCRONIZADO]: Ruta ${routeMins}m • Jornada corriendo desde ${arrivalClockStr} (${workAccumMins}m acumulados).`, "info");
+
+    openSealModal({
+        type: 'routine',
+        id: 'm_traffic_ida',
+        xp: mIda.xp,
+        gold: mIda.gold,
+        stat: mIda.stat,
+        timeCat: 'traffic',
+        mins: routeMins,
+        realMins: routeMins,
+        honorNote: `Llegada a trabajo ${arrivalClockStr} (${routeMins}m ruta)`
+    });
+};
+
+window.openSmartWorkExitModal = function() {
+    if (!p || !p.activeMissions || !p.activeMissions['m_work']) return;
+    let startTs = p.activeMissions['m_work'];
+    let now = Date.now();
+    let prof = ensureWorkTelemetryProfile();
+    let leaveMins = prof ? prof.leaveWorkMins : 930; // 3:30 PM
+    let leaveDate = new Date();
+    leaveDate.setHours(Math.floor(leaveMins / 60), leaveMins % 60, 0, 0);
+    let leaveTs = Math.min(now, Math.max(startTs + 60000, leaveDate.getTime()));
+
+    let defH = String(new Date().getHours()).padStart(2, '0');
+    let defM = String(new Date().getMinutes()).padStart(2, '0');
+
+    let html = `
+        <div style="color:#e0f2fe; font-size:0.86em; line-height:1.45; margin-bottom:12px;">
+            Indica a qué hora saliste del trabajo para guardar tu jornada real y transferir el resto a <b>[Ruta de Vuelta]</b>:
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:8px;">
+            <button class="btn btn-main" style="padding:9px 4px !important; font-size:0.72em !important;" onclick="executeSmartWorkExit(${now})">SALÍ AHORITA</button>
+            <button class="btn btn-blue" style="padding:9px 4px !important; font-size:0.72em !important;" onclick="executeSmartWorkExit(${leaveTs})">HABITUAL (${formatClockMins12h(leaveMins)})</button>
+            <button class="btn btn-blue" style="padding:9px 4px !important; font-size:0.72em !important;" onclick="executeSmartWorkExit(${Math.max(startTs + 60000, now - 30 * 60000)})">HACE 30 MIN</button>
+            <button class="btn btn-blue" style="padding:9px 4px !important; font-size:0.72em !important;" onclick="executeSmartWorkExit(${Math.max(startTs + 60000, now - 60 * 60000)})">HACE 1 HORA</button>
+        </div>
+        <div style="display:flex; gap:6px; align-items:center; margin-bottom:10px;">
+            <input type="time" id="sl-exact-exit-time" class="input-dark" value="${defH}:${defM}" style="margin:0; padding:8px; flex:1; color-scheme:dark; text-align:center;">
+            <button class="btn btn-blue" style="padding:9px 10px !important; font-size:0.7em !important;" onclick="executeSmartWorkExit(_timeInputToTodayTs(document.getElementById('sl-exact-exit-time').value))">APLICAR HORA</button>
+        </div>
+        <button class="btn btn-red" style="width:100%; padding:8px !important; font-size:0.72em !important;" onclick="document.getElementById('sl-handover-modal')?.remove()">SEGUIR EN JORNADA</button>
+    `;
+    _buildSmartTimeShell('sl-handover-modal', 'CIERRE DE JORNADA', '[ RELEVO A RUTA DE VUELTA ]', html);
+};
+
+window.executeSmartWorkExit = function(exitTs, silentFromNotif = false) {
+    let modal = document.getElementById('sl-handover-modal');
+    if (modal) modal.remove();
+    if (!p || !p.activeMissions || !p.activeMissions['m_work']) return;
+
+    let startTs = p.activeMissions['m_work'];
+    let now = Date.now();
+    let clampedExitTs = Math.min(now, Math.max(startTs + 60000, exitTs || now));
+    let workMins = Math.max(1, Math.round((clampedExitTs - startTs) / 60000));
+    let mWork = getTodayMissions().find(x => x.id === 'm_work');
+    if (!mWork) return;
+
+    recordAdaptiveTelemetry('m_work', workMins);
+    recordWorkClockSample('leave', clampedExitTs);
+
+    delete p.activeMissions['m_work'];
+    cancelMissionNativeReminders('m_work');
+
+    // Inicia Ruta de Vuelta desde la hora exacta de salida del trabajo
+    if (!p.completedToday.includes('m_traffic_vuelta')) {
+        p.activeMissions['m_traffic_vuelta'] = clampedExitTs;
+        let mVuelta = getTodayMissions().find(x => x.id === 'm_traffic_vuelta');
+        if (mVuelta) scheduleMissionNativeReminders(mVuelta);
+    }
+
+    let exitStr = formatClockMins12h(new Date(clampedExitTs).getHours() * 60 + new Date(clampedExitTs).getMinutes());
+
+    if (silentFromNotif) {
+        if (!p.completedToday.includes('m_work')) p.completedToday.push('m_work');
+        p.xp += mWork.xp || 90;
+        p.gold += getEffectiveMissionGoldReward(mWork);
+        p.totalMissions = (p.totalMissions || 0) + 1;
+        if (p.timeStats) p.timeStats.work = (p.timeStats.work || 0) + workMins;
+        saveData();
+        renderRoutine();
+        updateHUD();
+        syncDailyTacticalCheckpoints();
+        systemNotify(`[SALIDA REGISTRADA]: Jornada cerrada (${workMins}m) y Ruta de Vuelta corriendo desde ${exitStr}.`, "gold");
+        return;
+    }
+
+    saveData();
+    renderRoutine();
+    updateHUD();
+    syncDailyTacticalCheckpoints();
+
+    openSealModal({
+        type: 'routine',
+        id: 'm_work',
+        xp: mWork.xp,
+        gold: mWork.gold,
+        stat: mWork.stat,
+        timeCat: 'work',
+        mins: workMins,
+        realMins: workMins,
+        honorNote: `Jornada completada hasta ${exitStr} (${workMins}m)`
+    });
+};
+
+window.openRetroactiveRouteModal = function() {
+    let prof = ensureWorkTelemetryProfile();
+    let depMins = prof ? prof.departMins : 355;
+    let depH = String(Math.floor(depMins / 60)).padStart(2, '0');
+    let depM = String(depMins % 60).padStart(2, '0');
+
+    let html = `
+        <div style="color:#e0f2fe; font-size:0.86em; line-height:1.45; margin-bottom:12px;">
+            Vas a iniciar <b>[Jornada Laboral]</b>, pero olvidaste activar <b>[Ruta de Ida]</b> al salir.<br>
+            ¿Quieres registrar tu salida de casa ahora mismo para no perder tu telemetría ni la racha?
+        </div>
+        <div style="display:flex; gap:6px; align-items:center; margin-bottom:10px;">
+            <span style="font-family:'Share Tech Mono', monospace; font-size:0.72em; color:#bae6fd; white-space:nowrap;">SALÍ A LAS:</span>
+            <input type="time" id="sl-retro-depart-time" class="input-dark" value="${depH}:${depM}" style="margin:0; padding:8px; flex:1; color-scheme:dark; text-align:center;">
+        </div>
+        <div style="display:flex; flex-direction:column; gap:7px;">
+            <button class="btn btn-main" style="width:100%; padding:10px !important;" onclick="confirmRetroactiveRouteAndWork()">REGISTRAR RUTA + INICIAR JORNADA</button>
+            <button class="btn btn-blue" style="width:100%; padding:9px !important;" onclick="document.getElementById('sl-retro-modal')?.remove(); deployRoutineMission('m_work', true)">SOLO INICIAR JORNADA</button>
+        </div>
+    `;
+    _buildSmartTimeShell('sl-retro-modal', 'RUTA MATUTINA', '[ REGISTRO RETROACTIVO ]', html);
+};
+
+window.confirmRetroactiveRouteAndWork = function() {
+    let inp = document.getElementById('sl-retro-depart-time');
+    let departTs = inp ? _timeInputToTodayTs(inp.value) : (Date.now() - 90 * 60000);
+    let modal = document.getElementById('sl-retro-modal');
+    if (modal) modal.remove();
+
+    let now = Date.now();
+    let routeMins = Math.max(15, Math.min(240, Math.round((now - departTs) / 60000)));
+    let mIda = getTodayMissions().find(x => x.id === 'm_traffic_ida');
+
+    recordAdaptiveTelemetry('m_traffic_ida', routeMins);
+    recordWorkClockSample('depart', departTs);
+    recordWorkClockSample('arrival', now);
+
+    if (!p.completedToday) p.completedToday = [];
+    if (!p.completedToday.includes('m_traffic_ida')) {
+        p.completedToday.push('m_traffic_ida');
+        p.totalMissions = (p.totalMissions || 0) + 1;
+        if (mIda) {
+            p.xp += mIda.xp || 40;
+            p.gold += getEffectiveMissionGoldReward(mIda);
+        }
+        if (p.timeStats) p.timeStats.traffic = (p.timeStats.traffic || 0) + routeMins;
+    }
+    p.chorrosIdaFinishedAt = now;
+    saveData();
+    systemNotify(`[RUTA RETROACTIVA]: ${routeMins}m registrados desde tu salida. Iniciando Jornada Laboral...`, "gold");
+    deployRoutineMission('m_work', true);
+};
+
+window.openRetroactiveClassStartModal = function(schedId) {
+    let html = `
+        <div style="color:#e0f2fe; font-size:0.86em; line-height:1.45; margin-bottom:12px;">
+            ¿Empezaste a escuchar la clase en la moto y olvidaste activarla?<br>
+            Elige desde qué hora la llevas escuchando y se activará el <b>Enlace Radial</b> (cero castigo por deserción):
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:8px;">
+            <button class="btn btn-main" style="padding:9px 4px !important; font-size:0.72em !important;" onclick="confirmRetroactiveClassStart('${schedId}', _timeInputToTodayTs('18:30'))">DESDE 6:30 PM</button>
+            <button class="btn btn-blue" style="padding:9px 4px !important; font-size:0.72em !important;" onclick="confirmRetroactiveClassStart('${schedId}', Date.now() - 15*60000)">HACE 15 MIN</button>
+            <button class="btn btn-blue" style="padding:9px 4px !important; font-size:0.72em !important;" onclick="confirmRetroactiveClassStart('${schedId}', Date.now() - 30*60000)">HACE 30 MIN</button>
+            <button class="btn btn-blue" style="padding:9px 4px !important; font-size:0.72em !important;" onclick="confirmRetroactiveClassStart('${schedId}', Date.now())">AHORITA MISMO</button>
+        </div>
+        <div style="display:flex; gap:6px; align-items:center; margin-bottom:10px;">
+            <input type="time" id="sl-retro-class-time" class="input-dark" value="18:30" style="margin:0; padding:8px; flex:1; color-scheme:dark; text-align:center;">
+            <button class="btn btn-blue" style="padding:9px 10px !important; font-size:0.7em !important;" onclick="confirmRetroactiveClassStart('${schedId}', _timeInputToTodayTs(document.getElementById('sl-retro-class-time').value))">APLICAR</button>
+        </div>
+        <button class="btn btn-red" style="width:100%; padding:8px !important; font-size:0.72em !important;" onclick="document.getElementById('sl-retro-class-modal')?.remove()">CANCELAR</button>
+    `;
+    _buildSmartTimeShell('sl-retro-class-modal', 'ENLACE RADIAL', '[ CLASE EN RUTA DE REGRESO ]', html);
+};
+
+window.confirmRetroactiveClassStart = function(schedId, startedTs) {
+    let modal = document.getElementById('sl-retro-class-modal');
+    if (modal) modal.remove();
+    let now = Date.now();
+    let safeStart = Math.min(now, Math.max(now - 180 * 60000, startedTs || now));
+    p.classAudioTransitMode = true;
+    deployRoutineMission(schedId, true);
+    if (p.activeMissions && p.activeMissions[schedId]) {
+        p.activeMissions[schedId] = safeStart;
+        saveData();
+        renderRoutine();
+        updateActiveMissionTimersInPlace();
+    }
+};
+
+function checkForgottenRouteHandover(fromAutoWatcher = false) {
+    if (!p || !p.activeMissions || !p.activeMissions['m_traffic_ida']) return false;
+    let now = Date.now();
+    if (fromAutoWatcher && p._arrivalHandoverSnoozeUntil && now < p._arrivalHandoverSnoozeUntil) return false;
+
+    let startTs = p.activeMissions['m_traffic_ida'];
+    let elapsedMins = Math.floor((now - startTs) / 60000);
+    let dNow = new Date(now);
+    let curClockMins = dNow.getHours() * 60 + dNow.getMinutes();
+    let prof = ensureWorkTelemetryProfile();
+    let autoAskClock = Math.max(510, (prof ? prof.arrivalMins : 480) + 25); // 8:30 AM o +25m tras hora habitual
+
+    if (elapsedMins < 95 && curClockMins < autoAskClock) return false;
+    if (document.getElementById('sl-handover-modal')) return true;
+
+    openSmartArrivalHandoverModal();
     return true;
 }
 
@@ -745,47 +1164,37 @@ function checkForgottenTelemetryHandover(missionObj) {
     if (!isWork && !isClass) return false;
 
     let elapsedMins = Math.floor((Date.now() - p.activeMissions[id]) / 60000);
-    let threshold = isWork ? 600 : 210;
-    if (elapsedMins < threshold) return false;
+    if (isWork) {
+        let nowH = new Date().getHours();
+        let nowM = new Date().getMinutes();
+        let curClock = nowH * 60 + nowM;
+        // Si ya pasan de las 4:15 PM (o lleva > 9 horas) y cierra Jornada, ofrece relevo directo a Ruta de Vuelta
+        if (elapsedMins >= 540 || curClock >= 975) {
+            openSmartWorkExitModal();
+            return true;
+        }
+        return false;
+    }
+
+    if (elapsedMins < 210) return false;
     if (document.getElementById('sl-handover-modal')) return true;
 
-    let safeAvg = getTelemetryAverageMins(id, isWork ? 240 : 90);
-    let cornerSVG = (typeof getBaroqueCornerSVG === "function") ? getBaroqueCornerSVG() : '';
-    let ov = document.createElement('div');
-    ov.id = 'sl-handover-modal';
-    ov.style.cssText = 'position:fixed; inset:0; background:rgba(2,6,18,0.94); z-index:13600; display:flex; justify-content:center; align-items:center; padding:18px;';
-    ov.innerHTML = `
-        <div class="sl-holo-frame" style="width:100%; max-width:410px; cursor:default;">
-            <div class="sl-holo-rail top"><span class="rail-core"></span></div>
-            <div class="sl-holo-glass">
-                <div class="sl-holo-inner-box" style="padding:20px 16px; text-align:center;">
-                    <span class="sl-baroque-corner tl">${cornerSVG}</span>
-                    <span class="sl-baroque-corner tr">${cornerSVG}</span>
-                    <span class="sl-baroque-corner bl">${cornerSVG}</span>
-                    <span class="sl-baroque-corner br">${cornerSVG}</span>
-                    <div class="sl-holo-header-row" style="margin-bottom:8px;">
-                        <div class="sl-excl-square">!</div>
-                        <div class="sl-title-rect">PROTECCIÓN DE TELEMETRÍA</div>
-                    </div>
-                    <div class="sl-holo-subbracket">[ CRONÓMETRO EXCEDIDO: ${elapsedMins}M ]</div>
-                    <div style="color:#e0f2fe; font-size:0.9em; line-height:1.5; margin:12px 0;">
-                        <b>[${missionObj.title}]</b> lleva <b>${elapsedMins} min</b> activo. ¿Olvidaste cerrarlo a tiempo?<br>
-                        Puedes sellarlo usando tu promedio real (<b>${safeAvg} min</b>) para no distorsionar tus estadísticas.
-                    </div>
-                    <div style="display:flex; flex-direction:column; gap:8px;">
-                        <button class="btn btn-main" style="width:100%; padding:11px;" onclick="confirmCleanTelemetrySeal('${id}', ${safeAvg})">
-                            SELLAR CON PROMEDIO REAL (${safeAvg}M)
-                        </button>
-                        <button class="btn btn-blue" style="width:100%; padding:9px;" onclick="document.getElementById('sl-handover-modal').remove(); confirmCleanTelemetrySeal('${id}', ${elapsedMins})">
-                            CONSERVAR ${elapsedMins}M COMPLETOS
-                        </button>
-                    </div>
-                </div>
-            </div>
-            <div class="sl-holo-rail bottom"><span class="rail-core"></span></div>
+    let safeAvg = getTelemetryAverageMins(id, 90);
+    let html = `
+        <div style="color:#e0f2fe; font-size:0.9em; line-height:1.5; margin:10px 0 14px 0;">
+            <b>[${missionObj.title}]</b> lleva <b>${elapsedMins} min</b> activa. ¿Olvidaste cerrarla a tiempo?<br>
+            Puedes sellarla con tu promedio real (<b>${safeAvg} min</b>) para no distorsionar tus estadísticas.
+        </div>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+            <button class="btn btn-main" style="width:100%; padding:11px;" onclick="confirmCleanTelemetrySeal('${id}', ${safeAvg})">
+                SELLAR CON PROMEDIO REAL (${safeAvg}M)
+            </button>
+            <button class="btn btn-blue" style="width:100%; padding:9px;" onclick="confirmCleanTelemetrySeal('${id}', ${elapsedMins})">
+                CONSERVAR ${elapsedMins}M COMPLETOS
+            </button>
         </div>
     `;
-    document.body.appendChild(ov);
+    _buildSmartTimeShell('sl-handover-modal', 'PROTECCIÓN DE TELEMETRÍA', `[ CRONÓMETRO EXCEDIDO: ${elapsedMins}M ]`, html);
     return true;
 }
 
@@ -795,12 +1204,8 @@ window.confirmCleanTelemetrySeal = function(id, chosenMins) {
     let m = getTodayMissions().find(x => x.id === id);
     if (!m) return;
 
-    if (!p.telemetryStats) p.telemetryStats = {};
-    if (!p.telemetryStats[m.id]) p.telemetryStats[m.id] = { totalMins: 0, count: 0, bestMins: chosenMins };
-    p.telemetryStats[m.id].totalMins += chosenMins;
-    p.telemetryStats[m.id].count += 1;
-    if (!p.telemetryLastToday) p.telemetryLastToday = {};
-    p.telemetryLastToday[m.id] = chosenMins;
+    recordAdaptiveTelemetry(m.id, chosenMins);
+    p.classAudioTransitMode = false;
     toggleClassOledShield(false);
 
     openSealModal({
@@ -815,54 +1220,6 @@ window.confirmCleanTelemetrySeal = function(id, chosenMins) {
     });
 };
 
-window.confirmRouteToWorkHandover = function(routeMins, workStartTs) {
-    let modal = document.getElementById('sl-handover-modal');
-    if (modal) modal.remove();
-
-    let mIda = getTodayMissions().find(x => x.id === 'm_traffic_ida');
-    if (!mIda) return;
-
-    if (!p.telemetryStats) p.telemetryStats = {};
-    if (!p.telemetryStats['m_traffic_ida']) p.telemetryStats['m_traffic_ida'] = { totalMins: 0, count: 0, bestMins: routeMins };
-    p.telemetryStats['m_traffic_ida'].totalMins += routeMins;
-    p.telemetryStats['m_traffic_ida'].count += 1;
-
-    if (!p.telemetryLastToday) p.telemetryLastToday = {};
-    p.telemetryLastToday['m_traffic_ida'] = routeMins;
-
-    delete p.activeMissions['m_traffic_ida'];
-    cancelMissionNativeReminders('m_traffic_ida');
-
-    if (!p.completedToday.includes('m_work')) {
-        p.activeMissions['m_work'] = workStartTs;
-        let mWork = getTodayMissions().find(x => x.id === 'm_work');
-        if (mWork) scheduleMissionNativeReminders(mWork);
-    }
-
-    if (!p.synergiesClaimedList) p.synergiesClaimedList = [];
-    if (!p.synergiesClaimedList.includes('syn_relay_work')) {
-        p.synergiesClaimedList.push('syn_relay_work');
-        p.mp = Math.min(1000 + ((p.stats.int - 1) * 1000), (p.mp || 0) + 80);
-        systemNotify("[SINERGIA DE RELEVO]: Transición Ruta ➔ Jornada Laboral sincronizada (+80 MP).", "info");
-    }
-
-    saveData();
-    renderRoutine();
-    updateHUD();
-
-    openSealModal({
-        type: 'routine',
-        id: 'm_traffic_ida',
-        xp: mIda.xp,
-        gold: mIda.gold,
-        stat: mIda.stat,
-        timeCat: 'traffic',
-        mins: routeMins,
-        realMins: routeMins,
-        honorNote: 'Relevo automático hacia Jornada Laboral'
-    });
-};
-
 let _classFocusLeftAt = null;
 function initAcademicAntiClashGuard() {
     if (window._antiClashBound) return;
@@ -871,7 +1228,7 @@ function initAcademicAntiClashGuard() {
     document.addEventListener('visibilitychange', () => {
         if (!p || !p.activeMissions) return;
         let activeClassId = Object.keys(p.activeMissions).find(id => id.startsWith('sched_'));
-        if (!activeClassId || window._classOledShieldActive) {
+        if (!activeClassId || window._classOledShieldActive || p.classAudioTransitMode) {
             _classFocusLeftAt = null;
             return;
         }
@@ -889,14 +1246,14 @@ function initAcademicAntiClashGuard() {
                 saveData();
                 updateHUD();
                 renderRoutine();
-                systemNotify(`[DESERCIÓN EN CLASE DETECTADA: ${awaySecs}s FUERA DEL SISTEMA]: Si vas a bloquear la pantalla para atender clase, activa primero el Escudo OLED en tu misión. (-20 HP, -35 G).`, "danger");
+                systemNotify(`[DESERCIÓN EN CLASE DETECTADA: ${awaySecs}s FUERA DEL SISTEMA]: Si vas manejando o escuchando audio, activa el Enlace Radial o Escudo OLED. (-20 HP, -35 G).`, "danger");
             }
         }
     });
 }
 initAcademicAntiClashGuard();
 
-function deployRoutineMission(id) {
+function deployRoutineMission(id, skipRetroPrompt = false) {
     if (p.penaltyActive) {
         systemNotify("SISTEMA BLOQUEADO. Cumple tu supervivencia primero.", "danger");
         return;
@@ -906,6 +1263,17 @@ function deployRoutineMission(id) {
     if (!m) return;
 
     if (!p.activeMissions) p.activeMissions = {};
+    if (p.activeMissions[id]) return;
+
+    // Si inicia Jornada Laboral entre 6:30 y 11:00 AM sin haber registrado Ruta de Ida, ofrece registro retroactivo en 1 toque
+    if (!skipRetroPrompt && id === 'm_work') {
+        let hNow = new Date().getHours();
+        let idaDone = Array.isArray(p.completedToday) && p.completedToday.includes('m_traffic_ida');
+        if (!idaDone && !p.activeMissions['m_traffic_ida'] && hNow >= 6 && hNow <= 11) {
+            openRetroactiveRouteModal();
+            return;
+        }
+    }
 
     if (m.type === 'main') {
         let activeMainId = Object.keys(p.activeMissions).find(actId => {
@@ -913,12 +1281,24 @@ function deployRoutineMission(id) {
             return actObj && actObj.type === 'main';
         });
         if (activeMainId) {
-            if (activeMainId === 'm_traffic_ida' && checkForgottenRouteHandover()) {
+            let isTransitClassPair = (id.startsWith('sched_') && activeMainId === 'm_traffic_vuelta') ||
+                                     (id === 'm_traffic_vuelta' && activeMainId.startsWith('sched_'));
+            if (isTransitClassPair) {
+                p.classAudioTransitMode = true;
+                systemNotify("[ENLACE RADIAL ACADÉMICO]: Ruta de Vuelta y Clase enlazadas en paralelo (0 castigo por deserción mientras conduces).", "gold");
+            } else {
+                if (activeMainId === 'm_traffic_ida') {
+                    openSmartArrivalHandoverModal();
+                    return;
+                }
+                if (activeMainId === 'm_work' && id === 'm_traffic_vuelta') {
+                    openSmartWorkExitModal();
+                    return;
+                }
+                let activeMainObj = todayList.find(x => x.id === activeMainId);
+                systemNotify(`Ubicación Física Ocupada: Ya estás ejecutando [${activeMainObj ? activeMainObj.title : activeMainId}]. Séllala antes de iniciar otra principal.`, "danger");
                 return;
             }
-            let activeMainObj = todayList.find(x => x.id === activeMainId);
-            systemNotify(`Ubicación Física Ocupada: Ya estás ejecutando [${activeMainObj ? activeMainObj.title : activeMainId}]. Séllala antes de iniciar otra principal.`, "danger");
-            return;
         }
     }
 
@@ -989,7 +1369,10 @@ function finishRoutineMission(id) {
     if (checkForgottenTelemetryHandover(m)) {
         return;
     }
-    if (id.startsWith('sched_')) toggleClassOledShield(false);
+        if (id.startsWith('sched_')) {
+        toggleClassOledShield(false);
+        p.classAudioTransitMode = false;
+    }
 
     let now = Date.now();
     let rawElapsedMs = now - p.activeMissions[id];
@@ -1005,21 +1388,18 @@ function finishRoutineMission(id) {
             systemNotify("El cronómetro de telemetría lleva menos de 1 minuto. Registra tu tiempo real al finalizar la actividad.", "info");
             return;
         }
-        let realMins = Math.max(1, Math.round(elapsedMins));
-        if (!p.telemetryStats) p.telemetryStats = {};
-        if (!p.telemetryStats[m.id]) p.telemetryStats[m.id] = { totalMins: 0, count: 0, bestMins: realMins };
-        let st = p.telemetryStats[m.id];
-        let prevAvg = st.count > 0 ? Math.round(st.totalMins / st.count) : realMins;
-        st.totalMins += realMins;
-        st.count += 1;
-        if (realMins < st.bestMins) st.bestMins = realMins;
-        let newAvg = Math.round(st.totalMins / st.count);
+                let realMins = Math.max(1, Math.round(elapsedMins));
+        let prevAvg = getTelemetryAverageMins(m.id, realMins);
+        let newAvg = recordAdaptiveTelemetry(m.id, realMins);
+        if (m.id === 'm_traffic_ida') {
+            recordWorkClockSample('depart', p.activeMissions[id]);
+            recordWorkClockSample('arrival', now);
+        } else if (m.id === 'm_work') {
+            recordWorkClockSample('leave', now);
+        }
+        syncDailyTacticalCheckpoints();
 
-        if (!p.telemetryLastToday) p.telemetryLastToday = {};
-        p.telemetryLastToday[m.id] = realMins;
-
-        systemNotify(`Telemetría registrada [${m.title}]: ${realMins} min reales (Promedio histórico: ${newAvg} min | Anterior: ${prevAvg} min).`, "info");
-
+        systemNotify(`Telemetría EMA [${m.title}]: ${realMins} min reales (Promedio adaptativo: ${newAvg}m | Anterior: ${prevAvg}m).`, "info");
         openSealModal({
             type: 'routine',
             id: m.id,
@@ -2214,4 +2594,299 @@ window.addEventListener('load', () => {
         window._routineFooterHooked = true;
     }
     syncDailyGoalFooterStatus();
+});
+
+/* ==========================================================================
+   10. CHECKPOINTS TÁCTICOS PUSH, RECEPTOR DE BOTONES Y SENSOR DE RED SEGURO
+   ========================================================================== */
+function syncDailyTacticalCheckpoints() {
+    if (!p || !p.dayZeroCompleted || p.penaltyActive) return;
+    if (!('serviceWorker' in navigator)) return;
+
+    let now = new Date();
+    let nowMs = now.getTime();
+    let dow = (typeof getBiologicalDateObj === 'function') ? getBiologicalDateObj(now).getDay() : now.getDay();
+    let todayKey = (typeof getBiologicalDayStr === 'function') ? getBiologicalDayStr(now) : now.toDateString();
+    let isWeekday = (dow >= 1 && dow <= 5);
+    let noWorkToday = (p.noWorkDayStr === todayKey);
+
+    let prof = ensureWorkTelemetryProfile();
+    let checkpoints = [];
+
+    const msUntilClock = (targetMinsOfDay) => {
+        let t = new Date(nowMs);
+        t.setHours(Math.floor(targetMinsOfDay / 60), targetMinsOfDay % 60, 0, 0);
+        return t.getTime() - nowMs;
+    };
+
+    let done = Array.isArray(p.completedToday) ? p.completedToday : [];
+    let act = p.activeMissions || {};
+
+    if (isWeekday && !noWorkToday) {
+        // 1. Check de Salida Matutina (~6:05 AM o departMins + 10m) si olvidó activar Ruta de Ida
+        if (!done.includes('m_traffic_ida') && !act['m_traffic_ida'] && !done.includes('m_work') && !act['m_work']) {
+            let depDelay = msUntilClock(Math.max(350, Math.min(380, (prof ? prof.departMins : 355) + 10)));
+            if (depDelay > 5000) {
+                checkpoints.push({
+                    key: 'morning_depart',
+                    delayMs: depDelay,
+                    title: 'SISTEMA // SALIDA MATUTINA',
+                    body: '¿Ya saliste rumbo al trabajo? Inicia tu Ruta de Ida en 1 toque.',
+                    actions: [
+                        { action: 'start_route_ida', title: 'Iniciar Ruta' },
+                        { action: 'skip_work_today', title: 'Hoy no trabajo' }
+                    ]
+                });
+            }
+        }
+
+        // 2. Check de Llegada al Trabajo (7:45 AM o arrivalMins - 15m)
+        if (!done.includes('m_work') && !act['m_work']) {
+            let arrCheckMins = Math.max(450, Math.min(480, (prof ? prof.arrivalMins : 480) - 15)); // 7:45 AM por defecto
+            let arrDelay = msUntilClock(arrCheckMins);
+            if (arrDelay > 5000) {
+                checkpoints.push({
+                    key: 'work_arrival',
+                    delayMs: arrDelay,
+                    title: 'SISTEMA // LLEGADA AL TRABAJO',
+                    body: `${formatClockMins12h(arrCheckMins)}: ¿Ya llegaste al trabajo para iniciar tu Jornada?`,
+                    actions: [
+                        { action: 'arrived_now', title: 'Llegué ya' },
+                        { action: 'arrived_15_ago', title: 'Hace 15m' },
+                        { action: 'still_traffic', title: 'Sigo en ruta' }
+                    ]
+                });
+            }
+
+            // 3. Red de seguridad a las 8:30 AM si siguió sin confirmar
+            let safeDelay = msUntilClock(510);
+            if (safeDelay > 5000) {
+                checkpoints.push({
+                    key: 'work_arrival_late',
+                    delayMs: safeDelay,
+                    title: 'SISTEMA // RELEVO PENDIENTE (8:30 AM)',
+                    body: '¿Olvidaste marcar tu llegada? Toca para ajustar tu hora real de entrada.',
+                    actions: [
+                        { action: 'arrived_now', title: 'Llegué ya' },
+                        { action: 'arrived_15_ago', title: 'Hace 15m' }
+                    ],
+                    data: { defaultAction: 'open_arrival_modal' }
+                });
+            }
+        }
+
+        // 4. Check de Salida del Trabajo (3:30 PM o leaveWorkMins aprendido)
+        if (!done.includes('m_traffic_vuelta') && !act['m_traffic_vuelta']) {
+            let exitMins = prof ? prof.leaveWorkMins : 930; // 3:30 PM
+            let exitDelay = msUntilClock(exitMins);
+            if (exitDelay > 5000) {
+                checkpoints.push({
+                    key: 'work_exit',
+                    delayMs: exitDelay,
+                    title: 'SISTEMA // FIN DE JORNADA',
+                    body: `${formatClockMins12h(exitMins)}: ¿Ya saliste del trabajo? Inicia tu Ruta de Vuelta.`,
+                    actions: [
+                        { action: 'leave_work_now', title: 'Salí ya' },
+                        { action: 'leave_work_30_ago', title: 'Hace 30m' },
+                        { action: 'still_working', title: 'Aún en turno' }
+                    ]
+                });
+            }
+        }
+    }
+
+    // 5. Check de Clase Nocturna / Enlace Radial en Moto (6:25 PM si hoy hay materia turno Tarde)
+    let todayList = getTodayMissions();
+    let afternoonClass = todayList.find(m => m.id.startsWith('sched_') && !done.includes(m.id) && !act[m.id]);
+    if (afternoonClass) {
+        let clsDelay = msUntilClock(1105); // 6:25 PM
+        if (clsDelay > 5000) {
+            checkpoints.push({
+                key: 'class_transit',
+                delayMs: clsDelay,
+                title: `ENLACE ACADÉMICO // ${afternoonClass.title.toUpperCase()}`,
+                body: 'Tu clase inicia pronto. Si vas en moto, activa el Modo Audio en Ruta sin deserción.',
+                actions: [
+                    { action: 'start_class_transit', title: 'Escuchar en Ruta' }
+                ],
+                data: { schedId: afternoonClass.id }
+            });
+        }
+    }
+
+    navigator.serviceWorker.ready.then(reg => {
+        if (reg.active) {
+            reg.active.postMessage({
+                type: 'SL_SCHEDULE_TACTICAL_CHECKPOINTS',
+                checkpoints: checkpoints
+            });
+        }
+    }).catch(() => {});
+
+    // Si Web Push en la nube (Vercel + QStash) está suscrito, programar también el aviso clave de 7:45 AM y 3:30 PM una vez al día
+    if (typeof window.scheduleCloudPush === 'function' && p.webPushSub && p._cloudTacticalDay !== todayKey && checkpoints.length > 0) {
+        p._cloudTacticalDay = todayKey;
+        saveData();
+        checkpoints.forEach(cp => {
+            if (cp.key === 'work_arrival' || cp.key === 'work_exit' || cp.key === 'class_transit') {
+                window.scheduleCloudPush('tactical_' + cp.key, cp.title, cp.body, Math.round(cp.delayMs / 1000), 'sl-cp-' + cp.key);
+            }
+        });
+    }
+}
+window.syncDailyTacticalCheckpoints = syncDailyTacticalCheckpoints;
+
+function handleTacticalNotificationAction(action, data = {}, actionTs = Date.now()) {
+    if (!p || !action) return;
+    let todayKey = (typeof getBiologicalDayStr === 'function') ? getBiologicalDayStr() : new Date().toDateString();
+
+    if (action === 'start_route_ida') {
+        if (!p.activeMissions['m_traffic_ida'] && !p.completedToday.includes('m_traffic_ida')) {
+            deployRoutineMission('m_traffic_ida', true);
+            if (p.activeMissions['m_traffic_ida']) {
+                p.activeMissions['m_traffic_ida'] = actionTs;
+                saveData();
+            }
+        }
+    } else if (action === 'skip_work_today') {
+        p.noWorkDayStr = todayKey;
+        saveData();
+        syncDailyTacticalCheckpoints();
+        systemNotify("Día sin turno laboral marcado. Avisos de trabajo silenciados hoy.", "info");
+    } else if (action === 'arrived_now' || action === 'arrived_15_ago') {
+        let delta = action === 'arrived_15_ago' ? 15 * 60000 : 0;
+        let arrTs = actionTs - delta;
+        if (p.activeMissions && p.activeMissions['m_traffic_ida']) {
+            executeSmartArrivalHandover(arrTs, true);
+        } else if (!p.activeMissions['m_work'] && !p.completedToday.includes('m_work')) {
+            // Si olvidó activar Ruta de Ida, la registra retroactiva con su salida EMA y arranca Jornada a la hora tocada
+            let prof = ensureWorkTelemetryProfile();
+            let depMins = prof ? prof.departMins : 355;
+            let depDate = new Date(arrTs);
+            depDate.setHours(Math.floor(depMins / 60), depMins % 60, 0, 0);
+            let routeMins = Math.max(20, Math.round((arrTs - depDate.getTime()) / 60000));
+            recordAdaptiveTelemetry('m_traffic_ida', routeMins);
+            recordWorkClockSample('arrival', arrTs);
+            if (!p.completedToday.includes('m_traffic_ida')) p.completedToday.push('m_traffic_ida');
+            p.chorrosIdaFinishedAt = arrTs;
+            deployRoutineMission('m_work', true);
+            if (p.activeMissions['m_work']) p.activeMissions['m_work'] = arrTs;
+            saveData();
+            renderRoutine();
+            updateHUD();
+            systemNotify(`[ENTRADA REGISTRADA]: Ruta (${routeMins}m) y Jornada activada desde ${formatClockMins12h(new Date(arrTs).getHours() * 60 + new Date(arrTs).getMinutes())}.`, "gold");
+        }
+    } else if (action === 'open_arrival_modal') {
+        if (p.activeMissions && p.activeMissions['m_traffic_ida']) openSmartArrivalHandoverModal();
+        else openRetroactiveRouteModal();
+    } else if (action === 'leave_work_now' || action === 'leave_work_30_ago') {
+        let delta = action === 'leave_work_30_ago' ? 30 * 60000 : 0;
+        let exitTs = actionTs - delta;
+        if (p.activeMissions && p.activeMissions['m_work']) {
+            executeSmartWorkExit(exitTs, true);
+        } else if (!p.activeMissions['m_traffic_vuelta'] && !p.completedToday.includes('m_traffic_vuelta')) {
+            deployRoutineMission('m_traffic_vuelta', true);
+            if (p.activeMissions['m_traffic_vuelta']) {
+                p.activeMissions['m_traffic_vuelta'] = exitTs;
+                saveData();
+            }
+        }
+    } else if (action === 'start_class_transit') {
+        let schedId = data.schedId || (getTodayMissions().find(m => m.id.startsWith('sched_') && !p.completedToday.includes(m.id)) || {}).id;
+        if (schedId) {
+            p.classAudioTransitMode = true;
+            deployRoutineMission(schedId, true);
+            if (p.activeMissions[schedId]) p.activeMissions[schedId] = actionTs;
+            saveData();
+            renderRoutine();
+        }
+    }
+}
+
+// Detector pasivo de transición Wi-Fi <-> Datos Móviles (blindado por ventana horaria anti-apagón)
+let _lastKnownConnType = (navigator.connection && navigator.connection.type) ? navigator.connection.type : null;
+
+function evaluateSafeNetworkTransition() {
+    if (!p || !p.dayZeroCompleted || p.penaltyActive) return;
+    if (!navigator.connection || !navigator.connection.type) return;
+
+    let curType = navigator.connection.type;
+    let prevType = _lastKnownConnType;
+    _lastKnownConnType = curType;
+    if (!prevType || prevType === curType) return;
+
+    let now = new Date();
+    let dow = now.getDay();
+    let curMins = now.getHours() * 60 + now.getMinutes();
+    let todayKey = (typeof getBiologicalDayStr === 'function') ? getBiologicalDayStr(now) : now.toDateString();
+
+    // Ventana 1 (5:30 AM - 6:35 AM, Lun-Vie): Saliste del Wi-Fi de casa a Datos Móviles
+    if (dow >= 1 && dow <= 5 && p.noWorkDayStr !== todayKey && curMins >= 330 && curMins <= 395) {
+        if (prevType === 'wifi' && curType === 'cellular') {
+            if (!p.activeMissions['m_traffic_ida'] && !p.completedToday.includes('m_traffic_ida') && p._netMorningPromptDay !== todayKey) {
+                p._netMorningPromptDay = todayKey;
+                saveData();
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.ready.then(reg => {
+                        if (reg.active) {
+                            reg.active.postMessage({
+                                type: 'SL_SHOW_TACTICAL_NOW',
+                                payload: {
+                                    title: 'SISTEMA // SALIDA DETECTADA',
+                                    body: 'Desconexión de Wi-Fi doméstico detectada. ¿Iniciamos Ruta de Ida?',
+                                    tag: 'sl-net-depart',
+                                    actions: [
+                                        { action: 'start_route_ida', title: 'Iniciar Ruta' },
+                                        { action: 'skip_work_today', title: 'Ignorar' }
+                                    ]
+                                }
+                            });
+                        }
+                    }).catch(() => {});
+                }
+            }
+        }
+    }
+
+    // Ventana 2 (5:15 PM - 8:00 PM): Volviste al Wi-Fi de casa tras Ruta de Vuelta
+    if (curMins >= 1035 && curMins <= 1200 && prevType === 'cellular' && curType === 'wifi') {
+        if (p.activeMissions && p.activeMissions['m_traffic_vuelta']) {
+            systemNotify("Wi-Fi de casa detectado. Recuerda sellar tu [Ruta de Vuelta] cuando bajes de la moto.", "info");
+        }
+    }
+    // Cualquier otra hora (ej. apagón a las 9:00 PM): se ignora por completo
+}
+
+if (navigator.connection && typeof navigator.connection.addEventListener === 'function') {
+    navigator.connection.addEventListener('change', evaluateSafeNetworkTransition);
+}
+
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'SL_TACTICAL_ACTION') {
+            handleTacticalNotificationAction(event.data.action, event.data.data || {}, event.data.actionTs || Date.now());
+        }
+    });
+}
+
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && p && p.dayZeroCompleted && !p.penaltyActive) {
+        evaluateSafeNetworkTransition();
+        setTimeout(() => checkForgottenRouteHandover(true), 600);
+    }
+});
+
+window.addEventListener('load', () => {
+    setTimeout(() => {
+        if (!p || !p.dayZeroCompleted) return;
+        const params = new URLSearchParams(window.location.search);
+        const swAct = params.get('swAction');
+        const swTs = Number(params.get('swTs')) || Date.now();
+        if (swAct) {
+            handleTacticalNotificationAction(swAct, {}, swTs);
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+        syncDailyTacticalCheckpoints();
+        checkForgottenRouteHandover(true);
+    }, 900);
 });
