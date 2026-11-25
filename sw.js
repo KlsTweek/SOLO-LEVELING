@@ -232,7 +232,7 @@ self.addEventListener('notificationclick', (event) => {
           client.postMessage({ type: 'SL_TACTICAL_ACTION', action: targetAction, data: data, actionTs: actionTs });
         }
         // Botón silencioso: ejecuta sin robar pantalla; cuerpo o ajuste: enfoca la app
-        const silentActions = ['arrived_now', 'arrived_15_ago', 'start_route_ida', 'skip_work_today', 'leave_work_now', 'leave_work_30_ago', 'start_class_transit'];
+                const silentActions = ['arrived_now', 'arrived_15_ago', 'start_route_ida', 'delay_route_ida', 'skip_work_today', 'leave_work_now', 'leave_work_30_ago', 'start_class_transit'];
         if (!silentActions.includes(targetAction) && 'focus' in client) {
           return client.focus();
         }
