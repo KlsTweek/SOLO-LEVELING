@@ -2723,16 +2723,43 @@ function syncDailyTacticalCheckpoints() {
         }
     }).catch(() => {});
 
-    // Si Web Push en la nube (Vercel + QStash) está suscrito, programar también el aviso clave de 7:45 AM y 3:30 PM una vez al día
-    if (typeof window.scheduleCloudPush === 'function' && p.webPushSub && p._cloudTacticalDay !== todayKey && checkpoints.length > 0) {
-        p._cloudTacticalDay = todayKey;
-        saveData();
-        checkpoints.forEach(cp => {
-            if (cp.key === 'work_arrival' || cp.key === 'work_exit' || cp.key === 'class_transit') {
-                window.scheduleCloudPush('tactical_' + cp.key, cp.title, cp.body, Math.round(cp.delayMs / 1000), 'sl-cp-' + cp.key);
+    // Web Push en la nube (Vercel + QStash): despierta el celular incluso con la app 100% cerrada
+    if (typeof window.scheduleCloudPush === 'function' && p.webPushSub) {
+        if (p._cloudTacticalDay !== todayKey && checkpoints.length > 0) {
+            p._cloudTacticalDay = todayKey;
+            saveData();
+            checkpoints.forEach(cp => {
+                if (cp.key === 'morning_depart' || cp.key === 'work_arrival' || cp.key === 'work_exit' || cp.key === 'class_transit') {
+                    window.scheduleCloudPush('tactical_' + cp.key, cp.title, cp.body, Math.round(cp.delayMs / 1000), 'sl-cp-' + cp.key);
+                }
+            });
+        }
+
+        // Programar desde hoy el aviso de Salida Matutina del próximo día hábil (Lun-Vie)
+        let nextDay = new Date(nowMs);
+        nextDay.setDate(nextDay.getDate() + 1);
+        while (nextDay.getDay() === 0 || nextDay.getDay() === 6) {
+            nextDay.setDate(nextDay.getDate() + 1);
+        }
+        let nextDayKey = nextDay.toDateString();
+        if (p._cloudNextMorningKey !== nextDayKey) {
+            let depMins = prof ? prof.departMins : 355; // ~5:55 AM por defecto
+            nextDay.setHours(Math.floor(depMins / 60), depMins % 60, 0, 0);
+            let nextDepSec = Math.round((nextDay.getTime() - nowMs) / 1000);
+            if (nextDepSec > 600 && nextDepSec <= 345600) {
+                p._cloudNextMorningKey = nextDayKey;
+                saveData();
+                window.scheduleCloudPush(
+                    'tactical_next_morning_depart',
+                    'SISTEMA // SALIDA DETECTADA',
+                    'Hora habitual de salida. Ruta de Ida iniciará sola en 3 min si ya vas en moto.',
+                    nextDepSec,
+                    'sl-cp-morning_depart'
+                );
             }
-        });
+        }
     }
+
 }
 window.syncDailyTacticalCheckpoints = syncDailyTacticalCheckpoints;
 
@@ -2931,7 +2958,11 @@ function _triggerMorningDeparturePrompt(todayKey) {
         autoStartAt: now + (3 * 60000),
         stage: 'grace_3m'
     };
-    saveData();
+        saveData();
+    if (typeof window.cancelCloudPush === 'function') {
+        window.cancelCloudPush('tactical_morning_depart');
+        window.cancelCloudPush('tactical_next_morning_depart');
+    }
     _scheduleAutoDepartCheck();
 
     // 1. Notificación nativa con 2 opciones (Iniciar Ruta / Todavía no)
@@ -3037,17 +3068,53 @@ if ('serviceWorker' in navigator) {
     });
 }
 
+async function syncSwAutoDepartBridge() {
+    if (!p || !('caches' in window)) return;
+    try {
+        const cache = await caches.open('monarch-sw-state');
+        const res = await cache.match('/__sw_auto_depart');
+        if (!res) return;
+        const entry = await res.json();
+        await cache.delete('/__sw_auto_depart');
+        if (!entry || !entry.detectedAt) return;
+
+        let todayKey = (typeof getBiologicalDayStr === 'function') ? getBiologicalDayStr() : new Date().toDateString();
+        if (entry.dayKey && entry.dayKey !== todayKey) return;
+        if (!p.activeMissions) p.activeMissions = {};
+        if (p.activeMissions['m_traffic_ida'] || (Array.isArray(p.completedToday) && p.completedToday.includes('m_traffic_ida'))) return;
+
+        if (entry.stage === 'confirmed_start') {
+            p._pendingAutoDepart = null;
+            deployRoutineMission('m_traffic_ida', true);
+            if (p.activeMissions['m_traffic_ida']) {
+                p.activeMissions['m_traffic_ida'] = entry.detectedAt;
+                saveData();
+                renderRoutine();
+                updateActiveMissionTimersInPlace();
+            }
+        } else {
+            p._pendingAutoDepart = entry;
+            saveData();
+            checkPendingAutoDeparture();
+        }
+    } catch (e) {}
+}
+
 document.addEventListener('visibilitychange', () => {
     if (!document.hidden && p && p.dayZeroCompleted && !p.penaltyActive) {
         evaluateSafeNetworkTransition();
-        checkPendingAutoDeparture();
-        setTimeout(() => checkForgottenRouteHandover(true), 600);
+        syncSwAutoDepartBridge().then(() => {
+            checkPendingAutoDeparture();
+            setTimeout(() => checkForgottenRouteHandover(true), 600);
+        });
     }
 });
 
 window.addEventListener('load', () => {
-    setTimeout(() => {
+    setTimeout(async () => {
         if (!p || !p.dayZeroCompleted) return;
+        await syncSwAutoDepartBridge();
+        checkPendingAutoDeparture();
         const params = new URLSearchParams(window.location.search);
         const swAct = params.get('swAction');
         const swTs = Number(params.get('swTs')) || Date.now();
@@ -3055,7 +3122,6 @@ window.addEventListener('load', () => {
             handleTacticalNotificationAction(swAct, {}, swTs);
             window.history.replaceState({}, document.title, window.location.pathname);
         }
-        checkPendingAutoDeparture();
         syncDailyTacticalCheckpoints();
         checkForgottenRouteHandover(true);
     }, 900);
