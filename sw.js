@@ -164,13 +164,78 @@ self.addEventListener('message', (event) => {
   }
 });
 
+function getSwBioDayStr(ts = Date.now()) {
+  const d = new Date(ts);
+  if ((d.getHours() * 60 + d.getMinutes()) < 270) d.setDate(d.getDate() - 1);
+  return d.toDateString();
+}
+
+async function saveSwAutoDepartState(stateObj) {
+  try {
+    const cache = await caches.open('monarch-sw-state');
+    await cache.put('/__sw_auto_depart', new Response(JSON.stringify(stateObj), {
+      headers: { 'Content-Type': 'application/json' }
+    }));
+  } catch (e) {}
+}
+
+function getDefaultActionsForTag(tag) {
+  if (tag === 'sl-cp-morning_depart' || tag === 'sl-net-depart') {
+    return [
+      { action: 'start_route_ida', title: 'Iniciar Ruta' },
+      { action: 'delay_route_ida', title: 'Todavía no' }
+    ];
+  }
+  if (tag === 'sl-cp-work_arrival') {
+    return [
+      { action: 'arrived_now', title: 'Llegué ya' },
+      { action: 'still_traffic', title: 'Sigo en ruta' }
+    ];
+  }
+  if (tag === 'sl-cp-work_arrival_late') {
+    return [
+      { action: 'arrived_now', title: 'Llegué ya' },
+      { action: 'arrived_15_ago', title: 'Hace 15m' }
+    ];
+  }
+  if (tag === 'sl-cp-work_exit') {
+    return [
+      { action: 'leave_work_now', title: 'Salí ya' },
+      { action: 'still_working', title: 'Aún en turno' }
+    ];
+  }
+  if (tag === 'sl-cp-class_transit') {
+    return [{ action: 'start_class_transit', title: 'Escuchar en Ruta' }];
+  }
+  return [];
+}
+
 self.addEventListener('push', (event) => {
   let payload = { title: 'SISTEMA DEL MONARCA', body: 'Tienes una directiva pendiente.', tag: 'sl-webpush', actions: [], data: {} };
   if (event.data) {
     try { payload = Object.assign(payload, event.data.json()); }
     catch (e) { payload.body = event.data.text() || payload.body; }
   }
-  event.waitUntil(showSystemPush(payload.title, payload.body, payload.tag, [200, 100, 250], payload.actions, payload.data));
+  const actions = (Array.isArray(payload.actions) && payload.actions.length > 0)
+    ? payload.actions
+    : getDefaultActionsForTag(payload.tag);
+
+  const tasks = [
+    showSystemPush(payload.title, payload.body, payload.tag, [200, 100, 250], actions, payload.data)
+  ];
+
+  // Si llegó el Push de Salida Matutina con la app cerrada, dejar guardado el auto-arranque en 3 min
+  if (payload.tag === 'sl-cp-morning_depart') {
+    const now = Date.now();
+    tasks.push(saveSwAutoDepartState({
+      dayKey: getSwBioDayStr(now),
+      detectedAt: now,
+      autoStartAt: now + (3 * 60000),
+      stage: 'grace_3m'
+    }));
+  }
+
+  event.waitUntil(Promise.all(tasks));
 });
 
 self.addEventListener('notificationclick', (event) => {
@@ -179,8 +244,6 @@ self.addEventListener('notificationclick', (event) => {
   const data = (event.notification && event.notification.data) ? event.notification.data : {};
   const actionTs = Date.now();
 
-  // Reintento en 15 min si el cazador sigue en tráfico sin abrir la app.
-  // Nota: el setTimeout puede perderse si el navegador apaga el SW (ver límites de timers).
   if (action === 'still_traffic') {
     const nextCount = (data.retryCount || 0) + 1;
     if (nextCount <= 3) {
@@ -191,7 +254,6 @@ self.addEventListener('notificationclick', (event) => {
           'Han pasado 15 min más en ruta. ¿Ya llegaste al trabajo?',
           'sl-cp-work_arrival',
           [180, 90, 220],
-          // Máx. 2 acciones para que ambas se vean en Android
           [
             { action: 'arrived_now', title: 'Llegué ya' },
             { action: 'still_traffic', title: 'Sigo en ruta' }
@@ -224,20 +286,50 @@ self.addEventListener('notificationclick', (event) => {
   }
 
   event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientsArr) => {
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (clientsArr) => {
       const targetAction = action || data.defaultAction || '';
+      const silentActions = ['arrived_now', 'arrived_15_ago', 'start_route_ida', 'delay_route_ida', 'skip_work_today', 'leave_work_now', 'leave_work_30_ago', 'start_class_transit'];
+
       if (clientsArr.length > 0) {
         const client = clientsArr[0];
         if (targetAction) {
           client.postMessage({ type: 'SL_TACTICAL_ACTION', action: targetAction, data: data, actionTs: actionTs });
         }
-        // Botón silencioso: ejecuta sin robar pantalla; cuerpo o ajuste: enfoca la app
-                const silentActions = ['arrived_now', 'arrived_15_ago', 'start_route_ida', 'delay_route_ida', 'skip_work_today', 'leave_work_now', 'leave_work_30_ago', 'start_class_transit'];
         if (!silentActions.includes(targetAction) && 'focus' in client) {
           return client.focus();
         }
         return;
       }
+
+      // App 100% cerrada: guardar decisión en caché del SW sin obligar a abrir Chrome encima
+      if (targetAction === 'start_route_ida') {
+        await saveSwAutoDepartState({
+          dayKey: getSwBioDayStr(actionTs),
+          detectedAt: actionTs,
+          autoStartAt: actionTs,
+          stage: 'confirmed_start'
+        });
+        return showSystemPush(
+          'SISTEMA // RUTA DE IDA ACTIVA',
+          'Cronómetro iniciado en segundo plano. Conduce con precaución.',
+          'sl-net-depart'
+        );
+      }
+
+      if (targetAction === 'delay_route_ida') {
+        await saveSwAutoDepartState({
+          dayKey: getSwBioDayStr(actionTs),
+          detectedAt: actionTs,
+          autoStartAt: actionTs + (10 * 60000),
+          stage: 'wait_10m'
+        });
+        return showSystemPush(
+          'SISTEMA // EN ESPERA (10 MIN)',
+          'Si ya saliste y no vuelves a responder, Ruta de Ida arrancará sola con esos 10 min recorridos.',
+          'sl-net-depart'
+        );
+      }
+
       if (self.clients.openWindow) {
         const qs = targetAction
           ? `/?swAction=${encodeURIComponent(targetAction)}&swTs=${actionTs}`
